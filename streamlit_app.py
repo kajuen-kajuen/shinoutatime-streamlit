@@ -167,6 +167,7 @@ if df_lives is not None and df_songs is not None:
         "キーワード検索（ライブタイトル、曲名、アーティスト）",
         st.session_state.search_query,
         key="search_input_box",
+        placeholder="ここに入力",  # ★追加したプレースホルダー
     )
 
     # 検索入力が変更された場合にデータをフィルタリング

@@ -1,0 +1,8 @@
+# .streamlit/config.toml
+
+[theme]
+primaryColor="#98d6f2" # インタラクティブな要素（ボタン、スライダーなど）の主要な色
+backgroundColor="#FFFFFF" # アプリのメイン背景色
+secondaryBackgroundColor="#E0F2F7" # サイドバーや一部のブロック要素の背景色 (ゴーストブルーに合う明るい色)
+textColor="#31333F" # テキストのメインカラー（読みやすい濃い色）
+font="sans serif"
