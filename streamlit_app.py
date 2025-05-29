@@ -18,7 +18,7 @@ except Exception as e:
     st.error(f"エラー: style.css の読み込み中に問題が発生しました: {e}")
 # --- カスタムCSSの適用ここまで ---
 
-st.title("しのうた時計")
+st.title("しのうた時計👻🫧")
 
 # --- TSVファイルのパス ---
 lives_file_path = "data/M_YT_LIVE.TSV"
@@ -266,7 +266,7 @@ if df_lives is not None and df_songs is not None:
         "曲目": "No.",
         "曲名": "曲名",
         "アーティスト": "アーティスト",
-        "YouTubeリンク": "動画",
+        "YouTubeリンク": "リンク",  # ここを「リンク」に変更
         # "ライブタイトル": "ライブ名",  # この行をコメントアウトまたは削除
     }
 
