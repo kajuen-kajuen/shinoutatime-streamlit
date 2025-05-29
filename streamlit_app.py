@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import streamlit.components.v1 as components  # componentsモジュールをインポート
 
 # ブラウザのタブ名を「しのうた時計」に設定し、レイアウトを広めに設定
 st.set_page_config(page_title="しのうた時計", layout="wide")
@@ -152,14 +153,14 @@ if df_lives is not None and df_songs is not None:
     # --- ソート順序の変更ここまで ---
 
     # 表示する列の順序を調整 (オプション)
-    # 「ライブ配信日_sortable」はソート用なので、表示列からは除外
+    # 「ライブタイトル」を display_columns から削除
     display_columns = [
         "ライブ配信日",  # 元の文字列形式の「ライブ配信日」を表示
         "曲目",
         "曲名",
         "アーティスト",
         "YouTubeタイムスタンプ付きURL",
-        "ライブタイトル",
+        # "ライブタイトル",  # この行をコメントアウトまたは削除
     ]
 
     # 実際にDataFrameに存在する列のみを選択して表示
@@ -180,7 +181,7 @@ if df_lives is not None and df_songs is not None:
         "キーワード検索（ライブタイトル、曲名、アーティスト）",
         st.session_state.search_query,
         key="search_input_box",
-        placeholder="ここに入力",
+        placeholder="ここにキーワードを入力",
     )
 
     # 検索入力が変更された場合にデータをフィルタリング
@@ -188,20 +189,26 @@ if df_lives is not None and df_songs is not None:
         st.session_state.search_query = search_input  # 現在の検索入力を状態に保存
         if st.session_state.search_query:
             # 検索クエリに基づいてデータをフィルタリング
-            df_display_filtered = df_display[
-                df_display["ライブタイトル"]
-                .astype(str)
-                .str.contains(st.session_state.search_query, case=False, na=False)
-                | df_display["曲名"]
-                .astype(str)
-                .str.contains(st.session_state.search_query, case=False, na=False)
-                | df_display["アーティスト"]
-                .astype(str)
-                .str.contains(st.session_state.search_query, case=False, na=False)
-            ]
-            st.session_state.filtered_df = df_display_filtered
+            # ライブタイトルは表示しないが、検索対象には含める
+            df_display_filtered = (
+                df_merged[  # df_merged を使用して非表示のライブタイトルも検索対象に
+                    df_merged["ライブタイトル"]
+                    .astype(str)
+                    .str.contains(st.session_state.search_query, case=False, na=False)
+                    | df_merged["曲名"]  # df_merged を使用して非表示の曲名も検索対象に
+                    .astype(str)
+                    .str.contains(st.session_state.search_query, case=False, na=False)
+                    | df_merged[
+                        "アーティスト"
+                    ]  # df_merged を使用して非表示のアーティストも検索対象に
+                    .astype(str)
+                    .str.contains(st.session_state.search_query, case=False, na=False)
+                ]
+            )
+            # フィルタリング結果は df_display_filtered から表示したい列だけを選択
+            st.session_state.filtered_df = df_display_filtered[actual_display_columns]
             st.write(
-                f"「{st.session_state.search_query}」で検索した結果: {len(df_display_filtered)}件"
+                f"「{st.session_state.search_query}」で検索した結果: {len(st.session_state.filtered_df)}件"
             )
         else:  # キーワードが空になった場合
             st.session_state.filtered_df = df_display  # 全件表示に戻す
@@ -224,14 +231,23 @@ if df_lives is not None and df_songs is not None:
     # 元のYouTubeタイムスタンプ付きURL列は不要になるため削除
     df_to_show = df_to_show.drop(columns=["YouTubeタイムスタンプ付きURL"])
 
+    # ★ここから追加：アーティスト列にカスタムクラスを適用
+    # アーティスト列のテキストを特定のdivで囲み、クラスを付与
+    # これはto_html()がtdタグを生成したときに適用されるようにする
+    df_to_show["アーティスト"] = (
+        df_to_show["アーティスト"]
+        .astype(str)
+        .apply(lambda x: f'<div class="artist-cell">{x}</div>')
+    )
+
     # 列の順序を再調整
     final_display_columns = [
         "ライブ配信日",
         "曲目",
         "曲名",
-        "アーティスト",
+        "アーティスト",  # 加工後の「アーティスト」列
         "YouTubeリンク",  # 新しいYouTubeリンク列
-        "ライブタイトル",
+        # "ライブタイトル",  # この行もコメントアウトまたは削除
     ]
     # 実際にDataFrameに存在する列のみを選択して表示
     final_display_columns = [
@@ -239,28 +255,34 @@ if df_lives is not None and df_songs is not None:
     ]
 
     # DataFrameをHTMLとして生成
-    # 修正: justify='left' を to_html() の引数として追加
     html_table = df_to_show[final_display_columns].to_html(
-        escape=False, index=False, justify="left"  # ここに追記
+        escape=False, index=False, justify="left"
     )
 
     # ヘッダーの置き換え辞書
+    # 「ライブタイトル」に関連するエントリを削除
     custom_headers = {
         "ライブ配信日": "配信日",
         "曲目": "No.",
         "曲名": "曲名",
-        "アーティスト": "アーティスト",  # ここを「歌唱者」から「アーティスト」に変更
+        "アーティスト": "アーティスト",
         "YouTubeリンク": "動画",
-        "ライブタイトル": "ライブ名",
+        # "ライブタイトル": "ライブ名",  # この行をコメントアウトまたは削除
     }
 
     # HTML文字列内で各ヘッダーを置き換える
     for original, custom in custom_headers.items():
-        # to_html()が生成する<th>タグの形式に合わせて置き換えます
         html_table = html_table.replace(f"<th>{original}</th>", f"<th>{custom}</th>")
 
+    # テーブルをスクロール可能なdivで囲む
+    # style属性を直接付与
+    scrollable_html = f"""
+    <div style="overflow-x: auto; white-space: nowrap; max-width: 100%;">
+        {html_table}
+    </div>
+    """
     # 生成したHTMLをStreamlitで表示
-    st.write(html_table, unsafe_allow_html=True)
+    st.write(scrollable_html, unsafe_allow_html=True)
 
 
 else:
