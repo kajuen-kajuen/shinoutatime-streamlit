@@ -23,7 +23,7 @@ st.title("しのうた時計👻🫧")
 st.markdown(
     """
     こちらはVTuber「[幽音しの](https://www.774.ai/talent/shino-kasukane)」さんの歌枠配信で歌われた楽曲をまとめた非公式データベースです。
-    曲名、アーティスト、配信タイトルで検索できます。YouTubeリンクから該当の歌唱箇所に直接飛べます。
+    曲名、アーティスト、ライブ配信タイトルで検索できます。YouTubeリンクから該当の歌唱箇所に直接飛べます。
     """
 )
 st.markdown("---")
@@ -158,7 +158,6 @@ if df_lives is not None and df_songs is not None:
     # --- ソート順序の変更ここまで ---
 
     # 表示する列の順序を調整
-    # 「ライブタイトル」は表示から除外
     display_columns = [
         "ライブ配信日",
         "曲目",
@@ -173,39 +172,62 @@ if df_lives is not None and df_songs is not None:
     ]
     df_display = df_merged[actual_display_columns].copy()
 
-    # --- 検索ボックスとボタンの追加 ---
+    # --- 検索ボックスとボタン、チェックボックスの追加 ---
     # `st.session_state` を使って検索クエリの状態を管理
     if "search_query" not in st.session_state:
         st.session_state.search_query = ""
     if "filtered_df" not in st.session_state:
         st.session_state.filtered_df = df_display
+    # st.session_state.include_live_title が存在しない場合の初期化
+    # デフォルトは True (検索対象に含める)
+    if "include_live_title" not in st.session_state:
+        st.session_state.include_live_title = True
 
     # 検索入力フィールド
     current_input = st.text_input(
-        "キーワード検索（曲名、アーティスト、配信タイトル）",
+        "キーワード検索（曲名、アーティスト）",
         value=st.session_state.search_query,
         key="search_input_box",
         placeholder="ここにキーワードを入力",
     )
 
-    # 検索ボタンをテキスト入力の下に配置
+    # 検索条件のチェックボックス
+    # 注意: ここでは st.session_state.include_live_title を直接更新しない
+    # ボタン押下時に current_checkbox_value を session_state にコピーする
+    current_checkbox_value = st.checkbox(
+        "検索対象にライブ配信タイトルを含める",
+        value=st.session_state.include_live_title,  # 初期表示はセッションの値
+        key="include_live_title_checkbox",
+    )
+
+    # 検索ボタン
     search_button = st.button("検索")
 
     # 検索ボタンが押された場合にのみ検索を実行
     if search_button:
+        # ボタンが押されたら、現在の入力とチェックボックスの状態をセッションに保存
         st.session_state.search_query = current_input
+        st.session_state.include_live_title = current_checkbox_value  # ここでチェックボックスの現在の値をセッションにコピー
+
         if st.session_state.search_query:
-            df_display_filtered = df_merged[
-                df_merged["ライブタイトル"]
-                .astype(str)
-                .str.contains(st.session_state.search_query, case=False, na=False)
-                | df_merged["曲名"]
-                .astype(str)
-                .str.contains(st.session_state.search_query, case=False, na=False)
-                | df_merged["アーティスト"]
-                .astype(str)
-                .str.contains(st.session_state.search_query, case=False, na=False)
-            ]
+            # 検索クエリに基づいてデータをフィルタリング
+            # 常に曲名とアーティストは検索対象
+            filter_condition = df_merged["曲名"].astype(str).str.contains(
+                st.session_state.search_query, case=False, na=False
+            ) | df_merged["アーティスト"].astype(str).str.contains(
+                st.session_state.search_query, case=False, na=False
+            )
+
+            # ボタン押下時の st.session_state.include_live_title の値を使用
+            if st.session_state.include_live_title:
+                filter_condition = filter_condition | df_merged[
+                    "ライブタイトル"
+                ].astype(str).str.contains(
+                    st.session_state.search_query, case=False, na=False
+                )
+
+            df_display_filtered = df_merged[filter_condition]
+
             st.session_state.filtered_df = df_display_filtered[actual_display_columns]
             st.write(
                 f"「{st.session_state.search_query}」で検索した結果: {len(st.session_state.filtered_df)}件"
@@ -214,9 +236,16 @@ if df_lives is not None and df_songs is not None:
             st.session_state.filtered_df = df_display
             st.write("検索キーワードが入力されていません。全件表示します。")
     # アプリの初期ロード時、または検索キーワードが空でボタンが押されていない場合
+    # この条件の場合でも、最後に確定された検索条件（セッションに保存されているもの）で表示を更新
     elif not st.session_state.search_query and not search_button:
         st.session_state.filtered_df = df_display
         st.write("検索キーワードが入力されていません。全件表示します。")
+    # それ以外のケース（例: チェックボックスだけ変更したがボタンは押していない）では、
+    # 前回ボタンが押されたときの状態を維持する。
+    # このブロックは特に何もせず、session_state.filtered_dfをそのまま使う。
+    # Streamlitのライフサイクルにより、ウィジェットの値が変わるとスクリプト全体が再実行されるが、
+    # search_buttonがTrueにならない限り、session_state.filtered_dfは更新されない。
+    # そのため、表示されるDataFrameはボタン押下時の状態を維持する。
 
     # シンプルなst.dataframeで表示
     # リンクとして表示したい列は別途処理

@@ -15,38 +15,48 @@
 /* ================================================= */
 
 /* タイトルの中央寄せ */
-h1.st-emotion-cache-nahz7x {
+/* 最新のStreamlitのクラス名に合わせて調整する可能性があります */
+h1.st-emotion-cache-nahz7x,
+.st-emotion-cache-nahz7x {
     text-align: center;
     margin-bottom: 1.5rem;
 }
 
 /* 検索ボックスのラベルと入力フィールドを左寄せにする */
-/* st.text_input の親要素の data-testid="stTextInput" を調整 */
 div[data-testid="stTextInput"] {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    /* これで子要素（ラベルと入力ボックス）が左寄せになる */
     margin-bottom: 0rem;
-    /* ★ここを調整してボタンとの隙間を詰める★ */
+    /* ボタンとの隙間を詰める */
 }
 
 /* 検索ボタンの親要素の div (stButton) の上マージンを調整し、隙間を詰める */
 div.stButton {
     margin-top: -0.5rem;
-    /* ★ここを調整してテキスト入力との隙間を詰める★ */
+    /* テキスト入力との隙間を詰める */
     margin-bottom: 1rem;
     /* ボタンの下に少しスペースを空ける場合はこの値を調整 */
 }
 
+/* st.checkbox のラベル部分のデフォルトのマージンを調整して、
+   ボタンの高さと合わせやすくする */
+div[data-testid="stCheckbox"] label {
+    margin-top: 0.2rem;
+    /* 微調整 */
+    margin-bottom: 0.2rem;
+    /* 微調整 */
+    display: flex;
+    /* チェックボックスのアイコンとテキストをFlexboxで整列させる */
+    align-items: center;
+    /* 縦方向中央揃え */
+}
 
 /* 検索結果件数表示のメッセージを左寄せに戻す */
 div[data-testid="stMarkdown"] p {
     text-align: left;
-    /* これでメッセージが左寄せになる */
     margin-bottom: 1rem;
 }
-
 
 /* ================================================= */
 /* HTMLテーブルのスタイリング（既存+微調整） */
@@ -58,7 +68,6 @@ div[style*="overflow-x: auto"] {
 }
 
 /* テーブル内のヘッダーとデータセルに white-space: nowrap; を適用して改行を防ぐ */
-/* アーティスト列以外のセルには引き続き nowrap を適用 */
 table.dataframe th,
 table.dataframe td {
     white-space: nowrap;
