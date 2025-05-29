@@ -25,17 +25,23 @@ h1.st-emotion-cache-nahz7x {
 div[data-testid="stTextInput"] {
     display: flex;
     flex-direction: column;
-    /* align-items: center; */
-    /* この行を削除するか、次のように変更 */
     align-items: flex-start;
     /* これで子要素（ラベルと入力ボックス）が左寄せになる */
-    margin-bottom: 1.5rem;
+    margin-bottom: 0rem;
+    /* ★ここを調整してボタンとの隙間を詰める★ */
 }
+
+/* 検索ボタンの親要素の div (stButton) の上マージンを調整し、隙間を詰める */
+div.stButton {
+    margin-top: -0.5rem;
+    /* ★ここを調整してテキスト入力との隙間を詰める★ */
+    margin-bottom: 1rem;
+    /* ボタンの下に少しスペースを空ける場合はこの値を調整 */
+}
+
 
 /* 検索結果件数表示のメッセージを左寄せに戻す */
 div[data-testid="stMarkdown"] p {
-    /* text-align: center; */
-    /* この行を削除するか、次のように変更 */
     text-align: left;
     /* これでメッセージが左寄せになる */
     margin-bottom: 1rem;
