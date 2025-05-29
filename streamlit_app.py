@@ -20,6 +20,16 @@ except Exception as e:
 
 st.title("しのうた時計👻🫧")
 
+# --- 概要欄の追加 ---
+st.markdown(
+    """
+    こちらはVTuber「[幽音しの](https://www.774.ai/talent/shino-kasukane)」さんの歌枠配信で歌われた楽曲をまとめた非公式データベースです。
+    曲名、アーティスト、配信タイトルで検索できます。YouTubeリンクから該当の歌唱箇所に直接飛べます。
+    """
+)
+st.markdown("---")  # 概要欄の下に区切り線を入れる
+# --- 概要欄の追加ここまで ---
+
 # --- TSVファイルのパス ---
 lives_file_path = "data/M_YT_LIVE.TSV"
 songs_file_path = "data/M_YT_LIVE_TIMESTAMP.TSV"
@@ -178,7 +188,7 @@ if df_lives is not None and df_songs is not None:
 
     # 検索入力
     search_input = st.text_input(
-        "キーワード検索（ライブタイトル、曲名、アーティスト）",
+        "キーワード検索（曲名、アーティスト、配信タイトル）",
         st.session_state.search_query,
         key="search_input_box",
         placeholder="ここにキーワードを入力",
@@ -292,3 +302,4 @@ else:
 
 st.markdown("---")
 st.caption("Streamlit アプリケーション by Gemini")
+st.caption("本サイトに関する質問・バグの報告などは[@kajuen_kajuen](https://x.com/kajuen_kajuen)までお願いします。")
