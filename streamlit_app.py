@@ -4,6 +4,19 @@ import pandas as pd
 # ブラウザのタブ名を「しのうた時計」に設定し、レイアウトを広めに設定
 st.set_page_config(page_title="しのうた時計", layout="wide")
 
+# --- カスタムCSSの適用 ---
+# 外部CSSファイルの読み込み
+try:
+    # 修正: encoding='utf-8' を追加
+    with open("style.css", encoding="utf-8") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+except FileNotFoundError:
+    st.error("エラー: style.css が見つかりません。")
+    st.info("`style.css` がアプリと同じディレクトリにあるか確認してください。")
+except Exception as e:
+    st.error(f"エラー: style.css の読み込み中に問題が発生しました: {e}")
+# --- カスタムCSSの適用ここまで ---
+
 st.title("しのうた時計")
 
 # --- TSVファイルのパス ---
@@ -167,7 +180,7 @@ if df_lives is not None and df_songs is not None:
         "キーワード検索（ライブタイトル、曲名、アーティスト）",
         st.session_state.search_query,
         key="search_input_box",
-        placeholder="ここに入力",  # ★追加したプレースホルダー
+        placeholder="ここに入力",
     )
 
     # 検索入力が変更された場合にデータをフィルタリング
@@ -198,32 +211,56 @@ if df_lives is not None and df_songs is not None:
     if not st.session_state.search_query:  # 検索クエリが空の場合
         st.session_state.filtered_df = df_display  # 初期表示は全件
 
-    # st.column_config を使って、各カラムのインタラクティブ機能を無効化
-    column_configuration = {}
-    for col_name in actual_display_columns:
-        if col_name == "YouTubeタイムスタンプ付きURL":
-            column_configuration[col_name] = st.column_config.LinkColumn(
-                "YouTubeリンク",
-                help="クリックするとYouTubeの該当箇所へ遷移します",
-                max_chars=None,
-                display_text="YouTubeへ 👻",
-                width="medium",
-                disabled=True,
-            )
-        else:
-            column_configuration[col_name] = st.column_config.TextColumn(
-                col_name,
-                disabled=True,
-            )
+    # シンプルなst.dataframeで表示
+    # リンクとして表示したい列は別途処理
+    df_to_show = st.session_state.filtered_df.copy()
 
-    # st.data_editor を使用して、ダウンロードボタンやその他の操作を無効化
-    st.data_editor(
-        st.session_state.filtered_df,
-        use_container_width=True,
-        column_config=column_configuration,
-        hide_index=True,
-        disabled=True,
+    # YouTubeリンクをHTML形式で直接埋め込むために変換
+    df_to_show["YouTubeリンク"] = df_to_show.apply(
+        lambda row: f'<a href="{row["YouTubeタイムスタンプ付きURL"]}" target="_blank">YouTubeへ 👻</a>',
+        axis=1,
     )
+
+    # 元のYouTubeタイムスタンプ付きURL列は不要になるため削除
+    df_to_show = df_to_show.drop(columns=["YouTubeタイムスタンプ付きURL"])
+
+    # 列の順序を再調整
+    final_display_columns = [
+        "ライブ配信日",
+        "曲目",
+        "曲名",
+        "アーティスト",
+        "YouTubeリンク",  # 新しいYouTubeリンク列
+        "ライブタイトル",
+    ]
+    # 実際にDataFrameに存在する列のみを選択して表示
+    final_display_columns = [
+        col for col in final_display_columns if col in df_to_show.columns
+    ]
+
+    # DataFrameをHTMLとして生成
+    # 修正: justify='left' を to_html() の引数として追加
+    html_table = df_to_show[final_display_columns].to_html(
+        escape=False, index=False, justify="left"  # ここに追記
+    )
+
+    # ヘッダーの置き換え辞書
+    custom_headers = {
+        "ライブ配信日": "配信日",
+        "曲目": "No.",
+        "曲名": "曲名",
+        "アーティスト": "アーティスト",  # ここを「歌唱者」から「アーティスト」に変更
+        "YouTubeリンク": "動画",
+        "ライブタイトル": "ライブ名",
+    }
+
+    # HTML文字列内で各ヘッダーを置き換える
+    for original, custom in custom_headers.items():
+        # to_html()が生成する<th>タグの形式に合わせて置き換えます
+        html_table = html_table.replace(f"<th>{original}</th>", f"<th>{custom}</th>")
+
+    # 生成したHTMLをStreamlitで表示
+    st.write(html_table, unsafe_allow_html=True)
 
 
 else:
