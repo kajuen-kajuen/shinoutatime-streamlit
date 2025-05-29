@@ -105,12 +105,12 @@ if df_lives is not None and df_songs is not None:
     # 表示する列の順序を調整 (オプション)
     display_columns = [
         "ライブ配信日",
-        "ライブタイトル",
         "曲目",  # ここを「曲目」に変更
         "曲名",
         "アーティスト",
         # "タイムスタンプ",  # 元のタイムスタンプは表示しない
         "YouTubeタイムスタンプ付きURL",  # ここに正しいURLが表示されます
+        "ライブタイトル",
     ]
 
     # 実際にDataFrameに存在する列のみを選択して表示
@@ -169,11 +169,11 @@ if df_lives is not None and df_songs is not None:
     for col_name in actual_display_columns:
         if col_name == "YouTubeタイムスタンプ付きURL":
             column_configuration[col_name] = st.column_config.LinkColumn(
-                "リンク",  # カラム表示名を「リンク」に変更
+                "YouTubeリンク",  # カラム表示名を「YouTubeリンク」に変更
                 help="クリックするとYouTubeの該当箇所へ遷移します",
-                max_chars=100,  # 表示されるURLの長さを調整（必要に応じて）
-                display_text="👻",  # リンクとして表示されるテキストを「👻」に変更
-                width="small",  # カラムの幅を調整（必要に応じて）
+                max_chars=None,  # 表示されるURLの長さを制限しない（より広いタップ領域を確保）
+                display_text="YouTubeへ 👻",  # リンクとして表示されるテキストを「YouTubeへ 👻」に変更
+                width="medium",  # カラムの幅を「medium」に調整（より広いタップ領域を確保）
                 disabled=True,  # リンクカラムも無効化
             )
         else:
