@@ -1,9 +1,17 @@
 import streamlit as st
 import pandas as pd
 import streamlit.components.v1 as components
+from PIL import Image  # 画像ファイルをアイコンにする場合、PILをインポート
 
 # ブラウザのタブ名を「しのうた時計」に設定し、レイアウトを広めに設定
-st.set_page_config(page_title="しのうた時計", layout="wide")
+# page_icon を追加
+st.set_page_config(
+    page_title="しのうた時計",
+    page_icon="👻",  # 例: 幽霊の絵文字を設定
+    # もし画像ファイルを使いたい場合は、以下の行をコメントアウトして使用してください。
+    # 例: page_icon=Image.open("path/to/your/custom_icon.png"),
+    layout="wide",
+)
 
 # --- カスタムCSSの適用 ---
 # 外部CSSファイルの読み込み
@@ -152,7 +160,7 @@ if df_lives is not None and df_songs is not None:
 
     # ライブ配信日の降順 (新しい日付が上)、かつその中で曲目 (タイムスタンプ_秒) の昇順でソート
     # NaT（不正な日付）はソート時に自動的に末尾に配置されます
-    df_merged = df_merged.sort_values(
+    st.session_state.df_sorted = df_merged.sort_values(  # ここでsession_stateに保存
         by=["ライブ配信日_sortable", "タイムスタンプ_秒"], ascending=[False, True]
     ).reset_index(drop=True)
     # --- ソート順序の変更ここまで ---
@@ -168,20 +176,26 @@ if df_lives is not None and df_songs is not None:
 
     # 実際にDataFrameに存在する列のみを選択して表示
     actual_display_columns = [
-        col for col in display_columns if col in df_merged.columns
+        col for col in display_columns if col in st.session_state.df_sorted.columns
     ]
-    df_display = df_merged[actual_display_columns].copy()
+    # df_display はフィルタリングされていない全データではなく、ソート済みのデータから選択
+    df_display_initial = st.session_state.df_sorted[actual_display_columns].copy()
 
     # --- 検索ボックスとボタン、チェックボックスの追加 ---
     # `st.session_state` を使って検索クエリの状態を管理
     if "search_query" not in st.session_state:
         st.session_state.search_query = ""
     if "filtered_df" not in st.session_state:
-        st.session_state.filtered_df = df_display
+        st.session_state.filtered_df = (
+            df_display_initial  # 初期表示はソート済み全データ
+        )
     # st.session_state.include_live_title が存在しない場合の初期化
     # デフォルトは True (検索対象に含める)
     if "include_live_title" not in st.session_state:
         st.session_state.include_live_title = True
+    # 表示制限数の初期化
+    if "display_limit" not in st.session_state:
+        st.session_state.display_limit = 25  # 初期表示件数
 
     # 検索入力フィールド
     current_input = st.text_input(
@@ -192,11 +206,9 @@ if df_lives is not None and df_songs is not None:
     )
 
     # 検索条件のチェックボックス
-    # 注意: ここでは st.session_state.include_live_title を直接更新しない
-    # ボタン押下時に current_checkbox_value を session_state にコピーする
     current_checkbox_value = st.checkbox(
         "検索対象にライブ配信タイトルを含める",
-        value=st.session_state.include_live_title,  # 初期表示はセッションの値
+        value=st.session_state.include_live_title,
         key="include_live_title_checkbox",
     )
 
@@ -207,48 +219,45 @@ if df_lives is not None and df_songs is not None:
     if search_button:
         # ボタンが押されたら、現在の入力とチェックボックスの状態をセッションに保存
         st.session_state.search_query = current_input
-        st.session_state.include_live_title = current_checkbox_value  # ここでチェックボックスの現在の値をセッションにコピー
+        st.session_state.include_live_title = current_checkbox_value
+        # 検索時には表示制限をリセット
+        st.session_state.display_limit = 25
 
         if st.session_state.search_query:
-            # 検索クエリに基づいてデータをフィルタリング
-            # 常に曲名とアーティストは検索対象
-            filter_condition = df_merged["曲名"].astype(str).str.contains(
+            filter_condition = st.session_state.df_sorted["曲名"].astype(
+                str
+            ).str.contains(
                 st.session_state.search_query, case=False, na=False
-            ) | df_merged["アーティスト"].astype(str).str.contains(
+            ) | st.session_state.df_sorted[
+                "アーティスト"
+            ].astype(
+                str
+            ).str.contains(
                 st.session_state.search_query, case=False, na=False
             )
 
-            # ボタン押下時の st.session_state.include_live_title の値を使用
             if st.session_state.include_live_title:
-                filter_condition = filter_condition | df_merged[
+                filter_condition = filter_condition | st.session_state.df_sorted[
                     "ライブタイトル"
                 ].astype(str).str.contains(
                     st.session_state.search_query, case=False, na=False
                 )
 
-            df_display_filtered = df_merged[filter_condition]
-
+            df_display_filtered = st.session_state.df_sorted[filter_condition]
             st.session_state.filtered_df = df_display_filtered[actual_display_columns]
             st.write(
                 f"「{st.session_state.search_query}」で検索した結果: {len(st.session_state.filtered_df)}件"
             )
         else:
-            st.session_state.filtered_df = df_display
+            st.session_state.filtered_df = df_display_initial
             st.write("検索キーワードが入力されていません。全件表示します。")
-    # アプリの初期ロード時、または検索キーワードが空でボタンが押されていない場合
-    # この条件の場合でも、最後に確定された検索条件（セッションに保存されているもの）で表示を更新
+    # 初期ロード時、または検索キーワードが空でボタンが押されていない場合、
+    # 前回ボタンが押されたときの状態（または初期状態）を維持
     elif not st.session_state.search_query and not search_button:
-        st.session_state.filtered_df = df_display
+        st.session_state.filtered_df = df_display_initial
         st.write("検索キーワードが入力されていません。全件表示します。")
-    # それ以外のケース（例: チェックボックスだけ変更したがボタンは押していない）では、
-    # 前回ボタンが押されたときの状態を維持する。
-    # このブロックは特に何もせず、session_state.filtered_dfをそのまま使う。
-    # Streamlitのライフサイクルにより、ウィジェットの値が変わるとスクリプト全体が再実行されるが、
-    # search_buttonがTrueにならない限り、session_state.filtered_dfは更新されない。
-    # そのため、表示されるDataFrameはボタン押下時の状態を維持する。
 
-    # シンプルなst.dataframeで表示
-    # リンクとして表示したい列は別途処理
+    # ここから段階的表示の処理
     df_to_show = st.session_state.filtered_df.copy()
 
     # YouTubeリンクをHTML形式で直接埋め込むために変換
@@ -261,15 +270,13 @@ if df_lives is not None and df_songs is not None:
     df_to_show = df_to_show.drop(columns=["YouTubeタイムスタンプ付きURL"])
 
     # アーティスト列にカスタムクラスを適用
-    # アーティスト列のテキストを特定のdivで囲み、クラスを付与
-    # これはto_html()がtdタグを生成したときに適用されるようにする
     df_to_show["アーティスト"] = (
         df_to_show["アーティスト"]
         .astype(str)
         .apply(lambda x: f'<div class="artist-cell">{x}</div>')
     )
 
-    # 列の順序を再調整
+    # 表示する列の順序を再調整
     final_display_columns = [
         "ライブ配信日",
         "曲目",
@@ -282,10 +289,13 @@ if df_lives is not None and df_songs is not None:
         col for col in final_display_columns if col in df_to_show.columns
     ]
 
-    # DataFrameをHTMLとして生成
-    html_table = df_to_show[final_display_columns].to_html(
-        escape=False, index=False, justify="left"
+    # 表示件数を制限
+    df_limited_display = df_to_show[final_display_columns].head(
+        st.session_state.display_limit
     )
+
+    # DataFrameをHTMLとして生成
+    html_table = df_limited_display.to_html(escape=False, index=False, justify="left")
 
     # ヘッダーの置き換え辞書
     custom_headers = {
@@ -301,7 +311,6 @@ if df_lives is not None and df_songs is not None:
         html_table = html_table.replace(f"<th>{original}</th>", f"<th>{custom}</th>")
 
     # テーブルをスクロール可能なdivで囲む
-    # style属性を直接付与
     scrollable_html = f"""
     <div style="overflow-x: auto; white-space: nowrap; max-width: 100%;">
         {html_table}
@@ -309,6 +318,16 @@ if df_lives is not None and df_songs is not None:
     """
     # 生成したHTMLをStreamlitで表示
     st.write(scrollable_html, unsafe_allow_html=True)
+
+    # 「もっと見る」ボタン
+    if st.session_state.display_limit < len(st.session_state.filtered_df):
+        if st.button(
+            f"さらに25件表示（現在の表示: {min(st.session_state.display_limit, len(st.session_state.filtered_df))}/{len(st.session_state.filtered_df)}件）"
+        ):
+            st.session_state.display_limit += 25
+            st.rerun()  # ここを st.rerun() に変更
+    else:
+        st.info(f"全ての{len(st.session_state.filtered_df)}件が表示されています。")
 
 
 else:
