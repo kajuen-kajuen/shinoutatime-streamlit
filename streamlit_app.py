@@ -1,20 +1,15 @@
 import streamlit as st
 import pandas as pd
-import streamlit.components.v1 as components
-from PIL import Image  # 画像ファイルをアイコンにする場合、PILをインポート
+from PIL import Image
 
 # ブラウザのタブ名を「しのうたタイム」に設定し、レイアウトを広めに設定
-# page_icon を追加
 st.set_page_config(
     page_title="しのうたタイム",
-    page_icon="👻",  # 例: 幽霊の絵文字を設定
-    # もし画像ファイルを使いたい場合は、以下の行をコメントアウトして使用してください。
-    # 例: page_icon=Image.open("path/to/your/custom_icon.png"),
+    page_icon="👻",
     layout="wide",
 )
 
 # --- カスタムCSSの適用 ---
-# 外部CSSファイルの読み込み
 try:
     with open("style.css", encoding="utf-8") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
@@ -49,10 +44,8 @@ def convert_timestamp_to_seconds(timestamp_str):
 
     parts = list(map(int, timestamp_str.split(":")))
 
-    # 時:分:秒 の場合
     if len(parts) == 3:
         return parts[0] * 3600 + parts[1] * 60 + parts[2]
-    # 分:秒 の場合 (0:01:47 のように時が0で省略されている場合も対応)
     elif len(parts) == 2:
         return parts[0] * 60 + parts[1]
     else:
@@ -149,7 +142,7 @@ if df_lives is not None and df_songs is not None:
         try:
             df_merged.loc[mask_nat_sortable, "ライブ配信日_sortable"] = pd.to_datetime(
                 df_merged.loc[mask_nat_sortable, "ライブ配信日_original"],
-                infer_datetime_format=True,
+                # infer_datetime_format=True, # この行を削除
                 errors="coerce",
             )
         except Exception as e:
@@ -160,7 +153,7 @@ if df_lives is not None and df_songs is not None:
 
     # ライブ配信日の降順 (新しい日付が上)、かつその中で曲目 (タイムスタンプ_秒) の昇順でソート
     # NaT（不正な日付）はソート時に自動的に末尾に配置されます
-    st.session_state.df_sorted = df_merged.sort_values(  # ここでsession_stateに保存
+    st.session_state.df_sorted = df_merged.sort_values(
         by=["ライブ配信日_sortable", "タイムスタンプ_秒"], ascending=[False, True]
     ).reset_index(drop=True)
     # --- ソート順序の変更ここまで ---
@@ -186,9 +179,7 @@ if df_lives is not None and df_songs is not None:
     if "search_query" not in st.session_state:
         st.session_state.search_query = ""
     if "filtered_df" not in st.session_state:
-        st.session_state.filtered_df = (
-            df_display_initial  # 初期表示はソート済み全データ
-        )
+        st.session_state.filtered_df = df_display_initial
     # st.session_state.include_live_title が存在しない場合の初期化
     # デフォルトは True (検索対象に含める)
     if "include_live_title" not in st.session_state:
@@ -262,7 +253,7 @@ if df_lives is not None and df_songs is not None:
 
     # YouTubeリンクをHTML形式で直接埋め込むために変換
     df_to_show["YouTubeリンク"] = df_to_show.apply(
-        lambda row: f'<a href="{row["YouTubeタイムスタンプ付きURL"]}" target="_blank">YouTubeへ 👻</a>',
+        lambda row: f'<a href="{row["YouTubeタイムスタンプ付きURL"]}" target="_blank">YouTubeへ👻</a>',
         axis=1,
     )
 
@@ -325,10 +316,9 @@ if df_lives is not None and df_songs is not None:
             f"さらに25件表示（現在の表示: {min(st.session_state.display_limit, len(st.session_state.filtered_df))}/{len(st.session_state.filtered_df)}件）"
         ):
             st.session_state.display_limit += 25
-            st.rerun()  # ここを st.rerun() に変更
+            st.rerun()
     else:
         st.info(f"全ての{len(st.session_state.filtered_df)}件が表示されています。")
-
 
 else:
     st.warning(
