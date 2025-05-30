@@ -3,10 +3,10 @@ import pandas as pd
 import streamlit.components.v1 as components
 from PIL import Image  # 画像ファイルをアイコンにする場合、PILをインポート
 
-# ブラウザのタブ名を「しのうた時計」に設定し、レイアウトを広めに設定
+# ブラウザのタブ名を「しのうたタイム」に設定し、レイアウトを広めに設定
 # page_icon を追加
 st.set_page_config(
-    page_title="しのうた時計",
+    page_title="しのうたタイム",
     page_icon="👻",  # 例: 幽霊の絵文字を設定
     # もし画像ファイルを使いたい場合は、以下の行をコメントアウトして使用してください。
     # 例: page_icon=Image.open("path/to/your/custom_icon.png"),
@@ -25,7 +25,7 @@ except Exception as e:
     st.error(f"エラー: style.css の読み込み中に問題が発生しました: {e}")
 # --- カスタムCSSの適用ここまで ---
 
-st.title("しのうた時計👻🫧")
+st.title("しのうたタイム👻🫧")
 
 # --- 概要欄の追加 ---
 st.markdown(
