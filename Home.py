@@ -25,7 +25,7 @@ st.title("しのうたタイム👻🫧")
 # --- 概要欄の追加 ---
 st.markdown(
     """
-    こちらはVTuber「[幽音しの](https://www.774.ai/talent/shino-kasukane)」さんの歌枠配信で歌われた楽曲をまとめた非公式データベースです。
+    こちらはVTuber「[幽音しの](https://www.774.ai/talent/shino-kasukane)」さんの配信で歌われた楽曲をまとめた非公式データベースです。
     曲名、アーティスト、ライブ配信タイトルで検索できます。YouTubeリンクから該当の歌唱箇所に直接飛べます。
     """
 )
