@@ -1,10 +1,9 @@
-name: Wake Up Streamlit App
+name: Wake Up Multiple Streamlit Apps
 
 on:
   schedule:
-    # 毎日UTC 00:00 (JST 09:00) に実行
-    # ここは必要に応じて調整してください
-    - cron: "0 0 * * *"
+    # 日本時間 0時, 6時, 12時, 18時 (UTC 15時, 21時, 3時, 9時) に実行
+    - cron: "0 3,9,15,21 * * *"
   workflow_dispatch:
     # 手動でワークフローを実行できるようにする
 
@@ -12,12 +11,18 @@ jobs:
   wake_up:
     runs-on: ubuntu-latest
     steps:
-      - name: Send GET request to Streamlit App
+      - name: Send GET request to App 1
         run: |
-          # ここにあなたのStreamlitアプリのURLを記述してください
-          # 例: https://your-app-name.streamlit.app
-          APP_URL="あなたのStreamlitアプリのURL"
+          # ここに1つ目のStreamlitアプリのURLを記述してください
+          APP_URL_1="https://shinoutatime.streamlit.app/" 
+          echo "Sending GET request to $APP_URL_1"
+          curl -sS --fail $APP_URL_1 || { echo "Failed to reach Streamlit App 1"; exit 1; }
+          echo "Successfully reached Streamlit App 1"
 
-          echo "Sending GET request to $APP_URL"
-          curl -sS --fail $APP_URL || { echo "Failed to reach Streamlit App"; exit 1; }
-          echo "Successfully reached Streamlit App"
+      - name: Send GET request to App 2
+        run: |
+          # ここに2つ目のStreamlitアプリのURLを記述してください
+          APP_URL_2="https://stg-shinoutatime.streamlit.app/"
+          echo "Sending GET request to $APP_URL_2"
+          curl -sS --fail $APP_URL_2 || { echo "Failed to reach Streamlit App 2"; exit 1; }
+          echo "Successfully reached Streamlit App 2"
