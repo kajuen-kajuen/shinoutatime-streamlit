@@ -1,5 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import os  # ファイルパスを扱うためにosモジュールをインポート
 
 st.set_page_config(
     page_title="Information - しのうたタイム",
@@ -19,22 +20,31 @@ st.video(youtube_url)
 st.write("---")
 st.subheader("予定表ポスト")
 
-# Twitterからコピーした特定のツイートの埋め込みコード
-# このコードを<div>タグで囲み、中央寄せのスタイルを適用します。
-tweet_embed_code = """
-<div style="display: flex; justify-content: center; width: 100%;">
-    <blockquote class="twitter-tweet" data-lang="ja">
-        <p lang="ja" dir="ltr">📢スケジュール変更<br><br>👻明日からショート投稿を１９：００→１８：００に変更<br><br>👻今日配信→休み<br><br>👻７日休み→配信あり<br><br>になっていますーー🫡<br>７日がどこかしらで配信できそうなので<br>本日は作業Day にさせてもらうね！ <a href="https://t.co/Dh9XiCPVZc">pic.twitter.com/Dh9XiCPVZc</a></p>&mdash; 幽音しの👻🫧ななしいんく (@Shino_Kasukane_) <a href="https://twitter.com/Shino_Kasukane_/status/1930229052465655983?ref_src=twsrc%5Etfw">June 4, 2025</a>
-    </blockquote> 
-</div>
-<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
-"""
-
-components.html(
-    tweet_embed_code,
-    height=850,  # ツイートの長さや画像・動画の有無によって調整
-    scrolling=True,  # 必要に応じてスクロールを有効にする
+# Twitterの埋め込みコードが記載されたファイルを読み込む
+# ファイルパスは、このスクリプト（01_Information.py）からの相対パスで指定します。
+# 01_Information.pyはpagesディレクトリにあるので、
+# dataディレクトリのファイルは '../data/ファイル名' となります。
+tweet_file_path = os.path.join(
+    os.path.dirname(__file__), "..", "data", "tweet_embed_code.html"
 )
+
+try:
+    with open(tweet_file_path, "r", encoding="utf-8") as f:
+        tweet_embed_code = f.read()
+except FileNotFoundError:
+    st.error(
+        f"エラー: Twitterの埋め込みコードファイルが見つかりません。パスを確認してください: {tweet_file_path}"
+    )
+    tweet_embed_code = ""  # エラー時に空文字列を設定
+
+if tweet_embed_code:  # ファイルが正しく読み込まれた場合のみ表示
+    components.html(
+        tweet_embed_code,
+        height=850,  # ツイートの長さや画像・動画の有無によって調整
+        scrolling=True,  # 必要に応じてスクロールを有効にする
+    )
+else:
+    st.info("Twitterの埋め込み情報が読み込まれませんでした。")
 
 st.markdown("---")
 st.caption("Streamlit アプリケーション by Gemini")
