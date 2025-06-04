@@ -21,11 +21,13 @@ st.write("---")
 st.subheader("予定表ポスト")
 
 # Twitterの埋め込みコードが記載されたファイルを読み込む
-# ファイルパスは、このスクリプト（01_Information.py）からの相対パスで指定します。
-# 01_Information.pyはpagesディレクトリにあるので、
-# dataディレクトリのファイルは '../data/ファイル名' となります。
 tweet_file_path = os.path.join(
     os.path.dirname(__file__), "..", "data", "tweet_embed_code.html"
+)
+
+# ツイートの高さを記述したファイルを読み込む
+tweet_height_file_path = os.path.join(
+    os.path.dirname(__file__), "..", "data", "tweet_height.txt"
 )
 
 try:
@@ -37,10 +39,31 @@ except FileNotFoundError:
     )
     tweet_embed_code = ""  # エラー時に空文字列を設定
 
+# 高さの値を読み込む
+tweet_height = 850  # デフォルト値（ファイルが見つからない場合や読み込みエラーの場合）
+try:
+    with open(tweet_height_file_path, "r", encoding="utf-8") as f:
+        height_str = f.read().strip()  # 前後の空白や改行を削除
+        if height_str.isdigit():  # 読み込んだ文字列が数値かどうかをチェック
+            tweet_height = int(height_str)
+        else:
+            st.warning(
+                f"警告: '{tweet_height_file_path}' に無効な高さの値が指定されています。デフォルト値 {tweet_height} を使用します。"
+            )
+except FileNotFoundError:
+    st.warning(
+        f"警告: ツイートの高さ設定ファイルが見つかりません: {tweet_height_file_path}。デフォルト値 {tweet_height} を使用します。"
+    )
+except Exception as e:
+    st.warning(
+        f"警告: ツイートの高さ設定ファイルの読み込み中にエラーが発生しました: {e}。デフォルト値 {tweet_height} を使用します。"
+    )
+
+
 if tweet_embed_code:  # ファイルが正しく読み込まれた場合のみ表示
     components.html(
         tweet_embed_code,
-        height=850,  # ツイートの長さや画像・動画の有無によって調整
+        height=tweet_height,  # ファイルから読み込んだ高さを適用
         scrolling=True,  # 必要に応じてスクロールを有効にする
     )
 else:
