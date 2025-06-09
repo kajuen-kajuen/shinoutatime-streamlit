@@ -1,6 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import os  # ファイルパスを扱うためにosモジュールをインポート
+import os
 
 st.set_page_config(
     page_title="Information - しのうたタイム",
@@ -37,14 +37,14 @@ except FileNotFoundError:
     st.error(
         f"エラー: Twitterの埋め込みコードファイルが見つかりません。パスを確認してください: {tweet_file_path}"
     )
-    tweet_embed_code = ""  # エラー時に空文字列を設定
+    tweet_embed_code = ""
 
 # 高さの値を読み込む
 tweet_height = 850  # デフォルト値（ファイルが見つからない場合や読み込みエラーの場合）
 try:
     with open(tweet_height_file_path, "r", encoding="utf-8") as f:
-        height_str = f.read().strip()  # 前後の空白や改行を削除
-        if height_str.isdigit():  # 読み込んだ文字列が数値かどうかをチェック
+        height_str = f.read().strip()
+        if height_str.isdigit():
             tweet_height = int(height_str)
         else:
             st.warning(
@@ -59,15 +59,20 @@ except Exception as e:
         f"警告: ツイートの高さ設定ファイルの読み込み中にエラーが発生しました: {e}。デフォルト値 {tweet_height} を使用します。"
     )
 
+# --- ここから変更 ---
+# 3つのカラムを作成：左の空白、中央のコンテンツ、右の空白
+col1, col2, col3 = st.columns([1, 2, 1])  # 割合を調整して中央のカラムの幅を決めます
 
-if tweet_embed_code:  # ファイルが正しく読み込まれた場合のみ表示
-    components.html(
-        tweet_embed_code,
-        height=tweet_height,  # ファイルから読み込んだ高さを適用
-        scrolling=True,  # 必要に応じてスクロールを有効にする
-    )
-else:
-    st.info("Twitterの埋め込み情報が読み込まれませんでした。")
+with col2:  # 中央のカラムにコンテンツを配置
+    if tweet_embed_code:
+        components.html(
+            tweet_embed_code,
+            height=tweet_height,
+            scrolling=True,
+        )
+    else:
+        st.info("Twitterの埋め込み情報が読み込まれませんでした。")
+# --- 変更ここまで ---
 
 st.markdown("---")
 st.caption("Streamlit アプリケーション by Gemini")
