@@ -109,15 +109,31 @@ if df_lives is not None and df_songs is not None:
         convert_timestamp_to_seconds
     )
 
-    # 各ライブ配信内で楽曲に連番を振る
-    # ライブIDとタイムスタンプでソートし、その順序で連番を振る
-    df_merged = df_merged.sort_values(by=["LIVE_ID", "タイムスタンプ_秒"]).reset_index(
-        drop=True
+    # --- 新しい曲目生成ロジックの開始 ---
+    # ソート用に日付型に変換したカラムを作成
+    df_merged["ライブ配信日_sortable"] = pd.to_datetime(
+        df_merged["ライブ配信日_original"], unit="ms", errors="coerce"
     )
-    # 「#」ではなく「曲目」という列名に
-    df_merged["曲目"] = df_merged.groupby("LIVE_ID").cumcount() + 1
-    # 「曲目」に「曲目」という単位を追加
-    df_merged["曲目"] = df_merged["曲目"].astype(str) + "曲目"
+
+    # UNIXミリ秒で変換できなかった（NaTの）行に対して、YYYY/MM/DD形式として再変換を試みる
+    mask_nat_sortable = df_merged["ライブ配信日_sortable"].isna()
+    if mask_nat_sortable.any():
+        try:
+            df_merged.loc[mask_nat_sortable, "ライブ配信日_sortable"] = pd.to_datetime(
+                df_merged.loc[mask_nat_sortable, "ライブ配信日_original"],
+                errors="coerce",
+            )
+        except Exception as e:
+            st.warning(f"ソート用の「ライブ配信日」変換中にエラーが発生しました: {e}")
+            st.warning(
+                "日付の形式が複雑な可能性があります。TSVファイル内の「配信日」カラムのデータを直接確認してください。"
+            )
+
+    # ライブ配信日の降順 (新しい日付が上)、かつその中で LIVE_ID の昇順、さらにタイムスタンプの昇順でソート
+    df_merged = df_merged.sort_values(
+        by=["ライブ配信日_sortable", "LIVE_ID", "タイムスタンプ_秒"],
+        ascending=[False, True, True],
+    ).reset_index(drop=True)
 
     # YouTubeタイムスタンプ付きURLを正しく作成
     df_merged["YouTubeタイムスタンプ付きURL"] = df_merged.apply(
@@ -129,66 +145,44 @@ if df_lives is not None and df_songs is not None:
         axis=1,
     )
 
-    # --- ここからソート用日付の変換とソート順序の変更 ---
-    # ソート用に日付型に変換したカラムを作成
-    df_merged["ライブ配信日_sortable"] = pd.to_datetime(
-        df_merged["ライブ配信日_original"], unit="ms", errors="coerce"
+    # 同じ日付のライブに配信番号を振る
+    df_merged["日付_LIVE_ID_tuple"] = list(
+        zip(df_merged["ライブ配信日_sortable"], df_merged["LIVE_ID"])
     )
+    unique_tuples, live_nums = pd.factorize(df_merged["日付_LIVE_ID_tuple"])
+    df_merged["ライブ番号"] = unique_tuples + 1
+    df_merged = df_merged.drop(columns=["日付_LIVE_ID_tuple"])
 
-    # UNIXミリ秒で変換できなかった（NaTの）行に対して、YYYY/MM/DD形式として再変換を試みる
-    mask_nat_sortable = df_merged["ライブ配信日_sortable"].isna()
+    # 各ライブ配信内で楽曲に連番を振る
+    df_merged["曲順"] = df_merged.groupby("LIVE_ID").cumcount() + 1
 
-    if mask_nat_sortable.any():
-        try:
-            df_merged.loc[mask_nat_sortable, "ライブ配信日_sortable"] = pd.to_datetime(
-                df_merged.loc[mask_nat_sortable, "ライブ配信日_original"],
-                # infer_datetime_format=True, # この行を削除
-                errors="coerce",
-            )
-        except Exception as e:
-            st.warning(f"ソート用の「ライブ配信日」変換中にエラーが発生しました: {e}")
-            st.warning(
-                "日付の形式が複雑な可能性があります。TSVファイル内の「配信日」カラムのデータを直接確認してください。"
-            )
+    # 新しい曲目形式を生成
+    live_counts_per_date = df_merged.groupby("ライブ配信日_sortable")[
+        "LIVE_ID"
+    ].transform("nunique")
 
-    # ライブ配信日の降順 (新しい日付が上)、かつその中で曲目 (タイムスタンプ_秒) の昇順でソート
-    # NaT（不正な日付）はソート時に自動的に末尾に配置されます
-    st.session_state.df_sorted = df_merged.sort_values(
-        by=["ライブ配信日_sortable", "タイムスタンプ_秒"], ascending=[False, True]
-    ).reset_index(drop=True)
-    # --- ソート順序の変更ここまで ---
+    df_merged["曲目"] = df_merged.apply(
+        lambda row: (
+            f"{row['ライブ番号']}-{row['曲順']}曲目"
+            if live_counts_per_date.loc[row.name] > 1
+            else f"{row['曲順']}曲目"
+        ),
+        axis=1,
+    )
+    # --- 新しい曲目生成ロジックの終了 ---
 
-    # 表示する列の順序を調整
-    display_columns = [
-        "ライブ配信日",
-        "曲目",
-        "曲名",
-        "アーティスト",
-        "YouTubeタイムスタンプ付きURL",
-    ]
-
-    # 実際にDataFrameに存在する列のみを選択して表示
-    actual_display_columns = [
-        col for col in display_columns if col in st.session_state.df_sorted.columns
-    ]
-    # df_display はフィルタリングされていない全データではなく、ソート済みのデータから選択
-    df_display_initial = st.session_state.df_sorted[actual_display_columns].copy()
+    st.session_state.df_full = df_merged.copy()
 
     # --- 検索ボックスとボタン、チェックボックスの追加 ---
-    # `st.session_state` を使って検索クエリの状態を管理
     if "search_query" not in st.session_state:
         st.session_state.search_query = ""
     if "filtered_df" not in st.session_state:
-        st.session_state.filtered_df = df_display_initial
-    # st.session_state.include_live_title が存在しない場合の初期化
-    # デフォルトは True (検索対象に含める)
+        st.session_state.filtered_df = st.session_state.df_full.copy()
     if "include_live_title" not in st.session_state:
         st.session_state.include_live_title = True
-    # 表示制限数の初期化
     if "display_limit" not in st.session_state:
         st.session_state.display_limit = 25  # 初期表示件数
 
-    # 検索入力フィールド
     current_input = st.text_input(
         "キーワード検索（曲名、アーティスト）",
         value=st.session_state.search_query,
@@ -196,30 +190,25 @@ if df_lives is not None and df_songs is not None:
         placeholder="ここにキーワードを入力",
     )
 
-    # 検索条件のチェックボックス
     current_checkbox_value = st.checkbox(
         "検索対象にライブ配信タイトルを含める",
         value=st.session_state.include_live_title,
         key="include_live_title_checkbox",
     )
 
-    # 検索ボタン
     search_button = st.button("検索")
 
-    # 検索ボタンが押された場合にのみ検索を実行
     if search_button:
-        # ボタンが押されたら、現在の入力とチェックボックスの状態をセッションに保存
         st.session_state.search_query = current_input
         st.session_state.include_live_title = current_checkbox_value
-        # 検索時には表示制限をリセット
         st.session_state.display_limit = 25
 
         if st.session_state.search_query:
-            filter_condition = st.session_state.df_sorted["曲名"].astype(
+            filter_condition = st.session_state.df_full["曲名"].astype(
                 str
             ).str.contains(
                 st.session_state.search_query, case=False, na=False
-            ) | st.session_state.df_sorted[
+            ) | st.session_state.df_full[
                 "アーティスト"
             ].astype(
                 str
@@ -228,24 +217,23 @@ if df_lives is not None and df_songs is not None:
             )
 
             if st.session_state.include_live_title:
-                filter_condition = filter_condition | st.session_state.df_sorted[
+                filter_condition = filter_condition | st.session_state.df_full[
                     "ライブタイトル"
                 ].astype(str).str.contains(
                     st.session_state.search_query, case=False, na=False
                 )
 
-            df_display_filtered = st.session_state.df_sorted[filter_condition]
-            st.session_state.filtered_df = df_display_filtered[actual_display_columns]
+            st.session_state.filtered_df = st.session_state.df_full[
+                filter_condition
+            ].copy()
             st.write(
                 f"「{st.session_state.search_query}」で検索した結果: {len(st.session_state.filtered_df)}件"
             )
         else:
-            st.session_state.filtered_df = df_display_initial
+            st.session_state.filtered_df = st.session_state.df_full.copy()
             st.write("検索キーワードが入力されていません。全件表示します。")
-    # 初期ロード時、または検索キーワードが空でボタンが押されていない場合、
-    # 前回ボタンが押されたときの状態（または初期状態）を維持
     elif not st.session_state.search_query and not search_button:
-        st.session_state.filtered_df = df_display_initial
+        st.session_state.filtered_df = st.session_state.df_full.copy()
         st.write("検索キーワードが入力されていません。全件表示します。")
 
     # ここから段階的表示の処理
@@ -257,10 +245,25 @@ if df_lives is not None and df_songs is not None:
         axis=1,
     )
 
-    # 元のYouTubeタイムスタンプ付きURL列は不要になるため削除
-    df_to_show = df_to_show.drop(columns=["YouTubeタイムスタンプ付きURL"])
+    # --- 不要な列を削除 ---
+    df_to_show = df_to_show.drop(
+        columns=[
+            "YouTubeタイムスタンプ付きURL",  # HTMLリンク生成後に削除
+            "ライブ配信日_original",
+            "ライブ配信日_sortable",
+            "タイムスタンプ_秒",
+            "LIVE_ID",
+            "楽曲ID",
+            "タイムスタンプ",
+            "ライブ番号",
+            "曲順",
+            "ライブタイトル",  # ★削除対象
+            "元ライブURL",  # ★削除対象
+        ],
+        errors="ignore",
+    )
 
-    # アーティスト列にカスタムクラスを適用
+    # アーティスト列にカスタムクラスを適用 (style.cssに .artist-cell が定義されていれば機能します)
     df_to_show["アーティスト"] = (
         df_to_show["アーティスト"]
         .astype(str)
@@ -274,6 +277,8 @@ if df_lives is not None and df_songs is not None:
         "曲名",
         "アーティスト",
         "YouTubeリンク",
+        # "ライブタイトル", # ★削除対象
+        # "元ライブURL",    # ★削除対象
     ]
     # 実際にDataFrameに存在する列のみを選択して表示
     final_display_columns = [
@@ -286,7 +291,9 @@ if df_lives is not None and df_songs is not None:
     )
 
     # DataFrameをHTMLとして生成
-    html_table = df_limited_display.to_html(escape=False, index=False, justify="left")
+    html_table = df_limited_display.to_html(
+        escape=False, index=False, justify="left", classes="dataframe"
+    )
 
     # ヘッダーの置き換え辞書
     custom_headers = {
@@ -295,6 +302,8 @@ if df_lives is not None and df_songs is not None:
         "曲名": "曲名",
         "アーティスト": "アーティスト",
         "YouTubeリンク": "リンク",
+        # "ライブタイトル": "ライブタイトル", # ★削除対象
+        # "元ライブURL": "元ライブURL",    # ★削除対象
     }
 
     # HTML文字列内で各ヘッダーを置き換える
@@ -303,7 +312,7 @@ if df_lives is not None and df_songs is not None:
 
     # テーブルをスクロール可能なdivで囲む
     scrollable_html = f"""
-    <div style="overflow-x: auto; white-space: nowrap; max-width: 100%;">
+    <div style="overflow-x: auto; max-width: 100%;">
         {html_table}
     </div>
     """
