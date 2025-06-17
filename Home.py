@@ -109,7 +109,6 @@ if df_lives is not None and df_songs is not None:
         convert_timestamp_to_seconds
     )
 
-    # --- 新しい曲目生成ロジックの開始 ---
     # ソート用に日付型に変換したカラムを作成
     df_merged["ライブ配信日_sortable"] = pd.to_datetime(
         df_merged["ライブ配信日_original"], unit="ms", errors="coerce"
@@ -145,22 +144,28 @@ if df_lives is not None and df_songs is not None:
         axis=1,
     )
 
-    # 同じ日付のライブに配信番号を振る
-    df_merged["日付_LIVE_ID_tuple"] = list(
-        zip(df_merged["ライブ配信日_sortable"], df_merged["LIVE_ID"])
-    )
-    unique_tuples, live_nums = pd.factorize(df_merged["日付_LIVE_ID_tuple"])
-    df_merged["ライブ番号"] = unique_tuples + 1
-    df_merged = df_merged.drop(columns=["日付_LIVE_ID_tuple"])
-
+    # --- 修正された曲目生成ロジックの開始 ---
     # 各ライブ配信内で楽曲に連番を振る
     df_merged["曲順"] = df_merged.groupby("LIVE_ID").cumcount() + 1
 
-    # 新しい曲目形式を生成
+    # 日付ごとにLIVE_IDに連番を振る（ライブ番号）
+    def assign_live_number_per_date(group_df):
+        # その日付内のLIVE_IDのユニークなリストを取得し、出現順に1からの番号を振る
+        # group_df は既に LIVE_ID 昇順でソートされているので、factorizeの順序は期待通りになる
+        factor_codes, _ = pd.factorize(group_df["LIVE_ID"])
+        group_df["ライブ番号"] = factor_codes + 1
+        return group_df
+
+    df_merged = df_merged.groupby("ライブ配信日_sortable", group_keys=False).apply(
+        assign_live_number_per_date
+    )
+
+    # その日付に複数のライブがあるかどうかを判定
     live_counts_per_date = df_merged.groupby("ライブ配信日_sortable")[
         "LIVE_ID"
     ].transform("nunique")
 
+    # 新しい曲目形式を生成
     df_merged["曲目"] = df_merged.apply(
         lambda row: (
             f"{row['ライブ番号']}-{row['曲順']}曲目"
@@ -169,11 +174,12 @@ if df_lives is not None and df_songs is not None:
         ),
         axis=1,
     )
-    # --- 新しい曲目生成ロジックの終了 ---
+    # --- 修正された曲目生成ロジックの終了 ---
 
     st.session_state.df_full = df_merged.copy()
 
     # --- 検索ボックスとボタン、チェックボックスの追加 ---
+    # 初期化がここに入ります！
     if "search_query" not in st.session_state:
         st.session_state.search_query = ""
     if "filtered_df" not in st.session_state:
@@ -182,6 +188,11 @@ if df_lives is not None and df_songs is not None:
         st.session_state.include_live_title = True
     if "display_limit" not in st.session_state:
         st.session_state.display_limit = 25  # 初期表示件数
+    # search_query_prev と include_live_title_prev の初期化を追加
+    if "search_query_prev" not in st.session_state:
+        st.session_state.search_query_prev = st.session_state.search_query
+    if "include_live_title_prev" not in st.session_state:
+        st.session_state.include_live_title_prev = st.session_state.include_live_title
 
     current_input = st.text_input(
         "キーワード検索（曲名、アーティスト）",
@@ -198,10 +209,17 @@ if df_lives is not None and df_songs is not None:
 
     search_button = st.button("検索")
 
-    if search_button:
+    # 検索ロジックの調整
+    # ボタンが押されたか、または入力値やチェックボックスが変わった場合にフィルタリングを再実行
+    if (
+        search_button
+        or (current_input != st.session_state.search_query_prev)
+        or (current_checkbox_value != st.session_state.include_live_title_prev)
+    ):
+
         st.session_state.search_query = current_input
         st.session_state.include_live_title = current_checkbox_value
-        st.session_state.display_limit = 25
+        st.session_state.display_limit = 25  # 検索条件が変わったらリセット
 
         if st.session_state.search_query:
             filter_condition = st.session_state.df_full["曲名"].astype(
@@ -232,9 +250,20 @@ if df_lives is not None and df_songs is not None:
         else:
             st.session_state.filtered_df = st.session_state.df_full.copy()
             st.write("検索キーワードが入力されていません。全件表示します。")
-    elif not st.session_state.search_query and not search_button:
+    # 初期表示時や、検索ボタン以外で何も変わっていない場合 (かつキーワードが空でない場合のみフィルタリングを維持)
+    elif (
+        st.session_state.search_query
+    ):  # ここを修正: search_queryが空でなければ以前のフィルタリング結果を維持
+        st.write(
+            f"「{st.session_state.search_query}」で検索した結果: {len(st.session_state.filtered_df)}件"
+        )
+    else:  # 検索キーワードが空の場合は全件表示
         st.session_state.filtered_df = st.session_state.df_full.copy()
         st.write("検索キーワードが入力されていません。全件表示します。")
+
+    # 検索クエリとチェックボックスの以前の状態を保存（次回の入力変更検知用）
+    st.session_state.search_query_prev = current_input
+    st.session_state.include_live_title_prev = current_checkbox_value
 
     # ここから段階的表示の処理
     df_to_show = st.session_state.filtered_df.copy()
@@ -255,10 +284,10 @@ if df_lives is not None and df_songs is not None:
             "LIVE_ID",
             "楽曲ID",
             "タイムスタンプ",
-            "ライブ番号",
-            "曲順",
-            "ライブタイトル",  # ★削除対象
-            "元ライブURL",  # ★削除対象
+            # "ライブ番号",  # 曲目生成に使うため残す
+            # "曲順",        # 曲目生成に使うため残す
+            "ライブタイトル",
+            "元ライブURL",
         ],
         errors="ignore",
     )
@@ -277,8 +306,6 @@ if df_lives is not None and df_songs is not None:
         "曲名",
         "アーティスト",
         "YouTubeリンク",
-        # "ライブタイトル", # ★削除対象
-        # "元ライブURL",    # ★削除対象
     ]
     # 実際にDataFrameに存在する列のみを選択して表示
     final_display_columns = [
@@ -302,8 +329,6 @@ if df_lives is not None and df_songs is not None:
         "曲名": "曲名",
         "アーティスト": "アーティスト",
         "YouTubeリンク": "リンク",
-        # "ライブタイトル": "ライブタイトル", # ★削除対象
-        # "元ライブURL": "元ライブURL",    # ★削除対象
     }
 
     # HTML文字列内で各ヘッダーを置き換える
