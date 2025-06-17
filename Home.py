@@ -151,16 +151,52 @@ if df_lives is not None and df_songs is not None:
     # 日付ごとにLIVE_IDに連番を振る（ライブ番号）
     def assign_live_number_per_date(group_df):
         # その日付内のLIVE_IDのユニークなリストを取得し、出現順に1からの番号を振る
-        # group_df は既に LIVE_ID 昇順でソートされているので、factorizeの順序は期待通りになる
         factor_codes, _ = pd.factorize(group_df["LIVE_ID"])
         group_df["ライブ番号"] = factor_codes + 1
-        return group_df
+        # この関数は、グループ内のDFを受け取り、新しい列を追加して返す。
+        # group_keys=Falseを使っているので、元のグループキーは自動的に結合されるが、
+        # 明示的に必要な列を返すことで、より堅牢になる。
+        return group_df[
+            ["LIVE_ID", "ライブ番号"]
+        ]  # LIVE_IDと新しく振られたライブ番号を返す
 
-    df_merged = df_merged.groupby("ライブ配信日_sortable", group_keys=False).apply(
-        assign_live_number_per_date
+    # ライブ番号の計算を一度行い、結果を元のDataFrameにマージする
+    # df_mergedから必要なキー列とLIVE_IDを取り出し、ユニークな組み合わせでグループ化し、ライブ番号を振る
+    temp_live_numbers = (
+        df_merged[["ライブ配信日_sortable", "LIVE_ID"]].drop_duplicates().copy()
     )
 
+    # temp_live_numbersをソートして、factorizeの順序を安定させる
+    temp_live_numbers = temp_live_numbers.sort_values(
+        by=["ライブ配信日_sortable", "LIVE_ID"]
+    )
+
+    temp_live_numbers = temp_live_numbers.groupby(
+        "ライブ配信日_sortable", group_keys=False
+    ).apply(assign_live_number_per_date, include_groups=False)
+
+    # 不要な列を削除し、マージに必要な列のみにする
+    # temp_live_numbers は既に LIVE_ID と ライブ番号 を含んでいる
+    # マージキーとなる ライブ配信日_sortable はグループキーとして自動的に結合されるため、
+    # drop_duplicates() で重複がないことを確認した上で、LIVE_IDとライブ番号だけをマージすればよい
+
+    # df_merged にライブ番号をマージ
+    # この時、ライブ配信日_sortable と LIVE_ID を結合キーとして使用
+    df_merged = pd.merge(
+        df_merged,
+        temp_live_numbers[["LIVE_ID", "ライブ番号"]],
+        on=["LIVE_ID"],
+        how="left",
+        suffixes=("", "_new"),
+    )
+
+    # もしdf_mergedにもともと'ライブ番号'があった場合、マージで'_new'が付くので、新しい方を使う
+    if "ライブ番号_new" in df_merged.columns:
+        df_merged["ライブ番号"] = df_merged["ライブ番号_new"]
+        df_merged = df_merged.drop(columns=["ライブ番号_new"])
+
     # その日付に複数のライブがあるかどうかを判定
+    # df_mergedにはライブ配信日_sortableが残っているので、このまま使用できる
     live_counts_per_date = df_merged.groupby("ライブ配信日_sortable")[
         "LIVE_ID"
     ].transform("nunique")
@@ -179,7 +215,7 @@ if df_lives is not None and df_songs is not None:
     st.session_state.df_full = df_merged.copy()
 
     # --- 検索ボックスとボタン、チェックボックスの追加 ---
-    # 初期化がここに入ります！
+    # session_state の初期化
     if "search_query" not in st.session_state:
         st.session_state.search_query = ""
     if "filtered_df" not in st.session_state:
@@ -253,7 +289,7 @@ if df_lives is not None and df_songs is not None:
     # 初期表示時や、検索ボタン以外で何も変わっていない場合 (かつキーワードが空でない場合のみフィルタリングを維持)
     elif (
         st.session_state.search_query
-    ):  # ここを修正: search_queryが空でなければ以前のフィルタリング結果を維持
+    ):  # 検索キーワードが空でなければ以前のフィルタリング結果を維持
         st.write(
             f"「{st.session_state.search_query}」で検索した結果: {len(st.session_state.filtered_df)}件"
         )
@@ -275,6 +311,8 @@ if df_lives is not None and df_songs is not None:
     )
 
     # --- 不要な列を削除 ---
+    # ★ 'ライブ番号'と'曲順'は、'曲目'生成後に削除しても良いですが、
+    # ★ ここでは残すままで、最終表示列から除外しています。
     df_to_show = df_to_show.drop(
         columns=[
             "YouTubeタイムスタンプ付きURL",  # HTMLリンク生成後に削除
@@ -284,8 +322,6 @@ if df_lives is not None and df_songs is not None:
             "LIVE_ID",
             "楽曲ID",
             "タイムスタンプ",
-            # "ライブ番号",  # 曲目生成に使うため残す
-            # "曲順",        # 曲目生成に使うため残す
             "ライブタイトル",
             "元ライブURL",
         ],
