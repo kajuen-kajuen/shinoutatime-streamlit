@@ -18,7 +18,7 @@ st.subheader("ふりちゃという名の予定表置き場")
 st.video(youtube_url)
 
 st.write("---")
-st.subheader("予定表ポスト")
+st.subheader("WEEKLY SCHEDULE")
 
 # Twitterの埋め込みコードが記載されたファイルを読み込む
 tweet_file_path = os.path.join(
