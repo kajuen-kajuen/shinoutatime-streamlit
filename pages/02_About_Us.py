@@ -1,5 +1,6 @@
 import streamlit as st
 from PIL import Image
+from footer import display_footer  # ★ここを追加★
 
 # 各ページでページ設定を行うのが良いでしょう
 st.set_page_config(
@@ -56,8 +57,11 @@ st.markdown(
 )
 # ここまでスペシャルサンクス
 
-st.markdown("---")
-st.caption("Streamlit アプリケーション by Gemini")
-st.caption(
-    "本サイトに関する質問・バグの報告などは[@kajuen_kajuen](https://x.com/kajuen_kajuen)までお願いします。"
-)
+# st.markdown("---")
+# st.caption("Streamlit アプリケーション by Gemini")
+# st.caption(
+#     "本サイトに関する質問・バグの報告などは[@kajuen_kajuen](https://x.com/kajuen_kajuen)までお願いします。"
+# )
+# ★上記の既存フッターコードを削除し、以下に置き換えます★
+
+display_footer()  # ★ここを呼び出す★

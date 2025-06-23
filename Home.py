@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from PIL import Image
+from footer import display_footer  # ★ここを追加★
 
 # ブラウザのタブ名を「しのうたタイム」に設定し、レイアウトを広めに設定
 st.set_page_config(
@@ -395,8 +396,5 @@ else:
         "必要なTSVファイルがすべて読み込めなかったため、結合データは表示できません。"
     )
 
-st.markdown("---")
-st.caption("Streamlit アプリケーション by Gemini")
-st.caption(
-    "本サイトに関する質問・バグの報告などは[@kajuen_kajuen](https://x.com/kajuen_kajuen)までお願いします。"
-)
+# フッターの表示
+display_footer()  # ★ここを呼び出す★

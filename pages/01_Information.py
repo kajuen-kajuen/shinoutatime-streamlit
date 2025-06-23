@@ -1,6 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import os
+from footer import display_footer  # ★ここを追加★
 
 st.set_page_config(
     page_title="Information - しのうたタイム",
@@ -21,6 +22,7 @@ st.write("---")
 st.subheader("WEEKLY SCHEDULE")
 
 # Twitterの埋め込みコードが記載されたファイルを読み込む
+# footer.pyがHome.pyと同じ階層にあるので、親ディレクトリを一つ上がる
 tweet_file_path = os.path.join(
     os.path.dirname(__file__), "..", "data", "tweet_embed_code.html"
 )
@@ -74,8 +76,11 @@ with col2:  # 中央のカラムにコンテンツを配置
         st.info("Twitterの埋め込み情報が読み込まれませんでした。")
 # --- 変更ここまで ---
 
-st.markdown("---")
-st.caption("Streamlit アプリケーション by Gemini")
-st.caption(
-    "本サイトに関する質問・バグの報告などは[@kajuen_kajuen](https://x.com/kajuen_kajuen)までお願いします。"
-)
+# st.markdown("---")
+# st.caption("Streamlit アプリケーション by Gemini")
+# st.caption(
+#     "本サイトに関する質問・バグの報告などは[@kajuen_kajuen](https://x.com/kajuen_kajuen)までお願いします。"
+# )
+# ★上記の既存フッターコードを削除し、以下に置き換えます★
+
+display_footer()  # ★ここを呼び出す★
