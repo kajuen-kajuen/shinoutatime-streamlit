@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import os
-from footer import display_footer  # ★ここを追加★
+from footer import display_footer
 
 st.set_page_config(
     page_title="Information - しのうたタイム",
@@ -11,8 +11,23 @@ st.set_page_config(
 
 st.title("Information")
 
+# --- 目次セクションの追加 ---
+st.markdown("## 目次")
+st.markdown(
+    """
+- [オフィシャルグッズ受注販売](#official_goods)
+- [ふりちゃという名の予定表置き場](#youtube_schedule)
+- [WEEKLY SCHEDULE](#weekly_schedule)
+"""
+)
 st.write("---")
-st.subheader("オフィシャルグッズ受注販売（～ 7月11日(金) 23:59まで）")
+# --- 目次セクションの終わり ---
+
+# オフィシャルグッズ受注販売セクション
+# idを追加して目次からジャンプできるようにします
+st.subheader(
+    "オフィシャルグッズ受注販売（～ 7月11日(金) 23:59まで）", anchor="official_goods"
+)
 
 # ここにTwitterからコピーした特定のツイートの埋め込みコードを貼り付けます
 tweet_embed_code = """
@@ -35,14 +50,17 @@ with col2:  # 中央のカラムにコンテンツを配置
 youtube_url = "https://www.youtube.com/watch?v=LRowhAcHngc"
 
 st.write("---")
-st.subheader("ふりちゃという名の予定表置き場")
+# ふりちゃという名の予定表置き場セクション
+# idを追加して目次からジャンプできるようにします
+st.subheader("ふりちゃという名の予定表置き場", anchor="youtube_schedule")
 st.video(youtube_url)
 
 st.write("---")
-st.subheader("WEEKLY SCHEDULE")
+# WEEKLY SCHEDULEセクション
+# idを追加して目次からジャンプできるようにします
+st.subheader("WEEKLY SCHEDULE", anchor="weekly_schedule")
 
 # Twitterの埋め込みコードが記載されたファイルを読み込む
-# footer.pyがHome.pyと同じ階層にあるので、親ディレクトリを一つ上がる
 tweet_file_path = os.path.join(
     os.path.dirname(__file__), "..", "data", "tweet_embed_code.html"
 )
@@ -81,7 +99,6 @@ except Exception as e:
         f"警告: ツイートの高さ設定ファイルの読み込み中にエラーが発生しました: {e}。デフォルト値 {tweet_height} を使用します。"
     )
 
-# --- ここから変更 ---
 # 3つのカラムを作成：左の空白、中央のコンテンツ、右の空白
 col1, col2, col3 = st.columns([1, 2, 1])  # 割合を調整して中央のカラムの幅を決めます
 
@@ -94,13 +111,6 @@ with col2:  # 中央のカラムにコンテンツを配置
         )
     else:
         st.info("Twitterの埋め込み情報が読み込まれませんでした。")
-# --- 変更ここまで ---
 
-# st.markdown("---")
-# st.caption("Streamlit アプリケーション by Gemini")
-# st.caption(
-#     "本サイトに関する質問・バグの報告などは[@kajuen_kajuen](https://x.com/kajuen_kajuen)までお願いします。"
-# )
-# ★上記の既存フッターコードを削除し、以下に置き換えます★
-
-display_footer()  # ★ここを呼び出す★
+# 既存のフッターコードを削除し、display_footer()に置き換えます
+display_footer()
