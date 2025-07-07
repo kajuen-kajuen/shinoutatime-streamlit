@@ -247,12 +247,8 @@ if df_lives is not None and df_songs is not None:
     search_button = st.button("検索")
 
     # 検索ロジックの調整
-    # ボタンが押されたか、または入力値やチェックボックスが変わった場合にフィルタリングを再実行
-    if (
-        search_button
-        or (current_input != st.session_state.search_query_prev)
-        or (current_checkbox_value != st.session_state.include_live_title_prev)
-    ):
+    # ボタンが押された場合にフィルタリングを再実行
+    if search_button:
 
         st.session_state.search_query = current_input
         st.session_state.include_live_title = current_checkbox_value
