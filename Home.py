@@ -231,28 +231,27 @@ if df_lives is not None and df_songs is not None:
     if "include_live_title_prev" not in st.session_state:
         st.session_state.include_live_title_prev = st.session_state.include_live_title
 
+    # ★★★ 不具合修正点 ★★★
+    # value引数を削除することで、ユーザーの入力が意図せずリセットされる問題を解決します。
+    # key引数により、ウィジェットの状態は保持されるため、入力したテキストは消えません。
     current_input = st.text_input(
         "キーワード検索（曲名、アーティスト）",
-        value=st.session_state.search_query,
         key="search_input_box",
         placeholder="ここにキーワードを入力",
     )
 
+    # ★★★ 不具合修正点 ★★★
+    # こちらも同様にvalue引数を削除します。
     current_checkbox_value = st.checkbox(
         "検索対象にライブ配信タイトルを含める",
-        value=st.session_state.include_live_title,
         key="include_live_title_checkbox",
     )
 
     search_button = st.button("検索")
 
     # 検索ロジックの調整
-    # ボタンが押されたか、または入力値やチェックボックスが変わった場合にフィルタリングを再実行
-    if (
-        search_button
-        or (current_input != st.session_state.search_query_prev)
-        or (current_checkbox_value != st.session_state.include_live_title_prev)
-    ):
+    # ボタンが押された場合にフィルタリングを再実行
+    if search_button:
 
         st.session_state.search_query = current_input
         st.session_state.include_live_title = current_checkbox_value
