@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from PIL import Image
+from footer import display_footer  # ★ここを追加★
 
 # ブラウザのタブ名を「しのうたタイム」に設定し、レイアウトを広めに設定
 st.set_page_config(
@@ -109,7 +110,6 @@ if df_lives is not None and df_songs is not None:
         convert_timestamp_to_seconds
     )
 
-    # --- 新しい曲目生成ロジックの開始 ---
     # ソート用に日付型に変換したカラムを作成
     df_merged["ライブ配信日_sortable"] = pd.to_datetime(
         df_merged["ライブ配信日_original"], unit="ms", errors="coerce"
@@ -145,22 +145,64 @@ if df_lives is not None and df_songs is not None:
         axis=1,
     )
 
-    # 同じ日付のライブに配信番号を振る
-    df_merged["日付_LIVE_ID_tuple"] = list(
-        zip(df_merged["ライブ配信日_sortable"], df_merged["LIVE_ID"])
-    )
-    unique_tuples, live_nums = pd.factorize(df_merged["日付_LIVE_ID_tuple"])
-    df_merged["ライブ番号"] = unique_tuples + 1
-    df_merged = df_merged.drop(columns=["日付_LIVE_ID_tuple"])
-
+    # --- 修正された曲目生成ロジックの開始 ---
     # 各ライブ配信内で楽曲に連番を振る
     df_merged["曲順"] = df_merged.groupby("LIVE_ID").cumcount() + 1
 
-    # 新しい曲目形式を生成
+    # 日付ごとにLIVE_IDに連番を振る（ライブ番号）
+    def assign_live_number_per_date(group_df):
+        # その日付内のLIVE_IDのユニークなリストを取得し、出現順に1からの番号を振る
+        factor_codes, _ = pd.factorize(group_df["LIVE_ID"])
+        group_df["ライブ番号"] = factor_codes + 1
+        # この関数は、グループ内のDFを受け取り、新しい列を追加して返す。
+        # group_keys=Falseを使っているので、元のグループキーは自動的に結合されるが、
+        # 明示的に必要な列を返すことで、より堅牢になる。
+        return group_df[
+            ["LIVE_ID", "ライブ番号"]
+        ]  # LIVE_IDと新しく振られたライブ番号を返す
+
+    # ライブ番号の計算を一度行い、結果を元のDataFrameにマージする
+    # df_mergedから必要なキー列とLIVE_IDを取り出し、ユニークな組み合わせでグループ化し、ライブ番号を振る
+    temp_live_numbers = (
+        df_merged[["ライブ配信日_sortable", "LIVE_ID"]].drop_duplicates().copy()
+    )
+
+    # temp_live_numbersをソートして、factorizeの順序を安定させる
+    temp_live_numbers = temp_live_numbers.sort_values(
+        by=["ライブ配信日_sortable", "LIVE_ID"]
+    )
+
+    temp_live_numbers = temp_live_numbers.groupby(
+        "ライブ配信日_sortable", group_keys=False
+    ).apply(assign_live_number_per_date, include_groups=False)
+
+    # 不要な列を削除し、マージに必要な列のみにする
+    # temp_live_numbers は既に LIVE_ID と ライブ番号 を含んでいる
+    # マージキーとなる ライブ配信日_sortable はグループキーとして自動的に結合されるため、
+    # drop_duplicates() で重複がないことを確認した上で、LIVE_IDとライブ番号だけをマージすればよい
+
+    # df_merged にライブ番号をマージ
+    # この時、ライブ配信日_sortable と LIVE_ID を結合キーとして使用
+    df_merged = pd.merge(
+        df_merged,
+        temp_live_numbers[["LIVE_ID", "ライブ番号"]],
+        on=["LIVE_ID"],
+        how="left",
+        suffixes=("", "_new"),
+    )
+
+    # もしdf_mergedにもともと'ライブ番号'があった場合、マージで'_new'が付くので、新しい方を使う
+    if "ライブ番号_new" in df_merged.columns:
+        df_merged["ライブ番号"] = df_merged["ライブ番号_new"]
+        df_merged = df_merged.drop(columns=["ライブ番号_new"])
+
+    # その日付に複数のライブがあるかどうかを判定
+    # df_mergedにはライブ配信日_sortableが残っているので、このまま使用できる
     live_counts_per_date = df_merged.groupby("ライブ配信日_sortable")[
         "LIVE_ID"
     ].transform("nunique")
 
+    # 新しい曲目形式を生成
     df_merged["曲目"] = df_merged.apply(
         lambda row: (
             f"{row['ライブ番号']}-{row['曲順']}曲目"
@@ -169,11 +211,12 @@ if df_lives is not None and df_songs is not None:
         ),
         axis=1,
     )
-    # --- 新しい曲目生成ロジックの終了 ---
+    # --- 修正された曲目生成ロジックの終了 ---
 
     st.session_state.df_full = df_merged.copy()
 
     # --- 検索ボックスとボタン、チェックボックスの追加 ---
+    # session_state の初期化
     if "search_query" not in st.session_state:
         st.session_state.search_query = ""
     if "filtered_df" not in st.session_state:
@@ -182,26 +225,37 @@ if df_lives is not None and df_songs is not None:
         st.session_state.include_live_title = True
     if "display_limit" not in st.session_state:
         st.session_state.display_limit = 25  # 初期表示件数
+    # search_query_prev と include_live_title_prev の初期化を追加
+    if "search_query_prev" not in st.session_state:
+        st.session_state.search_query_prev = st.session_state.search_query
+    if "include_live_title_prev" not in st.session_state:
+        st.session_state.include_live_title_prev = st.session_state.include_live_title
 
+    # ★★★ 不具合修正点 ★★★
+    # value引数を削除することで、ユーザーの入力が意図せずリセットされる問題を解決します。
+    # key引数により、ウィジェットの状態は保持されるため、入力したテキストは消えません。
     current_input = st.text_input(
         "キーワード検索（曲名、アーティスト）",
-        value=st.session_state.search_query,
         key="search_input_box",
         placeholder="ここにキーワードを入力",
     )
 
+    # ★★★ 不具合修正点 ★★★
+    # こちらも同様にvalue引数を削除します。
     current_checkbox_value = st.checkbox(
         "検索対象にライブ配信タイトルを含める",
-        value=st.session_state.include_live_title,
         key="include_live_title_checkbox",
     )
 
     search_button = st.button("検索")
 
+    # 検索ロジックの調整
+    # ボタンが押された場合にフィルタリングを再実行
     if search_button:
+
         st.session_state.search_query = current_input
         st.session_state.include_live_title = current_checkbox_value
-        st.session_state.display_limit = 25
+        st.session_state.display_limit = 25  # 検索条件が変わったらリセット
 
         if st.session_state.search_query:
             filter_condition = st.session_state.df_full["曲名"].astype(
@@ -232,9 +286,20 @@ if df_lives is not None and df_songs is not None:
         else:
             st.session_state.filtered_df = st.session_state.df_full.copy()
             st.write("検索キーワードが入力されていません。全件表示します。")
-    elif not st.session_state.search_query and not search_button:
+    # 初期表示時や、検索ボタン以外で何も変わっていない場合 (かつキーワードが空でない場合のみフィルタリングを維持)
+    elif (
+        st.session_state.search_query
+    ):  # 検索キーワードが空でなければ以前のフィルタリング結果を維持
+        st.write(
+            f"「{st.session_state.search_query}」で検索した結果: {len(st.session_state.filtered_df)}件"
+        )
+    else:  # 検索キーワードが空の場合は全件表示
         st.session_state.filtered_df = st.session_state.df_full.copy()
         st.write("検索キーワードが入力されていません。全件表示します。")
+
+    # 検索クエリとチェックボックスの以前の状態を保存（次回の入力変更検知用）
+    st.session_state.search_query_prev = current_input
+    st.session_state.include_live_title_prev = current_checkbox_value
 
     # ここから段階的表示の処理
     df_to_show = st.session_state.filtered_df.copy()
@@ -246,6 +311,8 @@ if df_lives is not None and df_songs is not None:
     )
 
     # --- 不要な列を削除 ---
+    # ★ 'ライブ番号'と'曲順'は、'曲目'生成後に削除しても良いですが、
+    # ★ ここでは残すままで、最終表示列から除外しています。
     df_to_show = df_to_show.drop(
         columns=[
             "YouTubeタイムスタンプ付きURL",  # HTMLリンク生成後に削除
@@ -255,10 +322,8 @@ if df_lives is not None and df_songs is not None:
             "LIVE_ID",
             "楽曲ID",
             "タイムスタンプ",
-            "ライブ番号",
-            "曲順",
-            "ライブタイトル",  # ★削除対象
-            "元ライブURL",  # ★削除対象
+            "ライブタイトル",
+            "元ライブURL",
         ],
         errors="ignore",
     )
@@ -277,8 +342,6 @@ if df_lives is not None and df_songs is not None:
         "曲名",
         "アーティスト",
         "YouTubeリンク",
-        # "ライブタイトル", # ★削除対象
-        # "元ライブURL",    # ★削除対象
     ]
     # 実際にDataFrameに存在する列のみを選択して表示
     final_display_columns = [
@@ -302,8 +365,6 @@ if df_lives is not None and df_songs is not None:
         "曲名": "曲名",
         "アーティスト": "アーティスト",
         "YouTubeリンク": "リンク",
-        # "ライブタイトル": "ライブタイトル", # ★削除対象
-        # "元ライブURL": "元ライブURL",    # ★削除対象
     }
 
     # HTML文字列内で各ヘッダーを置き換える
@@ -334,8 +395,5 @@ else:
         "必要なTSVファイルがすべて読み込めなかったため、結合データは表示できません。"
     )
 
-st.markdown("---")
-st.caption("Streamlit アプリケーション by Gemini")
-st.caption(
-    "本サイトに関する質問・バグの報告などは[@kajuen_kajuen](https://x.com/kajuen_kajuen)までお願いします。"
-)
+# フッターの表示
+display_footer()  # ★ここを呼び出す★
