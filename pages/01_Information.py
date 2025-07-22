@@ -6,7 +6,7 @@ from footer import display_footer # footer.pyから関数をインポート
 # --- ページ設定 ---
 st.set_page_config(
     page_title="Information - しのうたタイム",
-    page_icon="👻",
+    page_icon="�",
     layout="wide",
 )
 
@@ -99,8 +99,12 @@ with st.expander("過去のInformationはこちら"):
     # このアンカーは目次からのリンクのために設定
     st.subheader("", anchor="past_information") 
     
-    # --- オフィシャルグッズ受注販売セクション（過去） ---
-    st.subheader("オフィシャルグッズ受注販売（～ 7月11日(金) 23:59まで）")
+    # --- 日付の見出し (親) ---
+    st.subheader("2025/06/27")
+
+    # --- オフィシャルグッズ受注販売セクション（子） ---
+    # Markdownを使って、より小さいレベルの見出しを作成
+    st.markdown("#### オフィシャルグッズ受注販売（～ 7月11日(金) 23:59まで）")
     
     goods_tweet_embed_code = """
     <blockquote class="twitter-tweet"><p lang="ja" dir="ltr">┈┈┈┈┈✧ 🎁 ✧┈┈┈┈<br>　 新オフィシャルグッズ<br>　 受注販売開始❕<br>┈┈┈┈┈┈┈┈┈┈┈┈┈<br>待望の初グッズがついに登場📣ˎˊ˗<br>この機会をお見逃しなく👀✧<a href="https://twitter.com/hashtag/%E5%A4%A9%E7%B5%86%E3%81%95%E3%81%95%E3%81%AF?src=hash&amp;ref_src=twsrc%5Etfw">#天絆ささは</a><a href="https://twitter.com/hashtag/%E5%B9%BD%E9%9F%B3%E3%81%97%E3%81%AE?src=hash&amp;ref_src=twsrc%5Etfw">#幽音しの</a><a href="https://twitter.com/hashtag/%E7%BE%BD%E6%B5%81%E9%B7%B2%E3%82%8A%E3%82%8A%E3%82%8A?src=hash&amp;ref_src=twsrc%5Etfw">#羽流鷲りりり</a><br><br>▼ ご購入はこちら<br>￤🛒<a href="https://t.co/fdcGLXffSD">https://t.co/fdcGLXffSD</a><br>￤📅 ～ 7月11日(金) 23:59まで <a href="https://t.co/jzPc4prw5B">pic.twitter.com/jzPc4prw5B</a></p>&mdash; ななしいんく公式🍩 (@774inc_official) <a href="https://twitter.com/774inc_official/status/1938561806253052194?ref_src=twsrc%5Etfw">June 27, 2025</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
@@ -113,19 +117,6 @@ with st.expander("過去のInformationはこちら"):
             height=800,
             scrolling=True,
         )
-    
-    st.write("---") # 区切り線
-
-    # --- その他の過去情報（ファイルから読み込み） ---
-    st.subheader("その他のお知らせ")
-
-    # 過去の情報用のファイルパスを指定
-    past_tweet_file_path = os.path.join(base_dir, "..", "data", "past_tweet_embed_code.html")
-    past_tweet_height_file_path = os.path.join(base_dir, "..", "data", "past_tweet_height.txt")
-    
-    # 関数を呼び出して過去のツイートを表示
-    display_embedded_tweet(past_tweet_file_path, past_tweet_height_file_path)
-
 
 st.write("---")
 
