@@ -46,24 +46,9 @@ df_original = load_data(file_path)
 # --- メインコンテンツの表示 ---
 if df_original is not None:
 
-    # --- 検索ボックス ---
-    search_query = st.text_input(
-        "キーワード検索", 
-        placeholder="曲名、アーティスト名で検索..."
-    )
-
-    # --- データのフィルタリング ---
-    if search_query:
-        # '曲名'と'アーティスト'列を対象に検索（列名がTSVファイルと一致しているか確認）
-        condition = (
-            df_original["曲名"].str.contains(search_query, case=False, na=False) |
-            df_original["アーティスト"].str.contains(search_query, case=False, na=False)
-        )
-        df_to_show = df_original[condition]
-        st.markdown(f"**「{search_query}」の検索結果: {len(df_to_show)}件**")
-    else:
-        df_to_show = df_original
-        st.markdown(f"**全 {len(df_to_show)} 件表示中**")
+    # 常に全件表示する
+    df_to_show = df_original
+    st.markdown(f"**全 {len(df_to_show)} 件表示中**")
 
     # --- データフレームの表示 ---
     st.dataframe(
