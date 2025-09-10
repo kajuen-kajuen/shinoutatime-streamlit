@@ -9,14 +9,73 @@ st.set_page_config(
     layout="wide",
 )
 
-# --- カスタムCSSの適用 ---
-try:
-    with open("style.css", encoding="utf-8") as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-except FileNotFoundError:
-    st.warning("style.css が見つかりません。")
-except Exception as e:
-    st.error(f"style.css の読み込み中にエラーが発生しました: {e}")
+# --- ★★★ 新しいCSSをPythonコード内に直接実装 ★★★ ---
+CUSTOM_CSS = """
+/* ================================================= */
+/* アプリケーション全体のレイアウト調整 */
+/* ================================================= */
+/* Streamlitのメインコンテンツエリアの幅を制御し、中央寄せにする */
+.block-container {
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+
+/* ================================================= */
+/* 特定のStreamlit要素のスタイリング */
+/* ================================================= */
+
+/* タイトルの中央寄せ */
+h1 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+/* 検索結果件数表示のメッセージを左寄せに戻す */
+div[data-testid="stMarkdown"] p {
+    text-align: left;
+    margin-bottom: 1rem;
+}
+
+/* ================================================= */
+/* HTMLテーブルのスタイリング */
+/* ================================================= */
+
+/* テーブル内のヘッダーとデータセルに white-space: nowrap; を適用して改行を防ぐ */
+table.dataframe th,
+table.dataframe td {
+    white-space: nowrap; /* デフォルトで改行しない */
+    padding: 8px 12px;
+    text-align: left;
+}
+
+/* アーティスト列のセル内コンテンツにのみ改行を許可 */
+.artist-cell {
+    white-space: normal;   /* 通常の改行を許可 */
+    word-break: break-word;/* 長い単語でも強制的に改行 */
+}
+
+table.dataframe {
+    min-width: fit-content;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table.dataframe th,
+table.dataframe td {
+    border: 1px solid #ddd;
+}
+
+table.dataframe thead th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+"""
+st.markdown(f"<style>{CUSTOM_CSS}</style>", unsafe_allow_html=True)
+# --- ★★★ CSSの実装ここまで ★★★ ---
+
 
 # --- ヘッダー ---
 st.title("歌唱楽曲リスト(β版)")
@@ -30,9 +89,9 @@ st.markdown(
 with st.expander("β版の制約について"):
     st.info(
         """
-        - **アーティスト・楽曲の並び順** ：現在、漢字の並び順を調整中です。
-        - **一部楽曲の重複** ：一部の楽曲が重複して表示されています。
-        - **機能の変更** ：今後、予告なくレイアウトや機能が変更・削除されることがあります。
+        - **アーティスト・楽曲の並び順:** 現在、漢字の並び順を調整中です。
+        - **一部楽曲の重複:** 一部の楽曲が重複して表示されています。
+        - **機能の変更:** 今後、予告なくレイアウトや機能が変更・削除されることがあります。
         """
     )
 st.markdown("---")
@@ -59,13 +118,21 @@ df_original = load_data(file_path)
 
 # --- メインコンテンツの表示 ---
 if df_original is not None:
-    df_to_show = df_original.copy()
+    # アーティスト名、曲名でソートする
+    df_sorted = df_original.sort_values(by=["アーティスト", "曲名"]).reset_index(drop=True)
+    
+    df_to_show = df_sorted.copy()
 
     # YouTubeリンクをHTMLの a タグ形式に変換する
     df_to_show["リンク"] = df_to_show["最近の歌唱"].apply(
         lambda url: f'<a href="{url}" target="_blank">再生する</a>' if pd.notna(url) else ""
     )
     
+    # ★追加: アーティスト列の各セルをdivタグで囲み、CSSクラスを適用
+    df_to_show["アーティスト"] = df_to_show["アーティスト"].apply(
+        lambda x: f'<div class="artist-cell">{x}</div>'
+    )
+
     # 表示する列を選択し、順序を整える
     final_display_columns = ["アーティスト", "曲名", "リンク"]
     df_display_ready = df_to_show[final_display_columns]
