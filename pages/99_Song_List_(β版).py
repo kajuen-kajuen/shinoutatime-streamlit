@@ -28,10 +28,10 @@ CUSTOM_CSS = """
 /* ================================================= */
 
 /* タイトルの中央寄せ */
-h1 {
-    text-align: center;
-    margin-bottom: 1.5rem;
-}
+# h1 {
+#     text-align: center;
+#     margin-bottom: 1.5rem;
+# }
 
 /* 検索結果件数表示のメッセージを左寄せに戻す */
 div[data-testid="stMarkdown"] p {
@@ -81,8 +81,8 @@ st.markdown(f"<style>{CUSTOM_CSS}</style>", unsafe_allow_html=True)
 
 
 # --- ヘッダー ---
-st.title("しのうたタイム👻🫧")
-st.subtitle("歌唱楽曲リスト(β版)")
+st.title("しのうタ임👻🫧")
+st.subheader("歌唱楽曲リスト(β版)")
 st.markdown(
     """
     こちらはVTuber「[幽音しの](https://www.774.ai/talent/shino-kasukane)」さんの配信で歌われた楽曲をまとめた非公式データベースです。
@@ -164,4 +164,5 @@ else:
 
 # --- フッターを表示 ---
 display_footer()
+
 
