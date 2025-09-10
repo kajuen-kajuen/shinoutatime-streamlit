@@ -125,9 +125,9 @@ if df_original is not None:
     # ★修正: ソート処理を削除し、元のDataFrameを直接使用する
     df_to_show = df_original.copy()
 
-    # YouTubeリンクをHTMLの a タグ形式に変換する
+    # リンクをHTMLの a タグ形式に変換する
     df_to_show["リンク"] = df_to_show["最近の歌唱"].apply(
-        lambda url: f'<a href="{url}" target="_blank">再生する</a>' if pd.notna(url) else ""
+        lambda url: f'<a href="{url}" target="_blank">YouTubeへ👻</a>' if pd.notna(url) else ""
     )
     
     # ★追加: アーティスト列の各セルをdivタグで囲み、CSSクラスを適用
@@ -150,7 +150,7 @@ if df_original is not None:
     custom_headers = {
         "アーティスト": "アーティスト",
         "曲名": "曲名",
-        "リンク": "YouTubeリンク",
+        "リンク": "リンク",
     }
     for original, custom in custom_headers.items():
         html_table = html_table.replace(f"<th>{original}</th>", f"<th>{custom}</th>")
