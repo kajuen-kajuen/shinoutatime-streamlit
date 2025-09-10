@@ -4,8 +4,8 @@ from footer import display_footer
 
 # --- ページの基本設定 ---
 st.set_page_config(
-    page_title="V SONG LIST",
-    page_icon="🎼",
+    page_title="歌唱楽曲リスト(β版) - しのうたタイム",
+    page_icon="👻",
     layout="wide",
 )
 
