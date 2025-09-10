@@ -1,88 +1,89 @@
 import streamlit as st
 import pandas as pd
-# import io # ioはファイル読み込みでは不要なので削除してもOK
+from footer import display_footer
 
 # --- ページの基本設定 ---
 st.set_page_config(
-    page_title="V_SONG_LIST",
+    page_title="V SONG LIST",
     page_icon="🎼",
     layout="wide",
 )
 
-st.title("V_SONG_LIST 🎼")
+# --- カスタムCSSの適用 ---
+try:
+    with open("style.css", encoding="utf-8") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+except FileNotFoundError:
+    st.warning("style.css が見つかりません。")
+except Exception as e:
+    st.error(f"style.css の読み込み中にエラーが発生しました: {e}")
+
+# --- ヘッダー ---
+st.title("V SONG LIST 🎼")
+st.markdown("こちらはVTuberさんの歌唱楽曲をまとめた非公式データベースです。")
 st.markdown("---")
 
-# --- TSVファイルのパスを指定 ---
-file_path = "data/V_SONG_LIST.TSV" 
+# --- TSVファイルのパス ---
+file_path = "data/V_SONG_LIST.TSV"
 
-# --- データの読み込みとキャッシュ化 ---
-# ファイルパスを引数に取るように修正
+# --- データの読み込み ---
 @st.cache_data
 def load_data(path):
     try:
-        # ファイルパスから直接DataFrameを作成
-        df = pd.read_csv(path, delimiter='\t')
+        # TSVファイルをタブ区切りで読み込む
+        df = pd.read_csv(path, delimiter="\t")
         return df
     except FileNotFoundError:
-        st.error(f'エラー: 指定されたファイル "{path}" が見つかりません。')
-        st.info("ファイルが `data/V_SONG_LIST.TSV` に正しく配置されているか確認してください。")
-        return pd.DataFrame() # 空のDataFrameを返す
+        st.error(f'エラー: 楽曲情報ファイル "{path}" が見つかりません。')
+        st.info(f"`{path}` が正しく配置されているか確認してください。")
+        return None
     except Exception as e:
-        st.error(f'データの読み込み中にエラーが発生しました: {e}')
-        return pd.DataFrame()
+        st.error(f'楽曲情報ファイル "{path}" の読み込み中にエラー: {e}')
+        return None
 
-# データをキャッシュから読み込み
-# ★★★ ここでファイルパスを渡します ★★★
 df_original = load_data(file_path)
 
+# --- メインコンテンツの表示 ---
+if df_original is not None:
 
-# --- メイン画面の表示 ---
-if not df_original.empty:
-    
-    # --- サイドバーにフィルターを配置 ---
-    st.sidebar.header("絞り込みオプション")
-
-    # 1. アーティストによる絞り込み
-    artists = sorted(df_original['アーティスト'].dropna().unique())
-    selected_artists = st.sidebar.multiselect(
-        "アーティストで絞り込む:",
-        options=artists,
-        placeholder="アーティストを選択"
+    # --- 検索ボックス ---
+    search_query = st.text_input(
+        "キーワード検索", 
+        placeholder="曲名、アーティスト名で検索..."
     )
 
-    # 2. 曲名での検索
-    search_keyword = st.sidebar.text_input(
-        "曲名で検索:",
-        placeholder="キーワードを入力..."
-    )
+    # --- データのフィルタリング ---
+    if search_query:
+        # '曲名'と'アーティスト'列を対象に検索（列名がTSVファイルと一致しているか確認）
+        condition = (
+            df_original["曲名"].str.contains(search_query, case=False, na=False) |
+            df_original["アーティスト"].str.contains(search_query, case=False, na=False)
+        )
+        df_to_show = df_original[condition]
+        st.markdown(f"**「{search_query}」の検索結果: {len(df_to_show)}件**")
+    else:
+        df_to_show = df_original
+        st.markdown(f"**全 {len(df_to_show)} 件表示中**")
 
-    # --- フィルター処理 ---
-    df_display = df_original.copy()
-
-    if selected_artists:
-        df_display = df_display[df_display['アーティスト'].isin(selected_artists)]
-
-    if search_keyword:
-        df_display = df_display[
-            df_display['曲名'].str.contains(search_keyword, case=False, na=False)
-        ]
-
-    # --- 結果の表示 ---
-    st.markdown(f"### 楽曲リスト ({len(df_display)}件)")
-    
+    # --- データフレームの表示 ---
     st.dataframe(
-        df_display,
+        df_to_show,
         use_container_width=True,
         hide_index=True,
         column_config={
             "最近の歌唱": st.column_config.LinkColumn(
-                "YouTubeリンク",
+                "YouTubeリンク", # 列ヘッダーに表示されるテキスト
                 help="クリックするとYouTubeで開きます",
-                display_text="再生する",
+                display_text="再生する", # 各セルに表示されるテキスト
             )
         },
-        height=600 
+        height=800 # 表示高さを少し広めに設定
     )
 
 else:
     st.warning("楽曲データが読み込めませんでした。")
+
+
+# --- フッターを表示 ---
+display_footer()
+
