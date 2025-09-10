@@ -19,8 +19,12 @@ except Exception as e:
     st.error(f"style.css の読み込み中にエラーが発生しました: {e}")
 
 # --- ヘッダー ---
-st.title("V SONG LIST 🎼")
-st.markdown("こちらはVTuberさんの歌唱楽曲をまとめた非公式データベースです。")
+st.title("歌唱楽曲リスト(β版)")
+st.markdown(
+    """
+    こちらはVTuber「[幽音しの](https://www.774.ai/talent/shino-kasukane)」さんの配信で歌われた楽曲をまとめた非公式データベースです。
+    """
+)
 st.markdown("---")
 
 # --- TSVファイルのパス ---
