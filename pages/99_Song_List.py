@@ -45,25 +45,35 @@ df_original = load_data(file_path)
 
 # --- メインコンテンツの表示 ---
 if df_original is not None:
+    df_to_show = df_original.copy()
 
-    # 常に全件表示する
-    df_to_show = df_original
-    st.markdown(f"**全 {len(df_to_show)} 件表示中**")
-
-    # --- データフレームの表示 ---
-    st.dataframe(
-        df_to_show,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "最近の歌唱": st.column_config.LinkColumn(
-                "YouTubeリンク", # 列ヘッダーに表示されるテキスト
-                help="クリックするとYouTubeで開きます",
-                display_text="再生する", # 各セルに表示されるテキスト
-            )
-        },
-        height=800 # 表示高さを少し広めに設定
+    # YouTubeリンクをHTMLの a タグ形式に変換する
+    df_to_show["リンク"] = df_to_show["最近の歌唱"].apply(
+        lambda url: f'<a href="{url}" target="_blank">再生する</a>' if pd.notna(url) else ""
     )
+    
+    # 表示する列を選択し、順序を整える
+    final_display_columns = ["アーティスト", "曲名", "リンク"]
+    df_display_ready = df_to_show[final_display_columns]
+
+    st.markdown(f"**全 {len(df_original)} 件表示**")
+
+    # DataFrameをHTMLテーブルに変換
+    html_table = df_display_ready.to_html(
+        escape=False, index=False, justify="left", classes="dataframe"
+    )
+
+    # HTMLテーブルのヘッダーを日本語に置換
+    custom_headers = {
+        "アーティスト": "アーティスト",
+        "曲名": "曲名",
+        "リンク": "YouTubeリンク",
+    }
+    for original, custom in custom_headers.items():
+        html_table = html_table.replace(f"<th>{original}</th>", f"<th>{custom}</th>")
+
+    # 生成したHTMLをStreamlitで表示
+    st.write(html_table, unsafe_allow_html=True)
 
 else:
     st.warning("楽曲データが読み込めませんでした。")
