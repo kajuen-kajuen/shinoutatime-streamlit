@@ -81,7 +81,7 @@ st.markdown(f"<style>{CUSTOM_CSS}</style>", unsafe_allow_html=True)
 
 
 # --- ヘッダー ---
-st.title("しのうタ임👻🫧")
+st.title("しのうたタイム👻🫧")
 st.subheader("歌唱楽曲リスト(β版)")
 st.markdown(
     """
