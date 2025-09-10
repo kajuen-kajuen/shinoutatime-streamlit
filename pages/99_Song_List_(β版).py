@@ -11,10 +11,69 @@ st.set_page_config(
 
 # --- ★★★ 新しいCSSをPythonコード内に直接実装 ★★★ ---
 CUSTOM_CSS = """
+/* ================================================= */
+/* アプリケーション全体のレイアウト調整 */
+/* ================================================= */
+/* Streamlitのメインコンテンツエリアの幅を制御し、中央寄せにする */
+.block-container {
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+
+/* ================================================= */
+/* 特定のStreamlit要素のスタイリング */
+/* ================================================= */
+
+/* タイトルの中央寄せ */
+# h1 {
+#     text-align: center;
+#     margin-bottom: 1.5rem;
+# }
+
+/* 検索結果件数表示のメッセージを左寄せに戻す */
+div[data-testid="stMarkdown"] p {
+    text-align: left;
+    margin-bottom: 1rem;
+}
+
+/* ================================================= */
+/* HTMLテーブルのスタイリング（既存+微調整） */
+/* ================================================= */
+
+/* テーブル内のヘッダーとデータセルに white-space: nowrap; を適用して改行を防ぐ */
+table.dataframe th,
+table.dataframe td {
+    white-space: nowrap;
+    /* デフォルトで改行しない */
+    padding: 8px 12px;
+    text-align: left;
+}
+
 /* アーティスト列のセル内コンテンツにのみ改行を許可 */
 .artist-cell {
-    white-space: normal;   /* 通常の改行を許可 */
-    word-break: break-word;/* 長い単語でも強制的に改行 */
+    white-space: normal;
+    /* 通常の改行を許可 */
+    word-break: break-word;
+    /* 長い単語でも強制的に改行 */
+}
+
+table.dataframe {
+    min-width: fit-content;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table.dataframe th,
+table.dataframe td {
+    border: 1px solid #ddd;
+}
+
+table.dataframe thead th {
+    background-color: #f2f2f2;
+    font-weight: bold;
 }
 """
 st.markdown(f"<style>{CUSTOM_CSS}</style>", unsafe_allow_html=True)
@@ -22,7 +81,8 @@ st.markdown(f"<style>{CUSTOM_CSS}</style>", unsafe_allow_html=True)
 
 
 # --- ヘッダー ---
-st.title("歌唱楽曲リスト(β版)")
+st.title("しのうたタイム👻🫧")
+st.subheader("歌唱楽曲リスト(β版)")
 st.markdown(
     """
     こちらはVTuber「[幽音しの](https://www.774.ai/talent/shino-kasukane)」さんの配信で歌われた楽曲をまとめた非公式データベースです。
@@ -62,12 +122,10 @@ df_original = load_data(file_path)
 
 # --- メインコンテンツの表示 ---
 if df_original is not None:
-    # アーティスト名、曲名でソートする
-    df_sorted = df_original.sort_values(by=["アーティスト", "曲名"]).reset_index(drop=True)
-    
-    df_to_show = df_sorted.copy()
+    # ★修正: ソート処理を削除し、元のDataFrameを直接使用する
+    df_to_show = df_original.copy()
 
-    # YouTubeリンクをHTMLの a タグ形式に変換する
+    # リンクをHTMLの a タグ形式に変換する
     df_to_show["リンク"] = df_to_show["最近の歌唱"].apply(
         lambda url: f'<a href="{url}" target="_blank">YouTubeへ👻</a>' if pd.notna(url) else ""
     )
@@ -106,4 +164,5 @@ else:
 
 # --- フッターを表示 ---
 display_footer()
+
 
