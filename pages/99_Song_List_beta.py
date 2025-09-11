@@ -107,7 +107,6 @@ file_path = "data/V_SONG_LIST.TSV"
 @st.cache_data
 def load_data(path):
     try:
-        # TSVファイルをタブ区切りで読み込む
         df = pd.read_csv(path, delimiter="\t")
         return df
     except FileNotFoundError:
@@ -122,9 +121,12 @@ df_original = load_data(file_path)
 
 # --- メインコンテンツの表示 ---
 if df_original is not None:
-    # ★ "アーティスト(ソート用)" 列を基準にDataFrameを並び替える
-    #    na_position='last' は、ソート用データがない行を末尾に集めるための設定です
-    df_sorted = df_original.sort_values(by="アーティスト(ソート用)", na_position='last')
+    # "アーティスト(ソート用)" 列でDataFrameを並び替え（アルファベットの大小を区別しない）
+    df_sorted = df_original.sort_values(
+        by="アーティスト(ソート用)", 
+        na_position='last',
+        key=lambda col: col.str.lower()
+    )
 
     # 表示用にデータをコピー
     df_to_show = df_sorted.copy()
@@ -139,7 +141,7 @@ if df_original is not None:
         lambda x: f'<div class="artist-cell">{x}</div>'
     )
 
-    # ★ 表示する列を選択し、ソート用の列は含めない
+    # 表示する列を選択し、ソート用の列は含めない
     final_display_columns = ["アーティスト", "曲名", "リンク"]
     df_display_ready = df_to_show[final_display_columns]
 
@@ -150,23 +152,11 @@ if df_original is not None:
         escape=False, index=False, justify="left", classes="dataframe"
     )
 
-    # HTMLテーブルのヘッダーを日本語に置換
-    custom_headers = {
-        "アーティスト": "アーティスト",
-        "曲名": "曲名",
-        "リンク": "リンク",
-    }
-    for original, custom in custom_headers.items():
-        html_table = html_table.replace(f"<th>{original}</th>", f"<th>{custom}</th>")
-
     # 生成したHTMLをStreamlitで表示
     st.write(html_table, unsafe_allow_html=True)
 
 else:
     st.warning("楽曲データが読み込めませんでした。")
 
-
 # --- フッターを表示 ---
 display_footer()
-
-
