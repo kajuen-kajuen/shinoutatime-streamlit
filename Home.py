@@ -23,6 +23,8 @@ except Exception as e:
 
 st.title("しのうたタイム👻🫧")
 
+st.info("左のサイドバーから「Song List beta」を選択して、楽曲リストをご覧ください。")
+
 # --- 概要欄の追加 ---
 st.markdown(
     """
