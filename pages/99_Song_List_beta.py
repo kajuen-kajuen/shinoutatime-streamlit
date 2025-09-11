@@ -94,7 +94,7 @@ with st.expander("β版の制約について"):
     st.info(
         """
         - **アーティスト・楽曲の並び順:** 現在、漢字の並び順を調整中です。
-        - **一部楽曲の重複:** 一部の楽曲が重複して表示されています。
+        - **一部楽曲の重複:** 一部の楽曲が重複して表示される場合があります。
         - **機能の変更:** 今後、予告なくレイアウトや機能が変更・削除されることがあります。
         """
     )
@@ -107,7 +107,6 @@ file_path = "data/V_SONG_LIST.TSV"
 @st.cache_data
 def load_data(path):
     try:
-        # TSVファイルをタブ区切りで読み込む
         df = pd.read_csv(path, delimiter="\t")
         return df
     except FileNotFoundError:
@@ -122,20 +121,28 @@ df_original = load_data(file_path)
 
 # --- メインコンテンツの表示 ---
 if df_original is not None:
-    # ★修正: ソート処理を削除し、元のDataFrameを直接使用する
-    df_to_show = df_original.copy()
+    # "アーティスト(ソート用)" 列でDataFrameを並び替え（アルファベットの大小を区別しない）
+    df_sorted = df_original.sort_values(
+        by="アーティスト(ソート用)", 
+        na_position='last',
+        key=lambda col: col.str.lower(),
+        kind='mergesort' # 安定ソートを指定し、同じアーティスト内の曲順を維持
+    )
 
-    # リンクをHTMLの a タグ形式に変換する
+    # 表示用にデータをコピー
+    df_to_show = df_sorted.copy()
+
+    # 「最近の歌唱」列のURLをHTMLのリンクタグに変換する
     df_to_show["リンク"] = df_to_show["最近の歌唱"].apply(
         lambda url: f'<a href="{url}" target="_blank">YouTubeへ👻</a>' if pd.notna(url) else ""
     )
     
-    # ★追加: アーティスト列の各セルをdivタグで囲み、CSSクラスを適用
+    # 「アーティスト」列の各セルをdivタグで囲み、CSSクラスを適用
     df_to_show["アーティスト"] = df_to_show["アーティスト"].apply(
         lambda x: f'<div class="artist-cell">{x}</div>'
     )
 
-    # 表示する列を選択し、順序を整える
+    # 表示する列を選択し、ソート用の列は含めない
     final_display_columns = ["アーティスト", "曲名", "リンク"]
     df_display_ready = df_to_show[final_display_columns]
 
@@ -146,23 +153,11 @@ if df_original is not None:
         escape=False, index=False, justify="left", classes="dataframe"
     )
 
-    # HTMLテーブルのヘッダーを日本語に置換
-    custom_headers = {
-        "アーティスト": "アーティスト",
-        "曲名": "曲名",
-        "リンク": "リンク",
-    }
-    for original, custom in custom_headers.items():
-        html_table = html_table.replace(f"<th>{original}</th>", f"<th>{custom}</th>")
-
     # 生成したHTMLをStreamlitで表示
     st.write(html_table, unsafe_allow_html=True)
 
 else:
     st.warning("楽曲データが読み込めませんでした。")
 
-
 # --- フッターを表示 ---
 display_footer()
-
-
