@@ -125,7 +125,8 @@ if df_original is not None:
     df_sorted = df_original.sort_values(
         by="アーティスト(ソート用)", 
         na_position='last',
-        key=lambda col: col.str.lower()
+        key=lambda col: col.str.lower(),
+        kind='mergesort' # 安定ソートを指定し、同じアーティスト内の曲順を維持
     )
 
     # 表示用にデータをコピー
