@@ -100,10 +100,25 @@ with st.expander("過去のInformationはこちら"):
     st.subheader("", anchor="past_information") 
     
     # --- 日付とグッズ情報を1行の見出しに統合 ---
+    st.subheader("【2025/09/20】誕生日グッズ発売（～10月4日(土) 23:59まで）")
+    
+    tweet_embed_code = """
+    <blockquote class="twitter-tweet"><p lang="ja" dir="ltr">┈┈┈┈✧ 🎂 ✧┈┈┈┈<br>　　👻<a href="https://twitter.com/hashtag/%E5%B9%BD%E9%9F%B3%E3%81%97%E3%81%AE?src=hash&amp;ref_src=twsrc%5Etfw">#幽音しの</a> 🫧<br>　誕生日グッズが発売❕<br> ┈┈┈┈┈┈┈┈┈┈┈<br>全部セットには直筆サイン＆<br>メッセージ入りポストカード付🖊ღ✦<br><br>▼ ご購入はこちら<br>￤🛒 <a href="https://t.co/fdcGLXeI35">https://t.co/fdcGLXeI35</a><br>￤📅 ～ 10月4日(土) 23:59 <a href="https://t.co/kNjLJfoHo3">pic.twitter.com/kNjLJfoHo3</a></p>&mdash; ななしいんく公式🍩 (@774inc_official) <a href="https://twitter.com/774inc_official/status/1969056913905127628?ref_src=twsrc%5Etfw">September 19, 2025</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+    """
+
+    g_col1, g_col2, g_col3 = st.columns([1, 2, 1])
+    with g_col2:
+        components.html(
+            tweet_embed_code,
+            height=800,
+            scrolling=True,
+        )
+
     st.subheader("【2025/07/22】ななしいんく夏ボイス販売（～8月31日(日) 23:59まで）")
     
     tweet_embed_code = """
-<blockquote class="twitter-tweet"><p lang="ja" dir="ltr">☀️⁺‧┈┈┈┈┈┈┈┈┈┈‧⁺<br> 　<a href="https://twitter.com/hashtag/%E3%81%AA%E3%81%AA%E3%81%97%E3%81%84%E3%82%93%E3%81%8F%E5%A4%8F%E3%83%9C%E3%82%A4%E3%82%B9?src=hash&amp;ref_src=twsrc%5Etfw">#ななしいんく夏ボイス</a><br>⁺‧┈┈┈┈┈┈┈┈┈┈┈‧⁺☀️<a href="https://twitter.com/hashtag/%E3%81%AA%E3%81%AA%E3%81%97%E3%81%84%E3%82%93%E3%81%8F?src=hash&amp;ref_src=twsrc%5Etfw">#ななしいんく</a> と四季を過ごす<br>期間限定❕季節ボイスが発売🏫⟡<br>￤🛒 <a href="https://t.co/TrfzfYCNjM">https://t.co/TrfzfYCNjM</a><br>￤📅 ～8月31日(日) 23:59まで<br><br>メンバーとどんな夏を過ごしますか❔💭 <a href="https://t.co/0CdPAdmYe8">pic.twitter.com/0CdPAdmYe8</a></p>&mdash; ななしいんく公式🍩 (@774inc_official) <a href="https://twitter.com/774inc_official/status/1947491819123790119?ref_src=twsrc%5Etfw">July 22, 2025</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>     """
+    <blockquote class="twitter-tweet"><p lang="ja" dir="ltr">☀️⁺‧┈┈┈┈┈┈┈┈┈┈‧⁺<br> 　<a href="https://twitter.com/hashtag/%E3%81%AA%E3%81%AA%E3%81%97%E3%81%84%E3%82%93%E3%81%8F%E5%A4%8F%E3%83%9C%E3%82%A4%E3%82%B9?src=hash&amp;ref_src=twsrc%5Etfw">#ななしいんく夏ボイス</a><br>⁺‧┈┈┈┈┈┈┈┈┈┈┈‧⁺☀️<a href="https://twitter.com/hashtag/%E3%81%AA%E3%81%AA%E3%81%97%E3%81%84%E3%82%93%E3%81%8F?src=hash&amp;ref_src=twsrc%5Etfw">#ななしいんく</a> と四季を過ごす<br>期間限定❕季節ボイスが発売🏫⟡<br>￤🛒 <a href="https://t.co/TrfzfYCNjM">https://t.co/TrfzfYCNjM</a><br>￤📅 ～8月31日(日) 23:59まで<br><br>メンバーとどんな夏を過ごしますか❔💭 <a href="https://t.co/0CdPAdmYe8">pic.twitter.com/0CdPAdmYe8</a></p>&mdash; ななしいんく公式🍩 (@774inc_official) <a href="https://twitter.com/774inc_official/status/1947491819123790119?ref_src=twsrc%5Etfw">July 22, 2025</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>     
+    """
     
     g_col1, g_col2, g_col3 = st.columns([1, 2, 1])
     with g_col2:
