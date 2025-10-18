@@ -100,6 +100,10 @@ with st.expander("過去のInformationはこちら"):
     st.subheader("", anchor="past_information") 
     
     # --- 日付とグッズ情報を1行の見出しに統合 ---
+
+    # TODO: 秋ボイス
+    # TODO: From now on リリース
+
     st.subheader("【2025/09/20】誕生日グッズ発売（～10月4日(土) 23:59まで）")
     
     tweet_embed_code = """
