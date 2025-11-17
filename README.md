@@ -179,5 +179,5 @@ data/
 ---
 
 **制作**: ファン有志  
-**対象VTuber**: 幽音しの（[@Shino_Yuune](https://twitter.com/Shino_Yuune)）  
-**公式YouTubeチャンネル**: [幽音しの / Shino Yuune【にじさんじ】](https://www.youtube.com/@shinoYuune)
+**対象VTuber**: 幽音しの（[@Shino_Kasukane_](https://x.com/Shino_Kasukane_)）  
+**公式YouTubeチャンネル**: [幽音しの / Shino Kasukane](https://www.youtube.com/@Shino_Kasukane)
