@@ -24,12 +24,17 @@
 import streamlit as st
 import pandas as pd
 from footer import display_footer
+from src.config.settings import Config
+from src.services.data_service import DataService
+
+# --- 設定の初期化 ---
+config = Config()
 
 # --- ページの基本設定 ---
 st.set_page_config(
     page_title="歌唱楽曲リスト(β版) - しのうたタイム",
-    page_icon="👻",
-    layout="wide",
+    page_icon=config.page_icon,
+    layout=config.layout,
 )
 
 # --- ★★★ 新しいCSSをPythonコード内に直接実装 ★★★ ---
@@ -139,21 +144,17 @@ with st.expander("β版の制約について"):
     )
 st.markdown("---")
 
-# --- TSVファイルのパス ---
-file_path = "data/V_SONG_LIST.TSV"
+# --- データサービスの初期化 ---
+data_service = DataService(config)
 
 # --- データの読み込み ---
 @st.cache_data
-def load_data(path):
+def load_song_list():
     """
-    TSVファイルから楽曲リストデータを読み込む
+    楽曲リストデータを読み込む
     
-    この関数はStreamlitのキャッシュ機能（@st.cache_data）を使用しており、
-    同じパスに対する再読み込みを防ぎます。ファイルの内容が変更されるか、
-    アプリケーションが再起動されるまで、キャッシュされたデータが使用されます。
-    
-    Args:
-        path (str): 読み込むTSVファイルのパス（例: "data/V_SONG_LIST.TSV"）
+    DataServiceを使用してV_SONG_LIST.TSVファイルから楽曲リストデータを読み込みます。
+    Streamlitのキャッシュ機能により、再読み込みを防ぎます。
     
     Returns:
         pandas.DataFrame: 読み込まれた楽曲データのDataFrame。
@@ -164,32 +165,18 @@ def load_data(path):
                          - 最近の歌唱: 最近の歌唱へのYouTube URL
         None: ファイルが見つからない場合、または読み込みエラーが発生した場合
     
-    Raises:
-        FileNotFoundError: 指定されたパスにファイルが存在しない場合
-                          （エラーメッセージを表示してNoneを返す）
-        Exception: その他のファイル読み込みエラーが発生した場合
-                  （エラーメッセージを表示してNoneを返す）
-    
-    キャッシュ動作:
-        - 初回呼び出し時: ファイルを読み込み、結果をキャッシュに保存
-        - 2回目以降: キャッシュされたDataFrameを返す（ファイルI/Oなし）
-        - キャッシュクリア条件: ファイル内容の変更、アプリ再起動、
-                              手動でのキャッシュクリア
-    
     要件: 8.1, 8.2
     """
-    try:
-        df = pd.read_csv(path, delimiter="\t")
-        return df
-    except FileNotFoundError:
-        st.error(f'エラー: 楽曲情報ファイル "{path}" が見つかりません。')
-        st.info(f"`{path}` が正しく配置されているか確認してください。")
-        return None
-    except Exception as e:
-        st.error(f'楽曲情報ファイル "{path}" の読み込み中にエラー: {e}')
-        return None
+    df = data_service.load_song_list_data()
+    if df is None:
+        # エラーメッセージを表示
+        error_msg = data_service.get_last_error()
+        if error_msg:
+            st.error(f"エラー: {error_msg}")
+            st.info(f"`{config.song_list_file_path}` が正しく配置されているか確認してください。")
+    return df
 
-df_original = load_data(file_path)
+df_original = load_song_list()
 
 # --- メインコンテンツの表示 ---
 if df_original is not None:
@@ -232,26 +219,19 @@ if df_original is not None:
         lambda x: f'<div class="artist-cell">{x}</div>'
     )
 
-    # 表示列の選択
-    # ソート用の列は内部処理のみで使用し、ユーザーには表示しない
-    final_display_columns = ["アーティスト", "曲名", "リンク"]
-    df_display_ready = df_to_show[final_display_columns]
-
     # 全件数の表示
     # 要件: 8.5
     st.markdown(f"**全 {len(df_original)} 件表示**")
 
+    # テーブルの表示
+    # 表示列の選択（ソート用の列は内部処理のみで使用）
+    display_columns = ["アーティスト", "曲名", "リンク"]
+    
     # HTMLテーブルの生成と表示
-    # escape=False: HTMLタグをそのまま表示（リンクとスタイリングのため）
-    # index=False: DataFrameのインデックスを非表示
-    # justify="left": テキストを左寄せ
-    # classes="dataframe": CSSクラスを適用
-    html_table = df_display_ready.to_html(
+    # このページは特殊なHTMLカスタマイズが必要なため、直接HTMLを生成
+    html_table = df_to_show[display_columns].to_html(
         escape=False, index=False, justify="left", classes="dataframe"
     )
-
-    # 生成したHTMLをStreamlitで表示
-    # unsafe_allow_html=True: HTMLタグの使用を許可
     st.write(html_table, unsafe_allow_html=True)
 
 else:
