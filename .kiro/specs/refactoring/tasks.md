@@ -206,8 +206,15 @@
   - Home.pyが正常に動作することを確認する
   - 質問があればユーザーに確認する
 
-- [ ] 12. pages/01_Information.pyのリファクタリング
-  - [ ] 12.1 01_Information.pyの簡潔化
+- [x] 12. pages/01_Information.pyのリファクタリング
+
+
+
+
+
+  - [x] 12.1 01_Information.pyの簡潔化
+
+
     - UIコンポーネント（render_twitter_embed）を使用する
     - 重複コードを削減する
     - 既存の機能を全て維持する
