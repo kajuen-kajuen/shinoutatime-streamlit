@@ -1,15 +1,15 @@
 """
-例外処理層
+例外パッケージ
 
-カスタム例外クラスとエラーハンドリング機能を提供します。
+アプリケーション固有の例外クラスを提供します。
 """
 
-from .errors import (
+from src.exceptions.errors import (
     ShinoutaTimeError,
     DataLoadError,
     DataProcessingError,
     ConfigurationError,
-    log_error,
+    log_error
 )
 
 __all__ = [
@@ -17,5 +17,5 @@ __all__ = [
     "DataLoadError",
     "DataProcessingError",
     "ConfigurationError",
-    "log_error",
+    "log_error"
 ]
