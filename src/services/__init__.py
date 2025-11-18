@@ -1,10 +1,9 @@
 """
-サービス層
+サービス層モジュール
 
-データ読み込み、検索などのビジネスロジックを提供するサービスクラスを含みます。
+このモジュールは、ビジネスロジックを担当するサービスクラスを提供します。
 """
 
-from .data_service import DataService
-from .search_service import SearchService
+from src.services.data_service import DataService
 
-__all__ = ["DataService", "SearchService"]
+__all__ = ["DataService"]

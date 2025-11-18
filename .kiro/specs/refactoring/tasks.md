@@ -35,6 +35,8 @@
 
 
 
+
+
   - [x] 4.1 タイムスタンプ変換関数の実装
 
 
@@ -75,9 +77,14 @@
   - convert_date_string()のテストを作成する
   - エッジケース（None、空文字列、不正な形式）をテストする
   - _要件: 8.2, 8.4, 8.6_
+-
 
-- [ ] 5. データサービスの実装
-  - [ ] 5.1 DataServiceクラスの実装
+- [-] 5. データサービスの実装
+
+
+
+  - [x] 5.1 DataServiceクラスの実装
+
     - services/data_service.pyにDataServiceクラスを実装する
     - load_lives_data()メソッドを実装する
     - load_songs_data()メソッドを実装する
