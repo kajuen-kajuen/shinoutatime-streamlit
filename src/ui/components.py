@@ -5,9 +5,13 @@ UIコンポーネント
 各コンポーネントは独立して動作し、パラメータでカスタマイズ可能です。
 """
 
+import logging
 import streamlit as st
 import pandas as pd
 from typing import Tuple, List, Dict, Optional
+
+# ロガーの設定
+logger = logging.getLogger(__name__)
 
 
 def render_search_form(
@@ -35,6 +39,8 @@ def render_search_form(
         ...     # 検索処理を実行
         ...     pass
     """
+    logger.debug("検索フォームを表示中")
+    
     # テキスト入力ボックス
     current_input = st.text_input(
         "キーワード検索（曲名、アーティスト）",
@@ -52,6 +58,9 @@ def render_search_form(
     
     # 検索ボタン
     search_button = st.button("検索")
+    
+    if search_button:
+        logger.info(f"検索ボタンがクリックされました: クエリ='{current_input}', ライブタイトル検索={current_checkbox_value}")
     
     return current_input, current_checkbox_value, search_button
 
@@ -84,6 +93,8 @@ def render_results_table(
         - テーブルは横スクロール可能です
         - アーティスト列には自動的にartist-cellクラスが適用されます
     """
+    logger.debug(f"結果テーブルを表示中: {len(df)}件、列={columns}")
+    
     # 表示する列のみを選択
     df_display = df[columns].copy()
     
@@ -113,6 +124,8 @@ def render_results_table(
     
     # 生成したHTMLをStreamlitで表示
     st.write(scrollable_html, unsafe_allow_html=True)
+    
+    logger.debug("結果テーブルの表示が完了しました")
 
 
 
@@ -148,6 +161,8 @@ def render_pagination(
         - 表示件数が総件数より少ない場合のみボタンを表示します
         - 全件表示済みの場合は情報メッセージを表示します
     """
+    logger.debug(f"ページネーションを表示中: 総件数={total_count}, 現在の表示件数={current_limit}")
+    
     if current_limit < total_count:
         # まだ表示していないデータがある場合
         displayed_count = min(current_limit, total_count)
@@ -155,10 +170,13 @@ def render_pagination(
         
         if st.button(button_text):
             # ボタンがクリックされたら新しい表示件数を返す
-            return current_limit + increment
+            new_limit = current_limit + increment
+            logger.info(f"「さらに表示」ボタンがクリックされました: 新しい表示件数={new_limit}")
+            return new_limit
     else:
         # 全件表示済みの場合
         st.info(f"全ての{total_count}件が表示されています。")
+        logger.debug("全件表示済み")
     
     return None
 
@@ -196,35 +214,45 @@ def render_twitter_embed(
     import streamlit.components.v1 as components
     import os
     
+    logger.debug(f"Twitter埋め込みを表示中: embed_code_path={embed_code_path}, height_path={height_path}")
+    
     # 変数の初期化
     tweet_embed_code = ""
     tweet_height = default_height
     
     # 埋め込みコードのファイルを読み込む
     try:
+        logger.debug(f"埋め込みコードファイルを読み込み中: {embed_code_path}")
         with open(embed_code_path, "r", encoding="utf-8") as f:
             tweet_embed_code = f.read()
+        logger.info(f"埋め込みコードファイルを読み込みました: {embed_code_path}")
     except FileNotFoundError:
         # ファイルが見つからない場合は情報メッセージを表示
+        logger.warning(f"埋め込みコードファイルが見つかりません: {embed_code_path}")
         st.info(f"情報: 表示するコンテンツがありません。（{os.path.basename(embed_code_path)}）")
         return
     
     # 高さ設定ファイルを読み込む
     try:
+        logger.debug(f"高さ設定ファイルを読み込み中: {height_path}")
         with open(height_path, "r", encoding="utf-8") as f:
             height_str = f.read().strip()
             # 数値として有効かチェック
             if height_str.isdigit():
                 tweet_height = int(height_str)
+                logger.info(f"高さ設定を読み込みました: {tweet_height}px")
             else:
+                logger.warning(f"無効な高さ設定: {height_str}、デフォルト値を使用します")
                 st.warning(
                     f"警告: '{height_path}' に無効な高さが指定されています。"
                     f"デフォルト値 ({default_height}px) を使用します。"
                 )
     except FileNotFoundError:
         # ファイルがない場合はデフォルト値で続行
+        logger.debug(f"高さ設定ファイルが見つかりません（デフォルト値を使用）: {height_path}")
         pass
     except Exception as e:
+        logger.error(f"高さ設定ファイルの読み込み中にエラーが発生しました: {e}", exc_info=True)
         st.warning(
             f"警告: 高さ設定ファイルの読み込み中にエラーが発生しました: {e}。"
             f"デフォルト値 ({default_height}px) を使用します。"
@@ -236,11 +264,14 @@ def render_twitter_embed(
     with col2:
         if tweet_embed_code:
             # Streamlitのcomponents.htmlを使用してTwitter埋め込みコードを表示
+            logger.debug(f"Twitter埋め込みを表示: 高さ={tweet_height}px")
             components.html(
                 tweet_embed_code,
                 height=tweet_height,
                 scrolling=True,
             )
+            logger.info("Twitter埋め込みの表示が完了しました")
         else:
             # 埋め込みコードが空だった場合の情報メッセージ
+            logger.warning("埋め込みコードが空です")
             st.info("Twitterの埋め込み情報が読み込まれませんでした。")

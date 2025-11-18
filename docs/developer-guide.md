@@ -7,9 +7,10 @@
 3. [開発環境のセットアップ](#開発環境のセットアップ)
 4. [各ファイルの役割](#各ファイルの役割)
 5. [コーディング規約](#コーディング規約)
-6. [データファイルの管理](#データファイルの管理)
-7. [開発ワークフロー](#開発ワークフロー)
-8. [トラブルシューティング](#トラブルシューティング)
+6. [ロギング機能](#ロギング機能)
+7. [データファイルの管理](#データファイルの管理)
+8. [開発ワークフロー](#開発ワークフロー)
+9. [トラブルシューティング](#トラブルシューティング)
 
 ---
 
@@ -438,6 +439,207 @@ if "search_query" not in st.session_state:
 def load_data(path):
     """データ読み込み処理"""
     return pd.read_csv(path, delimiter="\t")
+```
+
+---
+
+## ロギング機能
+
+### 概要
+
+アプリケーションは統一されたロギング機能を提供します。ログレベル、フォーマット、ファイル出力、ローテーション設定を環境変数で制御できます。
+
+### ロギング設定
+
+#### 環境変数
+
+| 環境変数名 | 説明 | デフォルト値 | 設定例 |
+|-----------|------|------------|--------|
+| `SHINOUTA_LOG_LEVEL` | ログレベル | INFO | DEBUG, INFO, WARNING, ERROR |
+| `SHINOUTA_ENABLE_FILE_LOGGING` | ファイルログ出力 | false | true, false |
+| `SHINOUTA_LOG_FILE` | ログファイルパス | logs/shinouta.log | logs/app.log |
+
+#### ログレベルの説明
+
+- **DEBUG**: 詳細なデバッグ情報（開発時のみ推奨）
+  - データ読み込みの詳細
+  - 検索条件の詳細
+  - UIコンポーネントの表示状態
+  
+- **INFO**: 一般的な情報メッセージ（本番環境推奨）
+  - データ読み込み完了
+  - 検索実行と結果件数
+  - パフォーマンス情報
+  
+- **WARNING**: 警告メッセージ
+  - ファイルが見つからない
+  - データ変換の失敗
+  - 設定値の不正
+  
+- **ERROR**: エラーメッセージ
+  - データ読み込みエラー
+  - データ処理エラー
+  - 予期しない例外
+
+### 開発環境での使用
+
+#### 基本的な使用方法
+
+```bash
+# DEBUGレベルでログを出力
+export SHINOUTA_LOG_LEVEL=DEBUG
+streamlit run Home.py
+```
+
+#### ファイルログの有効化
+
+```bash
+# ファイルログを有効化
+export SHINOUTA_ENABLE_FILE_LOGGING=true
+export SHINOUTA_LOG_FILE=logs/development.log
+streamlit run Home.py
+```
+
+#### .envファイルの使用
+
+`.env.example`を`.env`にコピーして編集：
+
+```bash
+cp .env.example .env
+```
+
+`.env`ファイルの内容：
+
+```bash
+SHINOUTA_LOG_LEVEL=DEBUG
+SHINOUTA_ENABLE_FILE_LOGGING=true
+SHINOUTA_LOG_FILE=logs/development.log
+```
+
+### 本番環境での使用
+
+本番環境では、INFOレベル以上のログのみを出力することを推奨します。
+
+```bash
+export SHINOUTA_LOG_LEVEL=INFO
+export SHINOUTA_ENABLE_FILE_LOGGING=true
+export SHINOUTA_LOG_FILE=logs/production.log
+streamlit run Home.py
+```
+
+### ログファイルのローテーション
+
+ファイルログが有効な場合、以下の設定で自動的にローテーションされます：
+
+- **最大ファイルサイズ**: 10MB
+- **保持するバックアップ数**: 5個
+- **ファイル名形式**: 
+  - `shinouta.log` (現在のログ)
+  - `shinouta.log.1` (1世代前)
+  - `shinouta.log.2` (2世代前)
+  - ...
+  - `shinouta.log.5` (5世代前)
+
+ファイルサイズが10MBを超えると、自動的に`shinouta.log.1`にローテーションされ、新しい`shinouta.log`が作成されます。
+
+### コード内でのロギング使用方法
+
+#### モジュールでのロガー取得
+
+```python
+import logging
+
+# モジュールレベルでロガーを取得
+logger = logging.getLogger(__name__)
+
+# ログ出力
+logger.debug("デバッグメッセージ")
+logger.info("情報メッセージ")
+logger.warning("警告メッセージ")
+logger.error("エラーメッセージ")
+```
+
+#### データ読み込み時のログ
+
+```python
+def load_data(file_path):
+    """データを読み込む"""
+    logger.info(f"データを読み込み中: {file_path}")
+    
+    try:
+        df = pd.read_csv(file_path, delimiter="\t")
+        logger.info(f"データを読み込みました: {len(df)}件")
+        return df
+    except FileNotFoundError:
+        logger.error(f"ファイルが見つかりません: {file_path}")
+        return None
+    except Exception as e:
+        logger.error(f"データ読み込み中にエラーが発生しました: {e}", exc_info=True)
+        return None
+```
+
+#### パフォーマンス情報のログ
+
+```python
+import time
+
+def process_data(df):
+    """データを処理する"""
+    start_time = time.time()
+    logger.info("データ処理を開始")
+    
+    # 処理...
+    
+    elapsed_time = time.time() - start_time
+    logger.info(f"データ処理が完了しました: 処理時間={elapsed_time:.2f}秒")
+```
+
+#### エラー時の詳細ログ
+
+```python
+try:
+    # 処理...
+except Exception as e:
+    # exc_info=Trueでスタックトレースも記録
+    logger.error(f"エラーが発生しました: {e}", exc_info=True)
+```
+
+### ログの確認方法
+
+#### コンソールログの確認
+
+アプリケーション実行中、コンソールにログが出力されます：
+
+```
+2024-01-01 12:00:00 - src.services.data_service - INFO - データを読み込み中: data/M_YT_LIVE.TSV
+2024-01-01 12:00:01 - src.services.data_service - INFO - データを読み込みました: 100件
+2024-01-01 12:00:02 - src.core.data_pipeline - INFO - データパイプライン実行完了: 500件、処理時間: 1.23秒
+```
+
+#### ファイルログの確認
+
+```bash
+# ログファイルの内容を表示
+cat logs/shinouta.log
+
+# ログファイルをリアルタイムで監視
+tail -f logs/shinouta.log
+
+# エラーログのみを抽出
+grep ERROR logs/shinouta.log
+```
+
+### ログのフォーマット
+
+ログは以下のフォーマットで出力されます：
+
+```
+<タイムスタンプ> - <モジュール名> - <ログレベル> - <メッセージ>
+```
+
+例：
+```
+2024-01-01 12:00:00 - src.services.data_service - INFO - データを読み込みました: 100件
 ```
 
 ---

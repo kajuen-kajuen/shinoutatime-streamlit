@@ -5,8 +5,12 @@
 """
 
 import os
+import logging
 from dataclasses import dataclass
 from typing import Optional
+
+# ロガーの設定
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -51,7 +55,9 @@ class Config:
         Returns:
             Config: 設定オブジェクト
         """
-        return cls(
+        logger.info("環境変数から設定を読み込み中")
+        
+        config = cls(
             # ファイルパス
             lives_file_path=os.getenv(
                 "SHINOUTA_LIVES_FILE_PATH",
@@ -109,6 +115,11 @@ class Config:
                 "3600"
             ))
         )
+        
+        logger.info("環境変数からの設定読み込みが完了しました")
+        logger.debug(f"設定内容: enable_cache={config.enable_cache}, cache_ttl={config.cache_ttl}")
+        
+        return config
     
     def validate(self) -> bool:
         """設定値を検証する
@@ -122,6 +133,8 @@ class Config:
             ConfigurationError: 設定値が不正な場合
         """
         from src.exceptions.errors import ConfigurationError
+        
+        logger.info("設定値を検証中")
         
         # ファイルパスの検証（空でないこと）
         if not self.lives_file_path:
@@ -173,4 +186,5 @@ class Config:
                 f"キャッシュTTLは0以上である必要があります: {self.cache_ttl}"
             )
         
+        logger.info("設定値の検証が完了しました")
         return True

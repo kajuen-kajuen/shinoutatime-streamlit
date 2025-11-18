@@ -1,5 +1,9 @@
 .streamlit/secrets.toml
 
+# Application logs
+logs/
+*.log
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

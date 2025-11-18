@@ -66,6 +66,49 @@ streamlit run Home.py
 
 起動後、ブラウザで `http://localhost:8501` にアクセスしてください。
 
+### 4. ロギング設定（オプション）
+
+アプリケーションは標準でコンソールにログを出力します。環境変数を設定することで、ログレベルやファイル出力を制御できます。
+
+#### 環境変数
+
+| 環境変数名 | 説明 | デフォルト値 | 設定例 |
+|-----------|------|------------|--------|
+| `SHINOUTA_LOG_LEVEL` | ログレベル（DEBUG、INFO、WARNING、ERROR） | INFO | INFO |
+| `SHINOUTA_ENABLE_FILE_LOGGING` | ファイルへのログ出力を有効化 | false | true |
+| `SHINOUTA_LOG_FILE` | ログファイルのパス | logs/shinouta.log | logs/app.log |
+
+#### 使用例
+
+**開発環境（DEBUGレベル、ファイルログ有効）:**
+```bash
+export SHINOUTA_LOG_LEVEL=DEBUG
+export SHINOUTA_ENABLE_FILE_LOGGING=true
+streamlit run Home.py
+```
+
+**本番環境（INFOレベル、ファイルログ有効）:**
+```bash
+export SHINOUTA_LOG_LEVEL=INFO
+export SHINOUTA_ENABLE_FILE_LOGGING=true
+export SHINOUTA_LOG_FILE=logs/production.log
+streamlit run Home.py
+```
+
+#### ログファイルのローテーション
+
+ファイルログが有効な場合、以下の設定で自動的にローテーションされます：
+- **最大ファイルサイズ**: 10MB
+- **保持するバックアップ数**: 5個
+- **ファイル名形式**: `shinouta.log`, `shinouta.log.1`, `shinouta.log.2`, ...
+
+#### ログレベルの説明
+
+- **DEBUG**: 詳細なデバッグ情報（開発時のみ推奨）
+- **INFO**: 一般的な情報メッセージ（本番環境推奨）
+- **WARNING**: 警告メッセージ
+- **ERROR**: エラーメッセージ
+
 ## データファイル構造
 
 本アプリケーションは、`data/` ディレクトリ内のTSV（タブ区切り）ファイルからデータを読み込みます。
@@ -123,12 +166,28 @@ data/
 │   ├── 01_Information.py           # 情報ページ
 │   ├── 02_About_Us.py              # About Usページ
 │   └── 99_Song_List_beta.py        # 楽曲リストページ（β版）
+├── src/                             # ソースコードモジュール
+│   ├── services/                    # ビジネスロジック層
+│   │   ├── data_service.py         # データ読み込みサービス
+│   │   └── search_service.py       # 検索サービス
+│   ├── core/                        # コア機能層
+│   │   ├── data_pipeline.py        # データ処理パイプライン
+│   │   └── utils.py                # ユーティリティ関数
+│   ├── ui/                          # UIコンポーネント層
+│   │   └── components.py           # 再利用可能なUIコンポーネント
+│   ├── config/                      # 設定管理層
+│   │   ├── settings.py             # アプリケーション設定
+│   │   └── logging_config.py       # ロギング設定
+│   └── exceptions/                  # 例外処理層
+│       └── errors.py               # カスタム例外クラス
 ├── data/
 │   ├── M_YT_LIVE.TSV               # 配信データ
 │   ├── M_YT_LIVE_TIMESTAMP.TSV     # 楽曲タイムスタンプデータ
 │   ├── V_SONG_LIST.TSV             # 楽曲リストデータ
 │   ├── tweet_embed_code.html       # Twitter埋め込みコード
 │   └── tweet_height.txt            # Twitter埋め込み高さ設定
+├── logs/                            # ログファイル（自動生成）
+│   └── shinouta.log                # アプリケーションログ
 ├── footer.py                        # フッター表示モジュール
 ├── style.css                        # カスタムCSSスタイル
 ├── requirements.txt                 # 依存関係

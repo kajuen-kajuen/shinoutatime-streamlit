@@ -64,11 +64,14 @@ class SearchService:
             >>> # 大文字小文字を区別して検索
             >>> results = service.search(df, "LiSA", ["アーティスト"], case_sensitive=True)
         """
+        import time
+        
         # クエリが空の場合は元のDataFrameを返す
         if not query or query.strip() == "":
             logger.debug("検索クエリが空のため、元のDataFrameを返します")
             return df
         
+        start_time = time.time()
         logger.info(f"検索を実行中: クエリ='{query}', フィールド={fields}, 大文字小文字区別={case_sensitive}")
         
         # 検索条件を構築
@@ -91,7 +94,13 @@ class SearchService:
                 mask |= field_data.str.contains(query, case=False, na=False, regex=False)
         
         result_df = df[mask]
-        logger.info(f"検索結果: {len(result_df)}件")
+        
+        # パフォーマンス情報をログに記録
+        elapsed_time = time.time() - start_time
+        logger.info(
+            f"検索結果: {len(result_df)}件、"
+            f"処理時間: {elapsed_time:.3f}秒"
+        )
         
         return result_df
     

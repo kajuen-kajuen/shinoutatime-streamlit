@@ -20,6 +20,12 @@ import streamlit as st
 import pandas as pd
 from PIL import Image
 from footer import display_footer  # ★ここを追加★
+from src.config import setup_logging
+
+# ロギングの初期化（アプリケーション起動時に一度だけ実行）
+if "logging_initialized" not in st.session_state:
+    setup_logging()
+    st.session_state.logging_initialized = True
 
 # ブラウザのタブ名を「しのうたタイム」に設定し、レイアウトを広めに設定
 st.set_page_config(

@@ -5,9 +5,13 @@
 各関数は純粋関数として実装され、副作用を持ちません。
 """
 
+import logging
 from typing import Optional
 from datetime import datetime
 import pandas as pd
+
+# ロガーの設定
+logger = logging.getLogger(__name__)
 
 
 def convert_timestamp_to_seconds(timestamp_str: str) -> Optional[int]:

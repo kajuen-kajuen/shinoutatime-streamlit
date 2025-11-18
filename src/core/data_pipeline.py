@@ -80,11 +80,14 @@ class DataPipeline:
             各ステップでエラーが発生した場合、適切なエラーメッセージを
             ログに記録し、Noneを返します。
         """
+        import time
+        
         # キャッシュチェック
         if self.config.enable_cache and "final_data" in self._cache:
             logger.info("キャッシュからデータを返します")
             return self._cache["final_data"]
         
+        start_time = time.time()
         logger.info("データパイプラインを実行開始")
         
         try:
@@ -119,7 +122,12 @@ class DataPipeline:
                 self._cache["final_data"] = sorted_df
                 logger.info("処理結果をキャッシュに保存しました")
             
-            logger.info(f"データパイプライン実行完了: {len(sorted_df)}件")
+            # パフォーマンス情報をログに記録
+            elapsed_time = time.time() - start_time
+            logger.info(
+                f"データパイプライン実行完了: {len(sorted_df)}件、"
+                f"処理時間: {elapsed_time:.2f}秒"
+            )
             return sorted_df
             
         except Exception as e:
