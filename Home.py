@@ -106,6 +106,9 @@ df_full = load_and_process_data(
     config.enable_cache
 )
 
+# SearchServiceのインスタンス化
+search_service = SearchService()
+
 if df_full is not None:
     # セッション状態の初期化
     if "search_query" not in st.session_state:
@@ -123,9 +126,7 @@ if df_full is not None:
         include_live_title=st.session_state.include_live_title
     )
     
-    # 検索処理（キャッシュ対応）
-    @st.cache_data(ttl=1800, show_spinner=False)
-    def pe
+    # 検索ボタンが押された場合の処理
     if search_button:
         st.session_state.search_query = current_input
         st.session_state.include_live_title = current_checkbox_value
@@ -214,6 +215,8 @@ else:
     st.warning(
         "必要なTSVファイルがすべて読み込めなかったため、結合データは表示できません。"
     )
+    # エラー情報を表示するためにDataServiceのインスタンスを作成
+    data_service = DataService(config)
     if data_service.get_last_error():
         st.error(data_service.get_last_error())
 
