@@ -17,6 +17,8 @@ VTuber「幽音しの」さんの配信で歌唱された楽曲を検索・閲�
 """
 
 import streamlit as st
+import pandas as pd
+from typing import Optional
 from footer import display_footer
 from src.config import setup_logging
 from src.config.settings import Config
@@ -64,10 +66,45 @@ st.markdown(
 )
 st.markdown("---")
 
+
+@st.cache_data(ttl=3600, show_spinner="データを読み込み中...")
+def load_and_process_data(
+    lives_path: str,
+    songs_path: str,
+    enable_cache: bool
+) -> Optional[pd.DataFrame]:
+    """
+    データを読み込み、処理する
+    
+    DataPipelineを使用してデータの読み込み、結合、変換、ソートを実行します。
+    Streamlitのキャッシュ機能により、同じパラメータでの再実行を防ぎます。
+    
+    Args:
+        lives_path: 配信データファイルのパス
+        songs_path: 楽曲データファイルのパス
+        enable_cache: キャッシュを有効にするかどうか
+    
+    Returns:
+        処理済みDataFrame。エラー時はNone
+        
+    Note:
+        - TTL（Time To Live）は3600秒（1時間）
+        - データファイルのパスが変更された場合、自動的に再読み込みされる
+        - キャッシュにより初期表示時間を3秒以内に保つ
+        
+    要件: 12.1, 12.2, 12.6
+    """
+    data_service = DataService(config)
+    pipeline = DataPipeline(data_service, config)
+    return pipeline.execute()
+
+
 # データパイプラインの実行
-data_service = DataService(config)
-pipeline = DataPipeline(data_service, config)
-df_full = pipeline.execute()
+df_full = load_and_process_data(
+    config.lives_file_path,
+    config.songs_file_path,
+    config.enable_cache
+)
 
 if df_full is not None:
     # セッション状態の初期化
@@ -86,9 +123,9 @@ if df_full is not None:
         include_live_title=st.session_state.include_live_title
     )
     
-    # 検索処理
-    search_service = SearchService()
-    
+    # 検索処理（キャッシュ対応）
+    @st.cache_data(ttl=1800, show_spinner=False)
+    def pe
     if search_button:
         st.session_state.search_query = current_input
         st.session_state.include_live_title = current_checkbox_value
