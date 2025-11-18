@@ -7,9 +7,10 @@
 3. [開発環境のセットアップ](#開発環境のセットアップ)
 4. [各ファイルの役割](#各ファイルの役割)
 5. [コーディング規約](#コーディング規約)
-6. [データファイルの管理](#データファイルの管理)
-7. [開発ワークフロー](#開発ワークフロー)
-8. [トラブルシューティング](#トラブルシューティング)
+6. [ロギング機能](#ロギング機能)
+7. [データファイルの管理](#データファイルの管理)
+8. [開発ワークフロー](#開発ワークフロー)
+9. [トラブルシューティング](#トラブルシューティング)
 
 ---
 
@@ -40,9 +41,33 @@ shinouta-time-app/
 ├── .github/                    # GitHub関連設定
 ├── .kiro/                      # Kiro AI関連設定
 │   ├── specs/                  # 仕様書・設計書
+│   │   └── refactoring/       # リファクタリング仕様
+│   │       ├── requirements.md # 要件定義書
+│   │       ├── design.md      # 設計書
+│   │       └── tasks.md       # 実装タスクリスト
 │   └── steering/               # プロジェクト言語設定など
 ├── .streamlit/                 # Streamlit設定
 │   └── config.toml             # Streamlit設定ファイル
+├── src/                        # ソースコードモジュール
+│   ├── services/               # ビジネスロジック層
+│   │   ├── __init__.py
+│   │   ├── data_service.py    # データ読み込みサービス
+│   │   └── search_service.py  # 検索サービス
+│   ├── core/                   # コア機能層
+│   │   ├── __init__.py
+│   │   ├── data_pipeline.py   # データ処理パイプライン
+│   │   └── utils.py           # ユーティリティ関数
+│   ├── ui/                     # UIコンポーネント層
+│   │   ├── __init__.py
+│   │   └── components.py      # 再利用可能なUIコンポーネント
+│   ├── config/                 # 設定管理層
+│   │   ├── __init__.py
+│   │   ├── settings.py        # アプリケーション設定
+│   │   └── logging_config.py  # ロギング設定
+│   ├── exceptions/             # 例外処理層
+│   │   ├── __init__.py
+│   │   └── errors.py          # カスタム例外クラス
+│   └── __init__.py
 ├── data/                       # データファイル
 │   ├── M_YT_LIVE.TSV          # 配信情報データ
 │   ├── M_YT_LIVE_TIMESTAMP.TSV # 楽曲タイムスタンプデータ
@@ -52,11 +77,20 @@ shinouta-time-app/
 ├── docs/                       # ドキュメント
 │   ├── architecture.md         # アーキテクチャドキュメント
 │   ├── data-flow.md           # データフロードキュメント
-│   └── developer-guide.md     # 本ドキュメント
+│   ├── data-management.md     # データ管理ドキュメント
+│   ├── deployment.md          # デプロイメントガイド
+│   ├── developer-guide.md     # 本ドキュメント
+│   ├── error-handling.md      # エラーハンドリングガイド
+│   ├── faq.md                 # よくある質問
+│   └── user-guide.md          # ユーザーガイド
 ├── pages/                      # Streamlitページ
 │   ├── 01_Information.py      # 情報ページ
 │   ├── 02_About_Us.py         # About Usページ
 │   └── 99_Song_List_beta.py   # 楽曲リストページ（β版）
+├── tests/                      # テストコード
+│   └── __init__.py
+├── logs/                       # ログファイル（自動生成）
+│   └── shinouta.log           # アプリケーションログ
 ├── Home.py                     # メインページ（エントリーポイント）
 ├── footer.py                   # フッター表示モジュール
 ├── style.css                   # カスタムCSSスタイル
@@ -73,6 +107,43 @@ shinouta-time-app/
 - **footer.py**: 全ページで共通のフッター表示機能を提供。
 - **style.css**: アプリケーション全体のカスタムCSSスタイル。
 - **requirements.txt**: Python依存パッケージのリスト。
+
+#### src/
+
+アプリケーションのコアロジックを格納するディレクトリ。レイヤー化されたアーキテクチャを採用。
+
+##### src/services/（ビジネスロジック層）
+
+データ処理と検索機能を提供するサービスクラス。
+
+- **data_service.py**: TSVファイルからのデータ読み込み、データ結合、エラーハンドリング
+- **search_service.py**: キーワード検索、複数フィールド検索、フィルタリング
+
+##### src/core/（コア機能層）
+
+データ処理パイプラインとユーティリティ関数。
+
+- **data_pipeline.py**: データ処理の全体フロー管理、キャッシング、ステップ検証
+- **utils.py**: タイムスタンプ変換、URL生成、曲目番号生成、日付変換
+
+##### src/ui/（UIコンポーネント層）
+
+再利用可能なUIコンポーネント。
+
+- **components.py**: 検索フォーム、結果テーブル、ページネーション、Twitter埋め込み
+
+##### src/config/（設定管理層）
+
+アプリケーション設定とロギング設定。
+
+- **settings.py**: アプリケーション設定の一元管理、環境変数読み込み
+- **logging_config.py**: ロギング設定、ログレベル、ファイル出力、ローテーション
+
+##### src/exceptions/（例外処理層）
+
+カスタム例外クラス。
+
+- **errors.py**: ShinoutaTimeError、DataLoadError、DataProcessingError、ConfigurationError
 
 #### data/
 
@@ -97,8 +168,19 @@ Streamlitのマルチページ機能を使用したサブページ。
 プロジェクトのドキュメント。
 
 - **architecture.md**: システムアーキテクチャの説明
-- **data-flow.md**: データフローの説明
 - **developer-guide.md**: 本ドキュメント
+- **data-flow.md**: データフローの説明
+- **data-management.md**: データ管理ドキュメント
+- **deployment.md**: デプロイメントガイド
+- **error-handling.md**: エラーハンドリングガイド
+- **faq.md**: よくある質問
+- **user-guide.md**: ユーザーガイド
+
+#### tests/
+
+テストコード。
+
+- **__init__.py**: テストパッケージ初期化
 
 #### .streamlit/
 
@@ -442,6 +524,207 @@ def load_data(path):
 
 ---
 
+## ロギング機能
+
+### 概要
+
+アプリケーションは統一されたロギング機能を提供します。ログレベル、フォーマット、ファイル出力、ローテーション設定を環境変数で制御できます。
+
+### ロギング設定
+
+#### 環境変数
+
+| 環境変数名 | 説明 | デフォルト値 | 設定例 |
+|-----------|------|------------|--------|
+| `SHINOUTA_LOG_LEVEL` | ログレベル | INFO | DEBUG, INFO, WARNING, ERROR |
+| `SHINOUTA_ENABLE_FILE_LOGGING` | ファイルログ出力 | false | true, false |
+| `SHINOUTA_LOG_FILE` | ログファイルパス | logs/shinouta.log | logs/app.log |
+
+#### ログレベルの説明
+
+- **DEBUG**: 詳細なデバッグ情報（開発時のみ推奨）
+  - データ読み込みの詳細
+  - 検索条件の詳細
+  - UIコンポーネントの表示状態
+  
+- **INFO**: 一般的な情報メッセージ（本番環境推奨）
+  - データ読み込み完了
+  - 検索実行と結果件数
+  - パフォーマンス情報
+  
+- **WARNING**: 警告メッセージ
+  - ファイルが見つからない
+  - データ変換の失敗
+  - 設定値の不正
+  
+- **ERROR**: エラーメッセージ
+  - データ読み込みエラー
+  - データ処理エラー
+  - 予期しない例外
+
+### 開発環境での使用
+
+#### 基本的な使用方法
+
+```bash
+# DEBUGレベルでログを出力
+export SHINOUTA_LOG_LEVEL=DEBUG
+streamlit run Home.py
+```
+
+#### ファイルログの有効化
+
+```bash
+# ファイルログを有効化
+export SHINOUTA_ENABLE_FILE_LOGGING=true
+export SHINOUTA_LOG_FILE=logs/development.log
+streamlit run Home.py
+```
+
+#### .envファイルの使用
+
+`.env.example`を`.env`にコピーして編集：
+
+```bash
+cp .env.example .env
+```
+
+`.env`ファイルの内容：
+
+```bash
+SHINOUTA_LOG_LEVEL=DEBUG
+SHINOUTA_ENABLE_FILE_LOGGING=true
+SHINOUTA_LOG_FILE=logs/development.log
+```
+
+### 本番環境での使用
+
+本番環境では、INFOレベル以上のログのみを出力することを推奨します。
+
+```bash
+export SHINOUTA_LOG_LEVEL=INFO
+export SHINOUTA_ENABLE_FILE_LOGGING=true
+export SHINOUTA_LOG_FILE=logs/production.log
+streamlit run Home.py
+```
+
+### ログファイルのローテーション
+
+ファイルログが有効な場合、以下の設定で自動的にローテーションされます：
+
+- **最大ファイルサイズ**: 10MB
+- **保持するバックアップ数**: 5個
+- **ファイル名形式**: 
+  - `shinouta.log` (現在のログ)
+  - `shinouta.log.1` (1世代前)
+  - `shinouta.log.2` (2世代前)
+  - ...
+  - `shinouta.log.5` (5世代前)
+
+ファイルサイズが10MBを超えると、自動的に`shinouta.log.1`にローテーションされ、新しい`shinouta.log`が作成されます。
+
+### コード内でのロギング使用方法
+
+#### モジュールでのロガー取得
+
+```python
+import logging
+
+# モジュールレベルでロガーを取得
+logger = logging.getLogger(__name__)
+
+# ログ出力
+logger.debug("デバッグメッセージ")
+logger.info("情報メッセージ")
+logger.warning("警告メッセージ")
+logger.error("エラーメッセージ")
+```
+
+#### データ読み込み時のログ
+
+```python
+def load_data(file_path):
+    """データを読み込む"""
+    logger.info(f"データを読み込み中: {file_path}")
+    
+    try:
+        df = pd.read_csv(file_path, delimiter="\t")
+        logger.info(f"データを読み込みました: {len(df)}件")
+        return df
+    except FileNotFoundError:
+        logger.error(f"ファイルが見つかりません: {file_path}")
+        return None
+    except Exception as e:
+        logger.error(f"データ読み込み中にエラーが発生しました: {e}", exc_info=True)
+        return None
+```
+
+#### パフォーマンス情報のログ
+
+```python
+import time
+
+def process_data(df):
+    """データを処理する"""
+    start_time = time.time()
+    logger.info("データ処理を開始")
+    
+    # 処理...
+    
+    elapsed_time = time.time() - start_time
+    logger.info(f"データ処理が完了しました: 処理時間={elapsed_time:.2f}秒")
+```
+
+#### エラー時の詳細ログ
+
+```python
+try:
+    # 処理...
+except Exception as e:
+    # exc_info=Trueでスタックトレースも記録
+    logger.error(f"エラーが発生しました: {e}", exc_info=True)
+```
+
+### ログの確認方法
+
+#### コンソールログの確認
+
+アプリケーション実行中、コンソールにログが出力されます：
+
+```
+2024-01-01 12:00:00 - src.services.data_service - INFO - データを読み込み中: data/M_YT_LIVE.TSV
+2024-01-01 12:00:01 - src.services.data_service - INFO - データを読み込みました: 100件
+2024-01-01 12:00:02 - src.core.data_pipeline - INFO - データパイプライン実行完了: 500件、処理時間: 1.23秒
+```
+
+#### ファイルログの確認
+
+```bash
+# ログファイルの内容を表示
+cat logs/shinouta.log
+
+# ログファイルをリアルタイムで監視
+tail -f logs/shinouta.log
+
+# エラーログのみを抽出
+grep ERROR logs/shinouta.log
+```
+
+### ログのフォーマット
+
+ログは以下のフォーマットで出力されます：
+
+```
+<タイムスタンプ> - <モジュール名> - <ログレベル> - <メッセージ>
+```
+
+例：
+```
+2024-01-01 12:00:00 - src.services.data_service - INFO - データを読み込みました: 100件
+```
+
+---
+
 ## データファイルの管理
 
 ### TSVファイルの形式
@@ -641,6 +924,455 @@ logger.debug("デバッグメッセージ")
 logger.info("情報メッセージ")
 logger.warning("警告メッセージ")
 logger.error("エラーメッセージ")
+```
+
+---
+
+## 新しいモジュールの使用方法
+
+リファクタリング後のアプリケーションでは、各機能が独立したモジュールに分離されています。ここでは、各モジュールの使用方法を説明します。
+
+### DataServiceの使用方法
+
+DataServiceは、TSVファイルからのデータ読み込みとデータ結合を担当します。
+
+#### 基本的な使用方法
+
+```python
+from src.config.settings import Config
+from src.services.data_service import DataService
+
+# 設定オブジェクトを作成
+config = Config()
+
+# DataServiceのインスタンスを作成
+data_service = DataService(config)
+
+# 配信データを読み込む
+df_lives = data_service.load_lives_data()
+if df_lives is None:
+    error_msg = data_service.get_last_error()
+    print(f"エラー: {error_msg}")
+
+# 楽曲データを読み込む
+df_songs = data_service.load_songs_data()
+if df_songs is None:
+    error_msg = data_service.get_last_error()
+    print(f"エラー: {error_msg}")
+
+# データを結合する
+if df_lives is not None and df_songs is not None:
+    df_merged = data_service.merge_data(df_lives, df_songs)
+```
+
+#### エラーハンドリング
+
+DataServiceは、エラー発生時にNoneを返し、エラーメッセージを内部に保持します。
+
+```python
+df = data_service.load_lives_data()
+if df is None:
+    # エラーメッセージを取得
+    error_msg = data_service.get_last_error()
+    # ユーザーに表示
+    st.error(error_msg)
+```
+
+### SearchServiceの使用方法
+
+SearchServiceは、キーワード検索とフィルタリング機能を提供します。
+
+#### 基本的な使用方法
+
+```python
+from src.services.search_service import SearchService
+
+# SearchServiceのインスタンスを作成
+search_service = SearchService()
+
+# キーワード検索（複数フィールド対応）
+query = "曲名"
+fields = ["曲名", "アーティスト", "タイトル"]
+filtered_df = search_service.search(
+    df=df_merged,
+    query=query,
+    fields=fields,
+    case_sensitive=False  # 大文字小文字を区別しない
+)
+
+# 複数条件でフィルタリング
+conditions = {
+    "アーティスト": "アーティスト名",
+    "配信日": "2024/01/01"
+}
+filtered_df = search_service.filter_by_multiple_conditions(
+    df=df_merged,
+    conditions=conditions
+)
+```
+
+### DataPipelineの使用方法
+
+DataPipelineは、データ処理の全体フローを管理します。
+
+#### 基本的な使用方法
+
+```python
+from src.config.settings import Config
+from src.services.data_service import DataService
+from src.core.data_pipeline import DataPipeline
+
+# 設定とサービスを準備
+config = Config()
+data_service = DataService(config)
+
+# DataPipelineのインスタンスを作成
+pipeline = DataPipeline(data_service, config)
+
+# パイプライン全体を実行
+df_processed = pipeline.execute()
+
+if df_processed is None:
+    st.error("データ処理中にエラーが発生しました")
+else:
+    # 処理済みデータを使用
+    st.dataframe(df_processed)
+```
+
+#### キャッシュのクリア
+
+```python
+# キャッシュをクリア（データファイルが更新された場合など）
+pipeline.clear_cache()
+
+# 再度実行
+df_processed = pipeline.execute()
+```
+
+### UIコンポーネントの使用方法
+
+UIコンポーネントは、再利用可能なStreamlit UIを提供します。
+
+#### 検索フォームの表示
+
+```python
+from src.ui.components import render_search_form
+
+# 検索フォームを表示
+query, include_live_title, search_clicked = render_search_form(
+    default_query="",
+    include_live_title=True
+)
+
+if search_clicked:
+    # 検索処理を実行
+    pass
+```
+
+#### 結果テーブルの表示
+
+```python
+from src.ui.components import render_results_table
+
+# 結果テーブルを表示
+columns = ["配信日", "曲目番号", "曲名", "アーティスト", "YouTube"]
+column_headers = {
+    "配信日": "配信日",
+    "曲目番号": "曲目番号",
+    "曲名": "曲名",
+    "アーティスト": "アーティスト",
+    "YouTube": "YouTube"
+}
+
+render_results_table(
+    df=filtered_df,
+    columns=columns,
+    column_headers=column_headers
+)
+```
+
+#### ページネーションの表示
+
+```python
+from src.ui.components import render_pagination
+
+# ページネーションを表示
+new_limit = render_pagination(
+    total_count=len(filtered_df),
+    current_limit=display_limit,
+    increment=25
+)
+
+if new_limit is not None:
+    # 表示件数を更新
+    display_limit = new_limit
+```
+
+#### Twitter埋め込みの表示
+
+```python
+from src.ui.components import render_twitter_embed
+
+# Twitter埋め込みを表示
+render_twitter_embed(
+    embed_code_path="data/tweet_embed_code.html",
+    height_path="data/tweet_height.txt",
+    default_height=850
+)
+```
+
+### ユーティリティ関数の使用方法
+
+ユーティリティ関数は、汎用的な変換処理を提供します。
+
+#### タイムスタンプ変換
+
+```python
+from src.core.utils import convert_timestamp_to_seconds
+
+# タイムスタンプを秒数に変換
+timestamp_str = "1:23:45"
+seconds = convert_timestamp_to_seconds(timestamp_str)
+# 結果: 5025
+```
+
+#### YouTube URL生成
+
+```python
+from src.core.utils import generate_youtube_url
+
+# YouTubeタイムスタンプ付きURLを生成
+base_url = "https://www.youtube.com/watch?v=VIDEO_ID"
+timestamp_seconds = 5025
+url = generate_youtube_url(base_url, timestamp_seconds)
+# 結果: "https://www.youtube.com/watch?v=VIDEO_ID&t=5025s"
+```
+
+#### 曲目番号生成
+
+```python
+from src.core.utils import generate_song_numbers
+
+# 曲目番号を生成
+df_with_numbers = generate_song_numbers(df)
+```
+
+#### 日付変換
+
+```python
+from src.core.utils import convert_date_string
+
+# 日付文字列を変換
+date_str = "2024/01/01"
+date_obj = convert_date_string(date_str)
+```
+
+### 設定管理の使用方法
+
+Configクラスは、アプリケーション設定を一元管理します。
+
+#### 基本的な使用方法
+
+```python
+from src.config.settings import Config
+
+# デフォルト設定で作成
+config = Config()
+
+# 環境変数から設定を読み込む
+config = Config.from_env()
+
+# 設定値を検証
+try:
+    config.validate()
+except ConfigurationError as e:
+    print(f"設定エラー: {e}")
+
+# 設定値を使用
+print(f"配信データファイル: {config.lives_file_path}")
+print(f"初期表示件数: {config.initial_display_limit}")
+```
+
+### カスタム例外の使用方法
+
+カスタム例外クラスは、エラーハンドリングを統一します。
+
+#### 基本的な使用方法
+
+```python
+from src.exceptions.errors import DataLoadError, DataProcessingError, log_error
+
+try:
+    # データ読み込み処理
+    df = pd.read_csv(file_path, delimiter="\t")
+except FileNotFoundError:
+    # DataLoadErrorを発生させる
+    error = DataLoadError(file_path, "ファイルが見つかりません")
+    log_error(error, {"user": "開発者"})
+    raise error
+except Exception as e:
+    # DataProcessingErrorを発生させる
+    error = DataProcessingError("データ読み込み", str(e))
+    log_error(error)
+    raise error
+```
+
+---
+
+## テストの実行方法
+
+本プロジェクトでは、テストコードの実行は環境の制約により推奨されていませんが、テストコードの記述方法を説明します。
+
+### テストの構造
+
+テストコードは`tests/`ディレクトリに配置します。
+
+```
+tests/
+├── __init__.py
+├── test_data_service.py      # DataServiceのテスト
+├── test_search_service.py    # SearchServiceのテスト
+├── test_utils.py             # ユーティリティ関数のテスト
+└── test_data_pipeline.py     # DataPipelineのテスト
+```
+
+### テストコードの例
+
+#### DataServiceのテスト
+
+```python
+import unittest
+from src.config.settings import Config
+from src.services.data_service import DataService
+
+class TestDataService(unittest.TestCase):
+    def setUp(self):
+        """テストの前準備"""
+        self.config = Config()
+        self.data_service = DataService(self.config)
+    
+    def test_load_lives_data(self):
+        """配信データの読み込みテスト"""
+        df = self.data_service.load_lives_data()
+        self.assertIsNotNone(df)
+        self.assertIn("ID", df.columns)
+        self.assertIn("配信日", df.columns)
+    
+    def test_load_songs_data(self):
+        """楽曲データの読み込みテスト"""
+        df = self.data_service.load_songs_data()
+        self.assertIsNotNone(df)
+        self.assertIn("LIVE_ID", df.columns)
+        self.assertIn("曲名", df.columns)
+    
+    def test_merge_data(self):
+        """データ結合テスト"""
+        df_lives = self.data_service.load_lives_data()
+        df_songs = self.data_service.load_songs_data()
+        df_merged = self.data_service.merge_data(df_lives, df_songs)
+        
+        self.assertIsNotNone(df_merged)
+        self.assertEqual(len(df_merged), len(df_songs))
+```
+
+#### SearchServiceのテスト
+
+```python
+import unittest
+import pandas as pd
+from src.services.search_service import SearchService
+
+class TestSearchService(unittest.TestCase):
+    def setUp(self):
+        """テストの前準備"""
+        self.search_service = SearchService()
+        self.df = pd.DataFrame({
+            "曲名": ["曲A", "曲B", "曲C"],
+            "アーティスト": ["アーティストA", "アーティストB", "アーティストC"]
+        })
+    
+    def test_search(self):
+        """検索テスト"""
+        result = self.search_service.search(
+            df=self.df,
+            query="曲A",
+            fields=["曲名"],
+            case_sensitive=False
+        )
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result.iloc[0]["曲名"], "曲A")
+    
+    def test_search_case_insensitive(self):
+        """大文字小文字を区別しない検索テスト"""
+        result = self.search_service.search(
+            df=self.df,
+            query="曲a",
+            fields=["曲名"],
+            case_sensitive=False
+        )
+        self.assertEqual(len(result), 1)
+```
+
+#### ユーティリティ関数のテスト
+
+```python
+import unittest
+from src.core.utils import convert_timestamp_to_seconds, generate_youtube_url
+
+class TestUtils(unittest.TestCase):
+    def test_convert_timestamp_to_seconds_hms(self):
+        """HH:MM:SS形式のタイムスタンプ変換テスト"""
+        result = convert_timestamp_to_seconds("1:23:45")
+        self.assertEqual(result, 5025)
+    
+    def test_convert_timestamp_to_seconds_ms(self):
+        """MM:SS形式のタイムスタンプ変換テスト"""
+        result = convert_timestamp_to_seconds("12:34")
+        self.assertEqual(result, 754)
+    
+    def test_convert_timestamp_to_seconds_none(self):
+        """Noneの場合のテスト"""
+        result = convert_timestamp_to_seconds(None)
+        self.assertIsNone(result)
+    
+    def test_generate_youtube_url(self):
+        """YouTube URL生成テスト"""
+        base_url = "https://www.youtube.com/watch?v=VIDEO_ID"
+        result = generate_youtube_url(base_url, 5025)
+        self.assertEqual(result, "https://www.youtube.com/watch?v=VIDEO_ID&t=5025s")
+```
+
+### テストの実行（参考）
+
+テストを実行する場合は、以下のコマンドを使用します（環境の制約により実行は推奨されません）。
+
+```bash
+# すべてのテストを実行
+python -m unittest discover tests
+
+# 特定のテストファイルを実行
+python -m unittest tests.test_data_service
+
+# 特定のテストケースを実行
+python -m unittest tests.test_data_service.TestDataService.test_load_lives_data
+```
+
+### テストカバレッジの確認（参考）
+
+テストカバレッジを確認する場合は、`coverage`パッケージを使用します。
+
+```bash
+# coverageパッケージをインストール
+pip install coverage
+
+# テストを実行してカバレッジを測定
+coverage run -m unittest discover tests
+
+# カバレッジレポートを表示
+coverage report
+
+# HTMLレポートを生成
+coverage html
 ```
 
 ---
