@@ -168,24 +168,41 @@ data/
 │   └── 99_Song_List_beta.py        # 楽曲リストページ（β版）
 ├── src/                             # ソースコードモジュール
 │   ├── services/                    # ビジネスロジック層
+│   │   ├── __init__.py
 │   │   ├── data_service.py         # データ読み込みサービス
 │   │   └── search_service.py       # 検索サービス
 │   ├── core/                        # コア機能層
+│   │   ├── __init__.py
 │   │   ├── data_pipeline.py        # データ処理パイプライン
 │   │   └── utils.py                # ユーティリティ関数
 │   ├── ui/                          # UIコンポーネント層
+│   │   ├── __init__.py
 │   │   └── components.py           # 再利用可能なUIコンポーネント
 │   ├── config/                      # 設定管理層
+│   │   ├── __init__.py
 │   │   ├── settings.py             # アプリケーション設定
 │   │   └── logging_config.py       # ロギング設定
-│   └── exceptions/                  # 例外処理層
-│       └── errors.py               # カスタム例外クラス
+│   ├── exceptions/                  # 例外処理層
+│   │   ├── __init__.py
+│   │   └── errors.py               # カスタム例外クラス
+│   └── __init__.py
 ├── data/
 │   ├── M_YT_LIVE.TSV               # 配信データ
 │   ├── M_YT_LIVE_TIMESTAMP.TSV     # 楽曲タイムスタンプデータ
 │   ├── V_SONG_LIST.TSV             # 楽曲リストデータ
 │   ├── tweet_embed_code.html       # Twitter埋め込みコード
 │   └── tweet_height.txt            # Twitter埋め込み高さ設定
+├── docs/                            # ドキュメント
+│   ├── architecture.md             # アーキテクチャドキュメント
+│   ├── data-flow.md               # データフロードキュメント
+│   ├── data-management.md         # データ管理ドキュメント
+│   ├── deployment.md              # デプロイメントガイド
+│   ├── developer-guide.md         # 開発者ガイド
+│   ├── error-handling.md          # エラーハンドリングガイド
+│   ├── faq.md                     # よくある質問
+│   └── user-guide.md              # ユーザーガイド
+├── tests/                           # テストコード
+│   └── __init__.py
 ├── logs/                            # ログファイル（自動生成）
 │   └── shinouta.log                # アプリケーションログ
 ├── footer.py                        # フッター表示モジュール
@@ -193,6 +210,75 @@ data/
 ├── requirements.txt                 # 依存関係
 └── README.md                        # このファイル
 ```
+
+### モジュール構造の説明
+
+本アプリケーションは、保守性とテスト可能性を向上させるため、レイヤー化されたアーキテクチャを採用しています。
+
+#### srcディレクトリ
+
+アプリケーションのコアロジックを格納するディレクトリです。各サブディレクトリは明確な責務を持ちます。
+
+##### services/（ビジネスロジック層）
+
+データ処理と検索機能を提供するサービスクラスを格納します。
+
+- **data_service.py**: TSVファイルからのデータ読み込み、データ結合、エラーハンドリングを担当
+  - `DataService`クラス: 配信データ、楽曲データ、楽曲リストデータの読み込みと結合
+  - エラー発生時の適切なエラーメッセージ管理
+  
+- **search_service.py**: 検索機能を提供
+  - `SearchService`クラス: キーワード検索、複数フィールド検索、大文字小文字を区別しない検索
+  - 複数条件によるフィルタリング機能
+
+##### core/（コア機能層）
+
+データ処理パイプラインとユーティリティ関数を格納します。
+
+- **data_pipeline.py**: データ処理の全体フローを管理
+  - `DataPipeline`クラス: データ読み込み→結合→変換→ソートの一連の処理を実行
+  - キャッシング機能による高速化
+  - 各ステップの結果検証
+  
+- **utils.py**: 汎用的なユーティリティ関数
+  - `convert_timestamp_to_seconds()`: タイムスタンプ文字列を秒数に変換
+  - `generate_youtube_url()`: YouTubeタイムスタンプ付きURL生成
+  - `generate_song_numbers()`: 曲目番号の自動生成
+  - `convert_date_string()`: 日付文字列の変換
+
+##### ui/（UIコンポーネント層）
+
+再利用可能なUIコンポーネントを格納します。
+
+- **components.py**: Streamlit UIコンポーネント
+  - `render_search_form()`: 検索フォームの表示
+  - `render_results_table()`: 検索結果テーブルの表示
+  - `render_pagination()`: ページネーション（段階的表示）
+  - `render_twitter_embed()`: Twitter埋め込み表示
+
+##### config/（設定管理層）
+
+アプリケーション設定とロギング設定を格納します。
+
+- **settings.py**: アプリケーション設定の一元管理
+  - `Config`クラス: ファイルパス、表示設定、ページ設定、パフォーマンス設定
+  - 環境変数からの設定読み込み
+  - 設定値の検証
+  
+- **logging_config.py**: ロギング設定
+  - ログレベル、フォーマット、ファイル出力、ローテーション設定
+  - 環境変数による制御
+
+##### exceptions/（例外処理層）
+
+カスタム例外クラスを格納します。
+
+- **errors.py**: アプリケーション固有の例外クラス
+  - `ShinoutaTimeError`: 基底例外クラス
+  - `DataLoadError`: データ読み込みエラー
+  - `DataProcessingError`: データ処理エラー
+  - `ConfigurationError`: 設定エラー
+  - `log_error()`: エラーログ記録関数
 
 ## 技術スタック
 
@@ -204,11 +290,26 @@ data/
 
 ## ドキュメント
 
-詳細なドキュメントは `.kiro/specs/shinouta-time-app/` ディレクトリにあります：
+### 仕様書・設計書
 
-- `requirements.md` - 要件定義書
-- `design.md` - 設計書
-- `tasks.md` - 実装タスクリスト
+詳細な仕様書と設計書は `.kiro/specs/` ディレクトリにあります：
+
+- `.kiro/specs/refactoring/requirements.md` - リファクタリング要件定義書
+- `.kiro/specs/refactoring/design.md` - リファクタリング設計書
+- `.kiro/specs/refactoring/tasks.md` - リファクタリング実装タスクリスト
+
+### 開発者向けドキュメント
+
+`docs/` ディレクトリに各種ドキュメントがあります：
+
+- `architecture.md` - アーキテクチャドキュメント（システム構成、レイヤー構造）
+- `developer-guide.md` - 開発者ガイド（セットアップ、コーディング規約、モジュール使用方法）
+- `data-flow.md` - データフロードキュメント（データ処理の流れ）
+- `data-management.md` - データ管理ドキュメント（TSVファイルの管理方法）
+- `error-handling.md` - エラーハンドリングガイド（エラー処理の実装方法）
+- `deployment.md` - デプロイメントガイド（本番環境へのデプロイ方法）
+- `user-guide.md` - ユーザーガイド（アプリケーションの使い方）
+- `faq.md` - よくある質問
 
 ## 注意事項
 
