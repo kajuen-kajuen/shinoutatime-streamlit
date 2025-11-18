@@ -5,11 +5,6 @@
 ## タスク一覧
 
 - [x] 1. プロジェクト構造の準備
-
-
-
-
-
   - srcディレクトリ構造を作成する
   - 各サブディレクトリ（services、core、ui、config、exceptions）を作成する
   - 各ディレクトリに__init__.pyを配置する
@@ -32,35 +27,22 @@
     - _要件: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7_
 
 - [x] 4. ユーティリティ関数の実装
-
-
-
-
-
   - [x] 4.1 タイムスタンプ変換関数の実装
-
-
     - core/utils.pyにconvert_timestamp_to_seconds()を実装する
     - HH:MM:SS形式とMM:SS形式の両方に対応する
     - _要件: 3.2, 3.7_
   
   - [x] 4.2 URL生成関数の実装
-
-
     - generate_youtube_url()を実装する
     - タイムスタンプ付きYouTube URLを生成する
     - _要件: 3.3, 3.7_
   
   - [x] 4.3 曲目番号生成関数の実装
-
-
     - generate_song_numbers()を実装する
     - 配信ごとの曲順と配信番号を計算する
     - _要件: 3.4, 3.7_
   
   - [x] 4.4 日付変換関数の実装
-
-
     - convert_date_string()を実装する
     - UNIXミリ秒とYYYY/MM/DD形式の両方に対応する
     - _要件: 3.5, 3.7_
@@ -77,14 +59,9 @@
   - convert_date_string()のテストを作成する
   - エッジケース（None、空文字列、不正な形式）をテストする
   - _要件: 8.2, 8.4, 8.6_
--
 
-- [-] 5. データサービスの実装
-
-
-
+- [x] 5. データサービスの実装
   - [x] 5.1 DataServiceクラスの実装
-
     - services/data_service.pyにDataServiceクラスを実装する
     - load_lives_data()メソッドを実装する
     - load_songs_data()メソッドを実装する
@@ -107,8 +84,9 @@
   - ファイルが存在しない場合のエラーハンドリングをテストする
   - _要件: 8.2, 8.4, 8.6_
 
-- [ ] 6. 検索サービスの実装
-  - [ ] 6.1 SearchServiceクラスの実装
+- [x] 6. 検索サービスの実装
+  - [x] 6.1 SearchServiceクラスの実装
+
     - services/search_service.pyにSearchServiceクラスを実装する
     - search()メソッドを実装する（複数フィールド対応）
     - filter_by_multiple_conditions()メソッドを実装する

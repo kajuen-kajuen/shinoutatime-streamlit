@@ -5,5 +5,6 @@
 """
 
 from src.services.data_service import DataService
+from src.services.search_service import SearchService
 
-__all__ = ["DataService"]
+__all__ = ["DataService", "SearchService"]
