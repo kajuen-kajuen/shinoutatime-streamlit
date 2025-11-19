@@ -235,10 +235,15 @@ def convert_date_string(date_str: str) -> Optional[datetime]:
         return None
     
     try:
-        # まずUNIXミリ秒として変換を試みる
-        result = pd.to_datetime(date_str, unit="ms", errors="coerce")
-        if pd.notna(result):
-            return result.to_pydatetime()
+        # まずUNIXミリ秒として変換を試みる（数値型に変換してから）
+        try:
+            numeric_value = float(date_str)
+            result = pd.to_datetime(numeric_value, unit="ms", errors="coerce")
+            if pd.notna(result):
+                return result.to_pydatetime()
+        except (ValueError, TypeError):
+            # 数値変換に失敗した場合は次の方法を試す
+            pass
         
         # UNIXミリ秒で変換できなかった場合、一般的な日付形式として変換
         result = pd.to_datetime(date_str, errors="coerce")

@@ -67,6 +67,106 @@ class ConfigurationError(ShinoutaTimeError):
         super().__init__(f"設定エラー ({setting}): {message}")
 
 
+# Twitter埋め込み機能用の例外クラス
+
+class TwitterEmbedError(ShinoutaTimeError):
+    """Twitter埋め込み機能の基底例外クラス
+    
+    Twitter埋め込みコード取得機能に関連する全ての例外の基底クラスです。
+    """
+    pass
+
+
+class InvalidURLError(TwitterEmbedError):
+    """無効なURL形式エラー
+    
+    ツイートURLの形式が無効な場合に発生するエラーです。
+    """
+    
+    def __init__(self, url: str, message: str = "無効なツイートURL形式です"):
+        """
+        Args:
+            url: 無効なURL
+            message: エラーメッセージ
+        """
+        self.url = url
+        self.message = message
+        super().__init__(f"{message}: {url}")
+
+
+class NetworkError(TwitterEmbedError):
+    """ネットワーク接続エラー
+    
+    Twitter APIへの接続時にネットワークエラーが発生した場合のエラーです。
+    """
+    
+    def __init__(self, message: str = "ネットワーク接続エラーが発生しました", original_error: Optional[Exception] = None):
+        """
+        Args:
+            message: エラーメッセージ
+            original_error: 元の例外オブジェクト（オプション）
+        """
+        self.message = message
+        self.original_error = original_error
+        error_detail = f" ({str(original_error)})" if original_error else ""
+        super().__init__(f"{message}{error_detail}")
+
+
+class APITimeoutError(TwitterEmbedError):
+    """APIタイムアウトエラー
+    
+    Twitter APIへのリクエストがタイムアウトした場合のエラーです。
+    """
+    
+    def __init__(self, timeout_seconds: float, message: str = "APIリクエストがタイムアウトしました"):
+        """
+        Args:
+            timeout_seconds: タイムアウト時間（秒）
+            message: エラーメッセージ
+        """
+        self.timeout_seconds = timeout_seconds
+        self.message = message
+        super().__init__(f"{message} (タイムアウト: {timeout_seconds}秒)")
+
+
+class RateLimitError(TwitterEmbedError):
+    """レート制限エラー
+    
+    Twitter APIのレート制限に達した場合のエラーです。
+    """
+    
+    def __init__(self, reset_time: Optional[str] = None, message: str = "APIレート制限に達しました"):
+        """
+        Args:
+            reset_time: レート制限がリセットされる時刻（オプション）
+            message: エラーメッセージ
+        """
+        self.reset_time = reset_time
+        self.message = message
+        reset_info = f" (リセット時刻: {reset_time})" if reset_time else ""
+        super().__init__(f"{message}{reset_info}")
+
+
+class FileWriteError(TwitterEmbedError):
+    """ファイル書き込みエラー
+    
+    埋め込みコードファイルへの書き込み時に発生するエラーです。
+    """
+    
+    def __init__(self, file_path: str, message: str = "ファイルへの書き込みに失敗しました", original_error: Optional[Exception] = None):
+        """
+        Args:
+            file_path: エラーが発生したファイルのパス
+            message: エラーメッセージ
+            original_error: 元の例外オブジェクト（オプション）
+        """
+        self.file_path = file_path
+        self.message = message
+        self.original_error = original_error
+        error_detail = f" ({str(original_error)})" if original_error else ""
+        super().__init__(f"{message}: {file_path}{error_detail}")
+
+
 def log_error(error: Exception, context: Optional[Dict[str, Any]] = None) -> None:
     """エラーをログに記録する
     
