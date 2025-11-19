@@ -33,8 +33,31 @@ except FileNotFoundError:
 except Exception:
     pass
 
-# 管理画面を表示
-render_twitter_embed_admin()
+# ローカル環境チェック関数
+def is_local_environment():
+    """
+    ローカル環境で実行されているかチェック
+    
+    ファイルシステムの特徴から判定します：
+    - ローカル開発環境: .gitディレクトリまたはDockerfileが存在
+    - 本番・ステージング環境: どちらも存在しない
+    
+    Returns:
+        bool: ローカル環境の場合True
+    """
+    import os
+    
+    # .gitディレクトリの存在チェック
+    git_dir_exists = os.path.isdir(".git")
+    
+    # Dockerfileの存在チェック
+    dockerfile_exists = os.path.isfile("Dockerfile")
+    
+    # .gitが存在する、またはDockerfileが存在する場合はローカル環境
+    return git_dir_exists or dockerfile_exists
+
+# 管理画面を表示（環境に応じて機能を制限）
+render_twitter_embed_admin(enable_admin_features=is_local_environment())
 
 # フッターの表示
 st.markdown("---")

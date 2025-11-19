@@ -158,18 +158,68 @@ def render_result_summary(result: MultipleEmbedCodeResult) -> None:
         st.info(f"📏 表示高さ: {result.max_height}px")
 
 
-def render_twitter_embed_admin() -> None:
+def render_twitter_embed_admin(enable_admin_features: bool = True) -> None:
     """
     Twitter埋め込みコード管理画面を表示
     
     認証、URL入力フォーム、取得処理、結果表示、プレビューを含む
     完全な管理画面を提供します。
     
+    Args:
+        enable_admin_features: 管理機能を有効にするか（デフォルト: True）
+                              Falseの場合、閲覧のみ可能
+    
     要件: 4.1, 4.2, 4.3, 4.4, 4.5
     """
     st.header("🐦 Twitter埋め込みコード管理")
     
-    # 認証チェック
+    # 本番・ステージング環境では管理機能を無効化
+    if not enable_admin_features:
+        st.warning("⚠️ この環境では管理機能は無効化されています。")
+        st.info("""
+        **閲覧モード**
+        
+        現在、本番環境またはステージング環境で実行されているため、
+        Twitter埋め込みコードの取得・保存機能は無効化されています。
+        
+        管理機能を使用するには、ローカル環境で実行してください。
+        """)
+        
+        # 現在の埋め込みコードを表示（閲覧のみ）
+        st.markdown("---")
+        st.subheader("📄 現在の埋め込みコード")
+        
+        try:
+            config = TwitterEmbedConfig.from_env()
+            file_repo = FileRepository(
+                embed_code_path=config.embed_code_path,
+                height_path=config.height_path,
+                backup_dir=config.backup_dir
+            )
+            
+            current_code = file_repo.read_embed_code()
+            current_height = file_repo.read_height()
+            
+            if current_code:
+                st.success(f"✅ 埋め込みコードが設定されています（高さ: {current_height}px）")
+                
+                # プレビューを表示
+                with st.expander("プレビューを表示", expanded=False):
+                    render_embed_preview(current_code, current_height)
+                
+                # コードを表示
+                with st.expander("HTMLコードを表示", expanded=False):
+                    st.code(current_code, language="html")
+            else:
+                st.info("埋め込みコードが設定されていません。")
+        
+        except Exception as e:
+            st.error(f"❌ エラーが発生しました: {str(e)}")
+            logger.error(f"埋め込みコード読み込みエラー: {str(e)}", exc_info=True)
+        
+        return
+    
+    # 認証チェック（ローカル環境のみ）
     if not check_admin_auth():
         return
     

@@ -86,9 +86,15 @@ TWITTER_EMBED_LOG_FILE=logs/twitter_embed.log
 TWITTER_API_MAX_RETRIES=3
 TWITTER_API_RETRY_DELAY=1.0
 
+# UI設定
+# 管理ページを表示するか（本番環境・ステージング環境ではfalseに設定）
+TWITTER_ENABLE_ADMIN_PAGE=true
+
 # 管理画面認証
 ADMIN_PASSWORD=your_admin_password
 ```
+
+**重要**: 本番環境やステージング環境では、`TWITTER_ENABLE_ADMIN_PAGE=false`に設定することで、管理ページを非表示にできます。
 
 ## 使用方法
 
