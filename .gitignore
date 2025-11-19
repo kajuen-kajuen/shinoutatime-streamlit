@@ -4,6 +4,12 @@
 logs/
 *.log
 
+# Backup files
+data/backups/
+
+# Local-only admin pages (not for production/staging)
+pages/*_Admin.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -31,9 +31,7 @@ def test_data_pipeline():
     print("2. パイプラインを実行中...")
     df = pipeline.execute()
     
-    if df is None:
-        print("   エラー: パイプライン実行に失敗しました")
-        return False
+    assert df is not None, "パイプライン実行に失敗しました"
     
     print(f"   パイプライン実行完了: {len(df)}件のデータを処理\n")
     
@@ -60,9 +58,7 @@ def test_data_pipeline():
     ]
     
     missing_columns = [col for col in required_columns if col not in df.columns]
-    if missing_columns:
-        print(f"   エラー: 必須カラムが不足しています: {missing_columns}")
-        return False
+    assert not missing_columns, f"必須カラムが不足しています: {missing_columns}"
     
     print("   全ての必須カラムが存在します")
     
@@ -73,9 +69,7 @@ def test_data_pipeline():
     # キャッシュのテスト
     print("\n5. キャッシュ機能をテスト中...")
     df2 = pipeline.execute()
-    if df2 is None:
-        print("   エラー: 2回目の実行に失敗しました")
-        return False
+    assert df2 is not None, "2回目の実行に失敗しました"
     
     print(f"   キャッシュから取得: {len(df2)}件")
     
@@ -86,7 +80,6 @@ def test_data_pipeline():
     
     print("\n=== DataPipeline 手動テスト完了 ===")
     print("全てのテストが成功しました！")
-    return True
 
 
 if __name__ == "__main__":
