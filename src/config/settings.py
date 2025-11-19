@@ -6,7 +6,7 @@
 
 import os
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 # ロガーの設定
@@ -187,4 +187,323 @@ class Config:
             )
         
         logger.info("設定値の検証が完了しました")
+        return True
+
+
+@dataclass
+class TwitterAPICredentials:
+    """Twitter API認証情報
+    
+    Twitter APIへのアクセスに必要な認証情報を管理します。
+    セキュリティのため、認証情報はログに出力されません。
+    """
+    
+    api_key: Optional[str] = field(default=None, repr=False)
+    api_secret: Optional[str] = field(default=None, repr=False)
+    
+    def __repr__(self) -> str:
+        """文字列表現（認証情報を隠蔽）
+        
+        Returns:
+            str: 認証情報を含まない文字列表現
+        """
+        return "TwitterAPICredentials(api_key=***, api_secret=***)"
+    
+    def __str__(self) -> str:
+        """文字列表現（認証情報を隠蔽）
+        
+        Returns:
+            str: 認証情報を含まない文字列表現
+        """
+        return self.__repr__()
+    
+    @classmethod
+    def from_env(cls) -> 'TwitterAPICredentials':
+        """環境変数から認証情報を読み込む
+        
+        環境変数TWITTER_API_KEYとTWITTER_API_SECRETから
+        認証情報を読み込みます。
+        
+        Returns:
+            TwitterAPICredentials: 認証情報オブジェクト
+        
+        Raises:
+            ConfigurationError: 必須の認証情報が設定されていない場合
+        """
+        from src.exceptions.errors import ConfigurationError
+        
+        logger.info("環境変数からTwitter API認証情報を読み込み中")
+        
+        api_key = os.getenv("TWITTER_API_KEY")
+        api_secret = os.getenv("TWITTER_API_SECRET")
+        
+        # 注: Twitter oEmbed APIは認証不要ですが、
+        # 将来の拡張のために認証情報の読み込み機能を提供します
+        # 現時点では認証情報が未設定でも警告のみで処理を継続します
+        
+        if not api_key and not api_secret:
+            logger.warning(
+                "Twitter API認証情報が環境変数に設定されていません。"
+                "oEmbed APIは認証不要ですが、将来の拡張のために設定を推奨します。"
+            )
+        elif not api_key:
+            logger.warning("TWITTER_API_KEYが環境変数に設定されていません")
+        elif not api_secret:
+            logger.warning("TWITTER_API_SECRETが環境変数に設定されていません")
+        else:
+            logger.info("Twitter API認証情報の読み込みが完了しました")
+        
+        return cls(api_key=api_key, api_secret=api_secret)
+    
+    def validate(self, require_credentials: bool = False) -> bool:
+        """認証情報を検証する
+        
+        認証情報が有効な形式であるかを検証します。
+        
+        Args:
+            require_credentials: 認証情報を必須とするか（デフォルト: False）
+        
+        Returns:
+            bool: 検証成功時True
+        
+        Raises:
+            ConfigurationError: 認証情報が不正な場合
+        """
+        from src.exceptions.errors import ConfigurationError
+        
+        logger.info("Twitter API認証情報を検証中")
+        
+        # 認証情報が必須の場合のチェック
+        if require_credentials:
+            if not self.api_key:
+                raise ConfigurationError(
+                    "TWITTER_API_KEY",
+                    "Twitter API認証キーが設定されていません。"
+                    "環境変数TWITTER_API_KEYを設定してください。"
+                )
+            if not self.api_secret:
+                raise ConfigurationError(
+                    "TWITTER_API_SECRET",
+                    "Twitter APIシークレットキーが設定されていません。"
+                    "環境変数TWITTER_API_SECRETを設定してください。"
+                )
+        
+        # 認証情報が設定されている場合の形式チェック
+        if self.api_key is not None:
+            if not isinstance(self.api_key, str) or len(self.api_key.strip()) == 0:
+                raise ConfigurationError(
+                    "TWITTER_API_KEY",
+                    "Twitter API認証キーの形式が不正です"
+                )
+        
+        if self.api_secret is not None:
+            if not isinstance(self.api_secret, str) or len(self.api_secret.strip()) == 0:
+                raise ConfigurationError(
+                    "TWITTER_API_SECRET",
+                    "Twitter APIシークレットキーの形式が不正です"
+                )
+        
+        logger.info("Twitter API認証情報の検証が完了しました")
+        return True
+    
+    def is_configured(self) -> bool:
+        """認証情報が設定されているかを確認
+        
+        Returns:
+            bool: 認証情報が設定されている場合True
+        """
+        return self.api_key is not None and self.api_secret is not None
+    
+    def mask_credentials(self) -> dict:
+        """認証情報をマスクした辞書を返す
+        
+        ログ出力やデバッグ用に、認証情報をマスクした辞書を返します。
+        
+        Returns:
+            dict: マスクされた認証情報
+        """
+        return {
+            "api_key": "***" if self.api_key else None,
+            "api_secret": "***" if self.api_secret else None,
+            "is_configured": self.is_configured()
+        }
+
+
+@dataclass
+class TwitterEmbedConfig:
+    """Twitter埋め込みコード取得システムの設定
+    
+    Twitter埋め込みコード取得機能に関する設定を管理します。
+    """
+    
+    # ファイルパス
+    embed_code_path: str = "data/tweet_embed_code.html"
+    height_path: str = "data/tweet_height.txt"
+    backup_dir: str = "data/backups"
+    
+    # ログ設定
+    log_level: str = "INFO"
+    log_file: str = "logs/twitter_embed.log"
+    
+    # リトライ設定
+    max_retries: int = 3
+    retry_delay: float = 1.0
+    
+    # API設定
+    api_timeout: int = 30
+    
+    # デフォルト値
+    default_height: int = 850
+    
+    # UI設定
+    enable_admin_page: bool = True  # 管理ページを表示するか（本番環境ではFalseに設定）
+    
+    # 認証情報
+    credentials: TwitterAPICredentials = field(default_factory=TwitterAPICredentials)
+    
+    @classmethod
+    def from_env(cls) -> 'TwitterEmbedConfig':
+        """環境変数から設定を読み込む
+        
+        環境変数が設定されている場合はその値を使用し、
+        設定されていない場合はデフォルト値を使用します。
+        
+        Returns:
+            TwitterEmbedConfig: 設定オブジェクト
+        """
+        logger.info("環境変数からTwitter埋め込み設定を読み込み中")
+        
+        # 認証情報を読み込む
+        credentials = TwitterAPICredentials.from_env()
+        
+        config = cls(
+            # ファイルパス
+            embed_code_path=os.getenv(
+                "TWITTER_EMBED_CODE_PATH",
+                "data/tweet_embed_code.html"
+            ),
+            height_path=os.getenv(
+                "TWITTER_HEIGHT_PATH",
+                "data/tweet_height.txt"
+            ),
+            backup_dir=os.getenv(
+                "TWITTER_BACKUP_DIR",
+                "data/backups"
+            ),
+            # ログ設定
+            log_level=os.getenv(
+                "TWITTER_EMBED_LOG_LEVEL",
+                "INFO"
+            ),
+            log_file=os.getenv(
+                "TWITTER_EMBED_LOG_FILE",
+                "logs/twitter_embed.log"
+            ),
+            # リトライ設定
+            max_retries=int(os.getenv(
+                "TWITTER_API_MAX_RETRIES",
+                "3"
+            )),
+            retry_delay=float(os.getenv(
+                "TWITTER_API_RETRY_DELAY",
+                "1.0"
+            )),
+            # API設定
+            api_timeout=int(os.getenv(
+                "TWITTER_API_TIMEOUT",
+                "30"
+            )),
+            # デフォルト値
+            default_height=int(os.getenv(
+                "TWITTER_DEFAULT_HEIGHT",
+                "850"
+            )),
+            # UI設定
+            enable_admin_page=os.getenv(
+                "TWITTER_ENABLE_ADMIN_PAGE",
+                "true"
+            ).lower() in ("true", "1", "yes"),
+            # 認証情報
+            credentials=credentials
+        )
+        
+        logger.info("Twitter埋め込み設定の読み込みが完了しました")
+        # 認証情報をマスクしてログ出力
+        logger.debug(f"認証情報の状態: {config.credentials.mask_credentials()}")
+        
+        return config
+    
+    def validate(self, require_credentials: bool = False) -> bool:
+        """設定値を検証する
+        
+        設定値が有効な範囲内にあるかを検証します。
+        
+        Args:
+            require_credentials: 認証情報を必須とするか（デフォルト: False）
+        
+        Returns:
+            bool: 検証成功時True
+        
+        Raises:
+            ConfigurationError: 設定値が不正な場合
+        """
+        from src.exceptions.errors import ConfigurationError
+        
+        logger.info("Twitter埋め込み設定を検証中")
+        
+        # ファイルパスの検証
+        if not self.embed_code_path:
+            raise ConfigurationError(
+                "embed_code_path",
+                "埋め込みコードファイルパスが空です"
+            )
+        if not self.height_path:
+            raise ConfigurationError(
+                "height_path",
+                "高さ設定ファイルパスが空です"
+            )
+        if not self.backup_dir:
+            raise ConfigurationError(
+                "backup_dir",
+                "バックアップディレクトリパスが空です"
+            )
+        
+        # リトライ設定の検証
+        if self.max_retries < 0:
+            raise ConfigurationError(
+                "max_retries",
+                f"最大リトライ回数は0以上である必要があります: {self.max_retries}"
+            )
+        if self.retry_delay < 0:
+            raise ConfigurationError(
+                "retry_delay",
+                f"リトライ遅延時間は0以上である必要があります: {self.retry_delay}"
+            )
+        
+        # API設定の検証
+        if self.api_timeout <= 0:
+            raise ConfigurationError(
+                "api_timeout",
+                f"APIタイムアウトは正の整数である必要があります: {self.api_timeout}"
+            )
+        
+        # デフォルト値の検証
+        if self.default_height <= 0:
+            raise ConfigurationError(
+                "default_height",
+                f"デフォルト高さは正の整数である必要があります: {self.default_height}"
+            )
+        
+        # ログレベルの検証
+        valid_log_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        if self.log_level.upper() not in valid_log_levels:
+            raise ConfigurationError(
+                "log_level",
+                f"ログレベルは {valid_log_levels} のいずれかである必要があります: {self.log_level}"
+            )
+        
+        # 認証情報の検証
+        self.credentials.validate(require_credentials=require_credentials)
+        
+        logger.info("Twitter埋め込み設定の検証が完了しました")
         return True
