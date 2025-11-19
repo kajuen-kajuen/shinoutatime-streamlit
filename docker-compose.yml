@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  shinouta-time:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+    environment:
+      - SHINOUTA_LOG_LEVEL=${SHINOUTA_LOG_LEVEL:-INFO}
+      - SHINOUTA_ENABLE_FILE_LOGGING=${SHINOUTA_ENABLE_FILE_LOGGING:-false}
+      - SHINOUTA_LOG_FILE=${SHINOUTA_LOG_FILE:-logs/shinouta.log}
+    command: streamlit run Home.py --server.address 0.0.0.0

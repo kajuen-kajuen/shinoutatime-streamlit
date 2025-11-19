@@ -37,18 +37,123 @@ VTuber「幽音しの」さんの配信で歌唱された楽曲を検索・閲�
 
 ## セットアップ手順
 
-### 必要な環境
-- **Python 3.x** (Python 3.7以上を推奨)
-- **pip** (Pythonパッケージマネージャー)
+本アプリケーションは、以下の2つの方法で環境構築が可能です：
 
-### 1. リポジトリのクローン
+1. **Docker Compose を使用する方法（推奨）** - ローカル環境を汚さず、簡単にセットアップ
+2. **Python 仮想環境を使用する方法** - 従来の方法
+
+### 方法の選択
+
+| 方法 | メリット | デメリット |
+|-----|---------|-----------|
+| **Docker Compose（推奨）** | ・ローカル環境にPythonや依存パッケージをインストール不要<br>・本番環境（Python 3.11）と同じ環境を再現<br>・環境のクリーンアップが容易<br>・`docker-compose up`コマンド一つで起動 | ・Dockerのインストールが必要<br>・初回起動時にイメージのビルドが必要 |
+| **Python 仮想環境** | ・Dockerが不要<br>・軽量で高速 | ・ローカル環境にPython 3.11のインストールが必要<br>・依存パッケージの管理が必要<br>・環境の分離が不完全 |
+
+**推奨**: ローカル環境を汚さず、本番環境と同じ構成で動作させるため、**Docker Compose を使用する方法**を推奨します。
+
+---
+
+### 方法1: Docker Compose を使用する（推奨）
+
+#### 必要な環境
+- **Docker Desktop** (Windows/Mac) または **Docker Engine** (Linux)
+- **Git**
+
+#### 1. リポジトリのクローン
 
 ```bash
 git clone <repository-url>
 cd <repository-directory>
 ```
 
-### 2. 依存パッケージのインストール
+#### 2. Docker Compose で起動
+
+```bash
+docker-compose up
+```
+
+初回起動時は、Dockerイメージのビルドが行われるため、数分かかる場合があります。
+
+#### 3. 動作確認
+
+環境が正しく構築されたことを確認するため、動作確認スクリプトを実行します：
+
+**Mac/Linux:**
+```bash
+bash verify_environment.sh
+```
+
+**Windows:**
+```cmd
+verify_environment.bat
+```
+
+または、手動でテストを実行：
+
+```bash
+docker-compose exec shinouta-time pytest tests/test_environment_verification.py -v
+```
+
+全てのテストが成功すれば、環境構築は完了です。
+
+#### 4. アプリケーションへのアクセス
+
+起動後、ブラウザで `http://localhost:8501` にアクセスしてください。
+
+#### 5. 停止とクリーンアップ
+
+アプリケーションを停止するには、`Ctrl+C` を押してください。
+
+コンテナを完全に削除するには：
+
+```bash
+docker-compose down
+```
+
+#### 環境変数の設定（オプション）
+
+`.env.example` ファイルを `.env` にコピーして、必要に応じて環境変数を編集できます：
+
+```bash
+cp .env.example .env
+```
+
+詳細は「ロギング設定（オプション）」セクションを参照してください。
+
+#### トラブルシューティング
+
+Docker Compose使用時の問題については、[TROUBLESHOOTING.md](TROUBLESHOOTING.md) を参照してください。
+
+---
+
+### 方法2: Python 仮想環境を使用する
+
+#### 必要な環境
+- **Python 3.11** (本番環境と同じバージョンを推奨)
+- **pip** (Pythonパッケージマネージャー)
+
+#### 1. リポジトリのクローン
+
+```bash
+git clone <repository-url>
+cd <repository-directory>
+```
+
+#### 2. Python仮想環境の作成とアクティベート
+
+**Linux/Mac:**
+```bash
+python3.11 -m venv venv
+source venv/bin/activate
+```
+
+**Windows:**
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+#### 3. 依存パッケージのインストール
 
 ```bash
 pip install -r requirements.txt
@@ -58,13 +163,27 @@ pip install -r requirements.txt
 - `streamlit` - Webアプリケーションフレームワーク
 - `pandas` - データ処理ライブラリ
 
-### 3. アプリケーションの起動
+#### 4. アプリケーションの起動
 
 ```bash
 streamlit run Home.py
 ```
 
 起動後、ブラウザで `http://localhost:8501` にアクセスしてください。
+
+#### 5. 仮想環境の終了
+
+作業が終わったら、仮想環境を終了します：
+
+```bash
+deactivate
+```
+
+---
+
+### 詳細なセットアップ手順
+
+より詳細なセットアップ手順については、[SETUP.md](SETUP.md) を参照してください。
 
 ### 4. ロギング設定（オプション）
 
