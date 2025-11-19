@@ -237,8 +237,14 @@ class TestEnvironmentVerification:
         # 全ての行に曲目番号が生成されていることを確認
         assert df["曲目"].notna().all(), "一部の行で曲目番号が生成されていません"
         
-        # 曲目番号が正の整数であることを確認
-        assert (df["曲目"] > 0).all(), "曲目番号に0以下の値が含まれています"
+        # 曲目番号の形式確認（"N曲目" または "N-M曲目" の形式）
+        sample_song_number = df["曲目"].iloc[0]
+        assert isinstance(sample_song_number, str), "曲目番号が文字列ではありません"
+        assert "曲目" in sample_song_number, "曲目番号に「曲目」が含まれていません"
+        
+        # 曲順列が存在し、正の整数であることを確認
+        assert "曲順" in df.columns, "曲順列が存在しません"
+        assert (df["曲順"] > 0).all(), "曲順に0以下の値が含まれています"
     
     def test_data_sorting(self, data_pipeline):
         """
@@ -346,16 +352,19 @@ class TestProductionParity:
         import os
         
         # 環境変数を設定
-        os.environ["SHINOUTA_LOG_LEVEL"] = "DEBUG"
-        os.environ["SHINOUTA_ENABLE_FILE_LOGGING"] = "true"
+        os.environ["SHINOUTA_ENABLE_CACHE"] = "false"
+        os.environ["SHINOUTA_CACHE_TTL"] = "7200"
+        os.environ["SHINOUTA_PAGE_TITLE"] = "テストタイトル"
         
         # 設定を読み込み
         config = Config.from_env()
         
         # 環境変数が反映されていることを確認
-        assert config.log_level == "DEBUG", "環境変数SHINOUTA_LOG_LEVELが反映されていません"
-        assert config.enable_file_logging is True, "環境変数SHINOUTA_ENABLE_FILE_LOGGINGが反映されていません"
+        assert config.enable_cache is False, "環境変数SHINOUTA_ENABLE_CACHEが反映されていません"
+        assert config.cache_ttl == 7200, "環境変数SHINOUTA_CACHE_TTLが反映されていません"
+        assert config.page_title == "テストタイトル", "環境変数SHINOUTA_PAGE_TITLEが反映されていません"
         
         # 環境変数をクリア
-        del os.environ["SHINOUTA_LOG_LEVEL"]
-        del os.environ["SHINOUTA_ENABLE_FILE_LOGGING"]
+        del os.environ["SHINOUTA_ENABLE_CACHE"]
+        del os.environ["SHINOUTA_CACHE_TTL"]
+        del os.environ["SHINOUTA_PAGE_TITLE"]
