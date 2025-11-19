@@ -1,10 +1,10 @@
 # テストガイド
 
-このディレクトリには、「しのうたタイム」アプリケーションの動作確認テストが含まれています。
+このディレクトリには、「しのうたタイム」アプリケーションの各種テストが含まれています。
 
 ## テストの種類
 
-### 環境構築動作確認テスト（test_environment_verification.py）
+### 1. 環境構築動作確認テスト（test_environment_verification.py）
 
 Docker Composeで構築した環境が正しく動作することを確認するテストです。
 
@@ -16,6 +16,50 @@ Docker Composeで構築した環境が正しく動作することを確認する
 - 環境分離が正しく機能していること（要件2.4, 14.5）
 - 本番環境との整合性（要件13.1〜13.5）
 
+### 2. ユーティリティ関数テスト（test_utils.py）
+
+データ変換・処理関数の正確性を確認するテストです。
+
+**検証内容:**
+- タイムスタンプ文字列の秒数変換
+- YouTubeタイムスタンプ付きURL生成
+- 曲目番号の生成ロジック
+- 日付文字列の変換
+
+### 3. 検索サービステスト（test_search_service.py）
+
+検索機能とフィルタリング機能の動作を確認するテストです。
+
+**検証内容:**
+- キーワード検索（単一/複数フィールド）
+- 大文字小文字の区別/非区別
+- 部分一致検索
+- 日本語文字検索
+- 複数条件フィルタリング
+- エッジケース（空データ、NaN値など）
+
+### 4. 設定管理テスト（test_config.py）
+
+アプリケーション設定の読み込みと検証を確認するテストです。
+
+**検証内容:**
+- デフォルト値の設定
+- 環境変数からの読み込み
+- ブール値の解析
+- 設定値のバリデーション
+- 無効な設定値のエラー処理
+
+### 5. エラーハンドリングテスト（test_errors.py）
+
+カスタム例外クラスとエラーログの動作を確認するテストです。
+
+**検証内容:**
+- カスタム例外クラスの動作
+- 例外の継承関係
+- エラーログの記録
+- コンテキスト情報付きログ
+- 実際のエラーシナリオ
+
 ## テストの実行方法
 
 ### Docker Compose環境でのテスト実行
@@ -26,35 +70,60 @@ Docker Composeで構築した環境が正しく動作することを確認する
 docker-compose up -d
 ```
 
-2. **コンテナ内でテストを実行**
+2. **全てのテストを実行**
 
 ```bash
+docker-compose exec shinouta-time pytest tests/ -v
+```
+
+3. **特定のテストファイルを実行**
+
+```bash
+# 環境構築動作確認テスト
 docker-compose exec shinouta-time pytest tests/test_environment_verification.py -v
+
+# ユーティリティ関数テスト
+docker-compose exec shinouta-time pytest tests/test_utils.py -v
+
+# 検索サービステスト
+docker-compose exec shinouta-time pytest tests/test_search_service.py -v
+
+# 設定管理テスト
+docker-compose exec shinouta-time pytest tests/test_config.py -v
+
+# エラーハンドリングテスト
+docker-compose exec shinouta-time pytest tests/test_errors.py -v
 ```
 
-3. **詳細なテスト結果を表示**
+4. **詳細なテスト結果を表示**
 
 ```bash
-docker-compose exec shinouta-time pytest tests/test_environment_verification.py -v -s
+docker-compose exec shinouta-time pytest tests/ -v -s
 ```
 
-4. **特定のテストクラスのみ実行**
+5. **特定のテストクラスのみ実行**
 
 ```bash
 # 環境構築動作確認テストのみ
 docker-compose exec shinouta-time pytest tests/test_environment_verification.py::TestEnvironmentVerification -v
 
-# 環境分離確認テストのみ
-docker-compose exec shinouta-time pytest tests/test_environment_verification.py::TestEnvironmentIsolation -v
+# ユーティリティ関数のタイムスタンプ変換テストのみ
+docker-compose exec shinouta-time pytest tests/test_utils.py::TestConvertTimestampToSeconds -v
 
-# 本番環境整合性確認テストのみ
-docker-compose exec shinouta-time pytest tests/test_environment_verification.py::TestProductionParity -v
+# 検索サービステストのみ
+docker-compose exec shinouta-time pytest tests/test_search_service.py::TestSearchService -v
 ```
 
-5. **特定のテストメソッドのみ実行**
+6. **特定のテストメソッドのみ実行**
 
 ```bash
 docker-compose exec shinouta-time pytest tests/test_environment_verification.py::TestEnvironmentVerification::test_search_functionality -v
+```
+
+7. **カバレッジレポート付きで実行（オプション）**
+
+```bash
+docker-compose exec shinouta-time pytest tests/ --cov=src --cov-report=html
 ```
 
 ### ローカル環境（Python仮想環境）でのテスト実行
@@ -152,6 +221,17 @@ ModuleNotFoundError: No module named 'streamlit'
 pip install -r requirements.txt
 ```
 
+## テスト結果の確認
+
+### 最新のテスト結果
+
+- **総テスト件数**: 84件
+- **成功**: 84件
+- **失敗**: 0件
+- **実行時間**: 約2秒
+
+詳細は `test_results_summary.md` を参照してください。
+
 ## 継続的な動作確認
 
 環境構築後、以下のタイミングでテストを実行することを推奨します：
@@ -160,24 +240,62 @@ pip install -r requirements.txt
 2. **依存パッケージ更新後**: requirements.txt更新後にテストを実行
 3. **データファイル更新後**: data/ディレクトリのTSVファイル更新後にテストを実行
 4. **コード変更後**: 主要な機能を変更した後にテストを実行
+5. **プルリクエスト作成前**: 全てのテストが成功することを確認
 
 ## テストの拡張
 
 新しい機能を追加した場合、対応するテストを追加してください：
 
-1. `tests/test_environment_verification.py`に新しいテストメソッドを追加
-2. テストメソッド名は`test_`で始める
-3. docstringで検証内容と要件番号を記載
-4. assertを使用して期待値を検証
+### 1. 既存のテストファイルに追加する場合
 
-例:
+適切なテストファイルに新しいテストメソッドを追加します：
+
 ```python
-def test_new_feature(self, data_pipeline):
+def test_new_feature(self, fixture_name):
     """
     新機能が正常に動作することを確認
     
     要件XX.X: 新機能の動作確認
     """
     # テストコード
-    assert expected == actual, "エラーメッセージ"
+    result = function_to_test(input_data)
+    assert result == expected_value, "エラーメッセージ"
 ```
+
+### 2. 新しいテストファイルを作成する場合
+
+新しいモジュールをテストする場合は、新しいテストファイルを作成します：
+
+```python
+"""
+新モジュールのテスト
+
+src/path/to/new_module.pyが正しく動作することを確認するテストです。
+"""
+
+import pytest
+from src.path.to.new_module import NewClass
+
+
+class TestNewClass:
+    """NewClassのテスト"""
+    
+    @pytest.fixture
+    def instance(self):
+        """テスト用のインスタンスを提供"""
+        return NewClass()
+    
+    def test_basic_functionality(self, instance):
+        """基本機能が動作することを確認"""
+        result = instance.method()
+        assert result is not None
+```
+
+### 3. テストのベストプラクティス
+
+- **明確なテスト名**: テストメソッド名は何をテストしているか明確にする
+- **1テスト1検証**: 各テストメソッドは1つの機能を検証する
+- **独立性**: テストは他のテストに依存しない
+- **再現性**: 同じ入力で常に同じ結果を返す
+- **高速**: テストは可能な限り高速に実行される
+- **日本語docstring**: 検証内容を日本語で記述する
