@@ -5,3 +5,6 @@ pytest-cov
 requests
 python-dotenv
 hypothesis
+pykakasi
+python-Levenshtein
+chardet
