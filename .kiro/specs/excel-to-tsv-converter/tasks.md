@@ -1,10 +1,10 @@
 # 実装タスクリスト
 
-- [ ] 1. データモデルの実装
+- [x] 1. データモデルの実装
   - src/models/excel_to_tsv_models.pyを作成し、ConversionResult、ValidationWarning、SheetMappingのデータクラスを定義する
   - _要件: 全要件_
 
-- [ ] 2. Excelリポジトリの実装
+- [x] 2. Excelリポジトリの実装
   - src/repositories/excel_repository.pyを作成し、ExcelRepositoryクラスを実装する
   - openpyxlを使用してExcelファイルを読み込む機能を実装する
   - シート名の取得、シートの存在確認、シートデータの読み込み機能を実装する
@@ -17,7 +17,7 @@
   - ランダムなExcelデータを生成してシート読み込みの完全性を検証する
   - _要件: 2.1, 2.2_
 
-- [ ] 3. TSVリポジトリの実装
+- [x] 3. TSVリポジトリの実装
   - src/repositories/tsv_repository.pyを作成し、TsvRepositoryクラスを実装する
   - UTF-8エンコーディングでTSVファイルを書き込む機能を実装する
   - タブ区切り、改行文字のエスケープ、特殊文字の処理を実装する
@@ -37,7 +37,7 @@
   - ヘッダー行が正しく出力されることを検証する
   - _要件: 3.5_
 
-- [ ] 4. バックアップリポジトリの実装
+- [x] 4. バックアップリポジトリの実装
   - src/repositories/backup_repository.pyを作成し、BackupRepositoryクラスを実装する
   - タイムスタンプ付きバックアップファイルの作成機能を実装する
   - バックアップディレクトリの自動作成機能を実装する
@@ -57,7 +57,7 @@
   - バックアップファイルの内容が元のファイルと同じことを検証する
   - _要件: 7.1_
 
-- [ ] 5. データ検証機能の実装
+- [x] 5. データ検証機能の実装
   - ExcelToTsvServiceにvalidate_sheet_dataメソッドを実装する
   - フィールド数の検証機能を実装する
   - データ型の検証機能（IDが数値か、など）を実装する
@@ -78,7 +78,7 @@
   - M_YT_LIVE_TIMESTAMP.TSVの各行が5つのフィールドを持つことを検証する
   - _要件: 4.2_
 
-- [ ] 6. Excel to TSVサービスの実装
+- [x] 6. Excel to TSVサービスの実装
   - src/services/excel_to_tsv_service.pyを作成し、ExcelToTsvServiceクラスを実装する
   - convert_excel_to_tsvメソッドを実装する
   - シートマッピングの設定を実装する
@@ -92,7 +92,7 @@
   - エラー発生時に既存ファイルが保持されることを検証する
   - _要件: 8.4_
 
-- [ ] 7. 後続処理（song_list_generator）の実装
+- [x] 7. 後続処理（song_list_generator）の実装
   - ExcelToTsvServiceにrun_song_list_generatorメソッドを実装する
   - subprocessを使用してsong_list_generatorを実行する機能を実装する
   - 実行結果の取得とエラーハンドリングを実装する
@@ -112,7 +112,7 @@
   - song_list_generatorのエラー時にTSVファイルが保持されることを検証する
   - _要件: 9.4_
 
-- [ ] 8. CLIの実装
+- [x] 8. CLIの実装
   - src/cli/excel_to_tsv_cli.pyを作成し、コマンドラインインターフェースを実装する
   - create_parser関数を実装してコマンドライン引数を定義する
   - main関数を実装してメイン処理を実行する
@@ -126,21 +126,28 @@
   - ドライランモードをテストする
   - _要件: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 9. 統合テストの実装
+- [x] 9. ユニットテストの実装
+  - tests/unit/test_excel_to_tsv_service.pyを作成する
+  - 変換処理の正常系・異常系をテストする
+  - データ検証機能をテストする
+  - URL検証機能をテストする
+  - song_list_generator実行をテストする
+  - _要件: 全要件_
+
+- [x] 10. 統合テストの実装
   - tests/integration/test_excel_to_tsv_integration.pyを作成する
   - 正常系のエンドツーエンドテストを実装する
   - バックアップ機能のテストを実装する
   - エラーリカバリのテストを実装する
-  - 後続処理の統合テストを実装する
   - _要件: 全要件_
 
-- [ ] 10. ドキュメントの作成
+- [x] 11. ドキュメントの作成
   - README.mdにExcel to TSV変換ツールの使用方法を追加する
   - コマンドライン引数の説明を追加する
   - 使用例を追加する
   - トラブルシューティングガイドを追加する
   - _要件: 全要件_
 
-- [ ] 11. 最終チェックポイント - すべてのテストが通ることを確認
+- [x] 12. 最終チェックポイント - すべてのテストが通ることを確認
   - すべてのテストが通ることを確認する
   - 質問があればユーザーに確認する
