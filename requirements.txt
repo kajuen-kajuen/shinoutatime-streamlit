@@ -8,3 +8,4 @@ hypothesis
 pykakasi
 python-Levenshtein
 chardet
+openpyxl

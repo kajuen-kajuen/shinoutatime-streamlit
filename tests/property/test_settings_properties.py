@@ -14,9 +14,30 @@ class TestConfigProperties:
     """Config設定のプロパティテスト"""
     
     @given(
-        lives_path=st.text(min_size=1, max_size=100, alphabet=st.characters(blacklist_characters='\x00')),
-        songs_path=st.text(min_size=1, max_size=100, alphabet=st.characters(blacklist_characters='\x00')),
-        song_list_path=st.text(min_size=1, max_size=100, alphabet=st.characters(blacklist_characters='\x00')),
+        lives_path=st.text(
+            min_size=1, 
+            max_size=100, 
+            alphabet=st.characters(
+                blacklist_characters='\x00',
+                blacklist_categories=('Cs',)  # サロゲート文字を除外
+            )
+        ),
+        songs_path=st.text(
+            min_size=1, 
+            max_size=100, 
+            alphabet=st.characters(
+                blacklist_characters='\x00',
+                blacklist_categories=('Cs',)  # サロゲート文字を除外
+            )
+        ),
+        song_list_path=st.text(
+            min_size=1, 
+            max_size=100, 
+            alphabet=st.characters(
+                blacklist_characters='\x00',
+                blacklist_categories=('Cs',)  # サロゲート文字を除外
+            )
+        ),
         display_limit=st.integers(min_value=1, max_value=1000),
         cache_ttl=st.integers(min_value=0, max_value=86400)
     )

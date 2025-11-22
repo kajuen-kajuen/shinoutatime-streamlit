@@ -35,7 +35,9 @@ VTuber「幽音しの」さんの配信で歌唱された楽曲を検索・閲�
 - お知らせ情報の表示
 - Twitter投稿の埋め込み表示
 
-### 🔧 Twitter埋め込みコード自動取得機能（管理者向け）
+### 🔧 管理者向け機能
+
+#### Twitter埋め込みコード自動取得機能
 
 TwitterのツイートURLから埋め込みコードを自動的に取得し、情報ページに表示するための機能です。
 
@@ -58,6 +60,20 @@ TwitterのツイートURLから埋め込みコードを自動的に取得し、�
    - パスワード認証によるアクセス制御
    - プレビュー機能
    - 詳細は[Twitter埋め込みコード管理画面 使用ガイド](docs/twitter-embed-admin-guide.md)を参照
+
+#### Excel to TSV変換ツール
+
+Excelファイルから配信データと楽曲データのTSVファイルを自動生成するツールです。
+
+**主な機能:**
+- ✅ Excelファイルからの自動TSV生成
+- ✅ データ検証機能（フィールド数、データ型、URL形式）
+- ✅ 自動バックアップ機能
+- ✅ 後続処理の自動実行（song_list_generator）
+- ✅ エラーハンドリングとロールバック機能
+- ✅ 詳細なログ記録
+
+詳細は「[Excel to TSV変換ツール](#excel-to-tsv変換ツール管理者向け)」セクションを参照してください。
 
 ## セットアップ手順
 
@@ -260,11 +276,16 @@ streamlit run Home.py
 
 ```
 data/
+├── data.xlsx                   # 入力用Excelファイル（管理者向け）
 ├── M_YT_LIVE.TSV               # 配信データ
 ├── M_YT_LIVE_TIMESTAMP.TSV     # 楽曲タイムスタンプデータ
 ├── V_SONG_LIST.TSV             # 楽曲リストデータ
 ├── tweet_embed_code.html       # Twitter埋め込みコード
-└── tweet_height.txt            # Twitter埋め込み高さ設定
+├── tweet_height.txt            # Twitter埋め込み高さ設定
+└── backups/                    # バックアップディレクトリ
+    ├── M_YT_LIVE_*.TSV         # 配信データのバックアップ
+    ├── M_YT_LIVE_TIMESTAMP_*.TSV # タイムスタンプデータのバックアップ
+    └── tweet_embed_code_*.html # Twitter埋め込みコードのバックアップ
 ```
 
 ### データファイルの詳細
@@ -397,6 +418,283 @@ TWITTER_API_RETRY_DELAY=1.0
 
 よくある問題と解決方法については、[Twitter埋め込みコード自動取得システム](docs/twitter-embed-automation.md#トラブルシューティング)を参照してください。
 
+## Excel to TSV変換ツール（管理者向け）
+
+### 概要
+
+Excel to TSV変換ツールは、Excelファイル（data.xlsx）から2つのTSVファイル（M_YT_LIVE.TSVとM_YT_LIVE_TIMESTAMP.TSV）を自動生成し、さらに既存のsong_list_generatorツールを呼び出してV_SONG_LIST.TSVを生成する一連の処理を自動化します。
+
+**主な機能:**
+- ✅ Excelファイルからの自動TSV生成
+- ✅ データ検証機能（フィールド数、データ型、URL形式）
+- ✅ 自動バックアップ機能
+- ✅ 後続処理の自動実行（song_list_generator）
+- ✅ エラーハンドリングとロールバック機能
+- ✅ 詳細なログ記録
+
+### 使用方法
+
+#### 基本的な使用方法
+
+**デフォルト設定で実行:**
+
+```bash
+# Python環境
+python -m src.cli.excel_to_tsv_cli
+
+# Docker環境
+docker-compose exec shinouta-time python -m src.cli.excel_to_tsv_cli
+```
+
+デフォルトでは、`data/data.xlsx`を読み込み、`data/`ディレクトリに以下のファイルを生成します：
+- `M_YT_LIVE.TSV`
+- `M_YT_LIVE_TIMESTAMP.TSV`
+- `V_SONG_LIST.TSV`（song_list_generatorによって自動生成）
+
+#### コマンドライン引数
+
+| 引数 | 説明 | デフォルト値 |
+|-----|------|------------|
+| `--input-file` | 入力Excelファイルのパス | `data/data.xlsx` |
+| `--output-dir` | 出力ディレクトリのパス | `data/` |
+| `--dry-run` | ドライランモード（ファイルを書き込まない） | 無効 |
+| `--skip-song-list` | song_list_generatorの実行をスキップ | 無効 |
+| `--verbose`, `-v` | 詳細ログを表示 | 無効 |
+| `--help`, `-h` | ヘルプメッセージを表示 | - |
+
+#### 使用例
+
+**カスタムファイルパスを指定:**
+
+```bash
+python -m src.cli.excel_to_tsv_cli \
+  --input-file /path/to/custom.xlsx \
+  --output-dir /path/to/output/
+```
+
+**ドライランモード（実際のファイル生成を行わない）:**
+
+```bash
+python -m src.cli.excel_to_tsv_cli --dry-run
+```
+
+**song_list_generatorの実行をスキップ:**
+
+```bash
+python -m src.cli.excel_to_tsv_cli --skip-song-list
+```
+
+**詳細ログを表示:**
+
+```bash
+python -m src.cli.excel_to_tsv_cli --verbose
+```
+
+**Docker環境での実行:**
+
+```bash
+# 基本的な実行
+docker-compose exec shinouta-time python -m src.cli.excel_to_tsv_cli
+
+# カスタムオプション付き
+docker-compose exec shinouta-time python -m src.cli.excel_to_tsv_cli \
+  --input-file data/custom.xlsx \
+  --verbose
+```
+
+### データファイルの要件
+
+#### 入力ファイル（data.xlsx）
+
+Excelファイルには以下の2つのシートが必要です：
+
+**1. M_YT_LIVE シート**
+
+| カラム名 | データ型 | 必須 | 説明 |
+|---------|---------|------|------|
+| ID | 整数 | ✓ | 配信の一意識別子 |
+| 配信日 | 文字列/数値 | ✓ | 配信日（YYYY/MM/DD形式またはUNIXミリ秒） |
+| タイトル | 文字列 | ✓ | 配信タイトル |
+| URL | 文字列 | ✓ | YouTube配信URL |
+
+**2. M_YT_LIVE_TIMESTAMP シート**
+
+| カラム名 | データ型 | 必須 | 説明 |
+|---------|---------|------|------|
+| ID | 整数 | ✓ | 楽曲レコードの一意識別子 |
+| LIVE_ID | 整数 | ✓ | 配信IDへの外部キー |
+| タイムスタンプ | 文字列 | ✓ | 歌唱開始時刻（HH:MM:SSまたはMM:SS形式） |
+| 曲名 | 文字列 | ✓ | 楽曲名 |
+| アーティスト | 文字列 | ✓ | アーティスト名 |
+
+#### 出力ファイル
+
+**生成されるファイル:**
+- `M_YT_LIVE.TSV` - 配信データ（タブ区切り、UTF-8エンコーディング）
+- `M_YT_LIVE_TIMESTAMP.TSV` - 楽曲タイムスタンプデータ（タブ区切り、UTF-8エンコーディング）
+- `V_SONG_LIST.TSV` - 楽曲リストデータ（song_list_generatorによって生成）
+
+**バックアップファイル:**
+- `data/backups/M_YT_LIVE_YYYYMMDD_HHMMSS.TSV`
+- `data/backups/M_YT_LIVE_TIMESTAMP_YYYYMMDD_HHMMSS.TSV`
+
+### データ検証
+
+ツールは以下の検証を自動的に実行します：
+
+**1. フィールド数の検証**
+- M_YT_LIVE.TSV: 各行に4つのフィールドが存在すること
+- M_YT_LIVE_TIMESTAMP.TSV: 各行に5つのフィールドが存在すること
+
+**2. データ型の検証**
+- IDフィールドが数値であること
+- 必須フィールドが空でないこと
+
+**3. URL形式の検証**
+- URLフィールドが有効なURL形式であること
+
+検証エラーが発生した場合、警告メッセージが表示されますが、処理は継続されます。致命的なエラーの場合は処理が中断され、バックアップから復元されます。
+
+### バックアップ機能
+
+既存のTSVファイルが存在する場合、上書きする前に自動的にバックアップが作成されます。
+
+**バックアップファイル名の形式:**
+```
+元のファイル名_YYYYMMDD_HHMMSS.TSV
+```
+
+**例:**
+```
+M_YT_LIVE_20250122_143025.TSV
+M_YT_LIVE_TIMESTAMP_20250122_143025.TSV
+```
+
+バックアップファイルは`data/backups/`ディレクトリに保存されます。ディレクトリが存在しない場合は自動的に作成されます。
+
+### エラーハンドリング
+
+ツールは以下のエラーに対して適切に対処します：
+
+**1. ファイル読み込みエラー**
+- Excelファイルが存在しない
+- Excelファイルが破損している
+- ファイルが他のプロセスで開かれている
+- 読み込み権限がない
+
+**2. データ検証エラー**
+- 必須シートが存在しない
+- フィールド数が不正
+- データ型が不正
+- URL形式が不正
+
+**3. ファイル書き込みエラー**
+- 書き込み権限がない
+- ディスク容量不足
+- ファイルパスが不正
+
+**4. 後続処理エラー**
+- song_list_generatorの実行に失敗
+
+エラー発生時は、詳細なエラーメッセージが表示され、既存のファイルはバックアップから復元されます。
+
+### トラブルシューティング
+
+#### 問題: Excelファイルが見つからない
+
+**エラーメッセージ:**
+```
+Error: Excel file not found: data/data.xlsx
+```
+
+**解決方法:**
+1. ファイルパスが正しいか確認してください
+2. `--input-file`オプションで正しいパスを指定してください
+3. ファイルが存在するか確認してください
+
+#### 問題: シートが見つからない
+
+**エラーメッセージ:**
+```
+Error: Required sheet 'M_YT_LIVE' not found in Excel file
+```
+
+**解決方法:**
+1. Excelファイルに必要なシート（M_YT_LIVE、M_YT_LIVE_TIMESTAMP）が存在するか確認してください
+2. シート名が正確に一致しているか確認してください（大文字小文字は区別されません）
+
+#### 問題: データ検証エラー
+
+**エラーメッセージ:**
+```
+Warning: Row 5 in M_YT_LIVE: Field count mismatch (expected 4, got 3)
+```
+
+**解決方法:**
+1. 該当行のデータを確認してください
+2. 必須フィールドがすべて入力されているか確認してください
+3. データ型が正しいか確認してください
+
+#### 問題: song_list_generatorの実行に失敗
+
+**エラーメッセージ:**
+```
+Error: Failed to run song_list_generator
+```
+
+**解決方法:**
+1. song_list_generatorが正しくインストールされているか確認してください
+2. `--skip-song-list`オプションを使用して、TSVファイルのみを生成してください
+3. 生成されたTSVファイルを確認し、手動でsong_list_generatorを実行してください
+
+#### 問題: 書き込み権限がない
+
+**エラーメッセージ:**
+```
+Error: Permission denied: data/M_YT_LIVE.TSV
+```
+
+**解決方法:**
+1. 出力ディレクトリへの書き込み権限があるか確認してください
+2. ファイルが他のプロセスで開かれていないか確認してください
+3. 管理者権限で実行してください（必要な場合）
+
+### ログ出力
+
+ツールは詳細なログを出力します。ログレベルは環境変数で制御できます。
+
+**ログレベルの設定:**
+
+```bash
+# DEBUGレベル（詳細なデバッグ情報）
+export SHINOUTA_LOG_LEVEL=DEBUG
+python -m src.cli.excel_to_tsv_cli
+
+# INFOレベル（一般的な情報）
+export SHINOUTA_LOG_LEVEL=INFO
+python -m src.cli.excel_to_tsv_cli
+
+# WARNINGレベル（警告のみ）
+export SHINOUTA_LOG_LEVEL=WARNING
+python -m src.cli.excel_to_tsv_cli
+```
+
+**ファイルログの有効化:**
+
+```bash
+export SHINOUTA_ENABLE_FILE_LOGGING=true
+export SHINOUTA_LOG_FILE=logs/excel_to_tsv.log
+python -m src.cli.excel_to_tsv_cli
+```
+
+### 関連ドキュメント
+
+詳細な仕様と設計については、以下のドキュメントを参照してください：
+
+- **要件定義書**: `.kiro/specs/excel-to-tsv-converter/requirements.md`
+- **設計書**: `.kiro/specs/excel-to-tsv-converter/design.md`
+- **実装タスクリスト**: `.kiro/specs/excel-to-tsv-converter/tasks.md`
+
 ## プロジェクト構造
 
 ```
@@ -412,17 +710,22 @@ TWITTER_API_RETRY_DELAY=1.0
 │   │   ├── __init__.py
 │   │   ├── data_service.py         # データ読み込みサービス
 │   │   ├── search_service.py       # 検索サービス
-│   │   └── twitter_embed_service.py # Twitter埋め込みサービス
+│   │   ├── twitter_embed_service.py # Twitter埋め込みサービス
+│   │   └── excel_to_tsv_service.py # Excel to TSV変換サービス
 │   ├── clients/                     # APIクライアント層
 │   │   ├── __init__.py
 │   │   └── twitter_api_client.py   # Twitter APIクライアント
 │   ├── repositories/                # データアクセス層
 │   │   ├── __init__.py
-│   │   └── file_repository.py      # ファイルリポジトリ
+│   │   ├── file_repository.py      # ファイルリポジトリ
+│   │   ├── excel_repository.py     # Excelリポジトリ
+│   │   ├── tsv_repository.py       # TSVリポジトリ
+│   │   └── backup_repository.py    # バックアップリポジトリ
 │   ├── models/                      # データモデル層
 │   │   ├── __init__.py
 │   │   ├── embed_result.py         # 埋め込みコード取得結果
-│   │   └── oembed_response.py      # oEmbedレスポンス
+│   │   ├── oembed_response.py      # oEmbedレスポンス
+│   │   └── excel_to_tsv_models.py  # Excel to TSV変換モデル
 │   ├── core/                        # コア機能層
 │   │   ├── __init__.py
 │   │   ├── data_pipeline.py        # データ処理パイプライン
@@ -434,7 +737,8 @@ TWITTER_API_RETRY_DELAY=1.0
 │   ├── cli/                         # コマンドラインインターフェース層
 │   │   ├── __init__.py
 │   │   ├── __main__.py
-│   │   └── twitter_embed_cli.py    # Twitter埋め込みCLI
+│   │   ├── twitter_embed_cli.py    # Twitter埋め込みCLI
+│   │   └── excel_to_tsv_cli.py     # Excel to TSV変換CLI
 │   ├── utils/                       # ユーティリティ層
 │   │   ├── __init__.py
 │   │   ├── validators.py           # バリデーター
@@ -449,13 +753,16 @@ TWITTER_API_RETRY_DELAY=1.0
 │   │   └── errors.py               # カスタム例外クラス
 │   └── __init__.py
 ├── data/
+│   ├── data.xlsx                   # 入力用Excelファイル（管理者向け）
 │   ├── M_YT_LIVE.TSV               # 配信データ
 │   ├── M_YT_LIVE_TIMESTAMP.TSV     # 楽曲タイムスタンプデータ
 │   ├── V_SONG_LIST.TSV             # 楽曲リストデータ
 │   ├── tweet_embed_code.html       # Twitter埋め込みコード
 │   ├── tweet_height.txt            # Twitter埋め込み高さ設定
 │   └── backups/                    # バックアップディレクトリ
-│       └── tweet_embed_code_*.html # バックアップファイル
+│       ├── M_YT_LIVE_*.TSV         # 配信データのバックアップ
+│       ├── M_YT_LIVE_TIMESTAMP_*.TSV # タイムスタンプデータのバックアップ
+│       └── tweet_embed_code_*.html # Twitter埋め込みコードのバックアップ
 ├── docs/                            # ドキュメント
 │   ├── architecture.md             # アーキテクチャドキュメント
 │   ├── data-flow.md               # データフロードキュメント
@@ -574,6 +881,11 @@ TWITTER_API_RETRY_DELAY=1.0
 - `.kiro/specs/twitter-embed-automation/requirements.md` - 要件定義書
 - `.kiro/specs/twitter-embed-automation/design.md` - 設計書
 - `.kiro/specs/twitter-embed-automation/tasks.md` - 実装タスクリスト
+
+**Excel to TSV変換:**
+- `.kiro/specs/excel-to-tsv-converter/requirements.md` - 要件定義書
+- `.kiro/specs/excel-to-tsv-converter/design.md` - 設計書
+- `.kiro/specs/excel-to-tsv-converter/tasks.md` - 実装タスクリスト
 
 ### 開発者向けドキュメント
 
