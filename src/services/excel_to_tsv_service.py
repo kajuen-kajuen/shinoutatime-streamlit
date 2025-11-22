@@ -153,14 +153,45 @@ class ExcelToTsvService:
                     header_row = rows[0]
                     data_rows = rows[1:]
                     
+                    # 必要な列のインデックスを特定
+                    column_indices = self._get_column_indices(
+                        header_row,
+                        mapping.headers
+                    )
+                    
+                    # 必要な列のみを抽出
+                    filtered_data_rows = []
+                    for row in data_rows:
+                        filtered_row = [
+                            row[i] if i < len(row) else None
+                            for i in column_indices
+                        ]
+                        
+                        # 空行をスキップ（すべてのフィールドが空の場合）
+                        if all(cell is None or str(cell).strip() == '' for cell in filtered_row):
+                            continue
+                        
+                        # IDのみが存在し、他のフィールドが空の行もスキップ
+                        if len(filtered_row) > 1 and all(
+                            cell is None or str(cell).strip() == '' 
+                            for cell in filtered_row[1:]
+                        ):
+                            continue
+                        
+                        # M_YT_LIVEシートの配信日を YYYY/M/D 形式に変換
+                        if mapping.sheet_name == "M_YT_LIVE" and len(filtered_row) > 1:
+                            filtered_row = self._format_date_field(filtered_row, 1)
+                        
+                        filtered_data_rows.append(filtered_row)
+                    
                     self.logger.info(
-                        f"シート '{mapping.sheet_name}': {len(data_rows)}行のデータ"
+                        f"シート '{mapping.sheet_name}': {len(filtered_data_rows)}行のデータ"
                     )
                     
                     # データ検証
                     validation_warnings = self.validate_sheet_data(
                         mapping.sheet_name,
-                        data_rows,
+                        filtered_data_rows,
                         len(mapping.required_fields)
                     )
                     warnings.extend(validation_warnings)
@@ -195,7 +226,7 @@ class ExcelToTsvService:
                         self.tsv_repo.save_tsv(
                             mapping.output_file,
                             mapping.headers,
-                            data_rows
+                            filtered_data_rows
                         )
                         
                         files_created.append(str(output_file_path))
@@ -206,7 +237,7 @@ class ExcelToTsvService:
                     else:
                         self.logger.info(
                             f"[ドライラン] TSVファイル: {mapping.output_file} "
-                            f"({len(data_rows)}行)"
+                            f"({len(filtered_data_rows)}行)"
                         )
                 
                 except DataLoadError as e:
@@ -342,6 +373,98 @@ class ExcelToTsvService:
                         ))
         
         return warnings
+    
+    def _format_date_field(
+        self,
+        row: List[Any],
+        date_field_index: int
+    ) -> List[Any]:
+        """
+        日付フィールドを YYYY/M/D 形式にフォーマット
+        
+        Args:
+            row: データ行
+            date_field_index: 日付フィールドのインデックス
+            
+        Returns:
+            フォーマット済みのデータ行
+        """
+        from datetime import datetime
+        
+        if date_field_index >= len(row):
+            return row
+        
+        date_value = row[date_field_index]
+        
+        if date_value is None:
+            return row
+        
+        try:
+            # datetimeオブジェクトの場合
+            if isinstance(date_value, datetime):
+                formatted_date = f"{date_value.year}/{date_value.month}/{date_value.day}"
+                row[date_field_index] = formatted_date
+            # 文字列の場合
+            elif isinstance(date_value, str):
+                # 既に YYYY/M/D 形式の場合はそのまま
+                if '/' in date_value and len(date_value.split('/')) == 3:
+                    parts = date_value.split('/')
+                    if len(parts[0]) == 4:  # YYYY/M/D 形式
+                        return row
+                
+                # YYYY-MM-DD HH:MM:SS 形式をパース
+                if ' ' in date_value:
+                    date_value = date_value.split(' ')[0]
+                
+                # YYYY-MM-DD 形式をパース
+                if '-' in date_value:
+                    dt = datetime.strptime(date_value, "%Y-%m-%d")
+                    formatted_date = f"{dt.year}/{dt.month}/{dt.day}"
+                    row[date_field_index] = formatted_date
+        except (ValueError, AttributeError) as e:
+            # パースに失敗した場合はそのまま
+            self.logger.debug(f"日付のフォーマットに失敗しました: {date_value} ({e})")
+        
+        return row
+    
+    def _get_column_indices(
+        self,
+        header_row: List[Any],
+        required_headers: List[str]
+    ) -> List[int]:
+        """
+        必要な列のインデックスを取得
+        
+        Args:
+            header_row: Excelファイルのヘッダー行
+            required_headers: 必要なヘッダー名のリスト
+            
+        Returns:
+            必要な列のインデックスのリスト
+        """
+        column_indices = []
+        
+        for required_header in required_headers:
+            # ヘッダー行から該当する列を検索
+            found = False
+            for i, cell_value in enumerate(header_row):
+                if cell_value and str(cell_value).strip() == required_header:
+                    column_indices.append(i)
+                    found = True
+                    break
+            
+            if not found:
+                # 見つからない場合は、順序に基づいてインデックスを使用
+                # （後方互換性のため）
+                index = len(column_indices)
+                if index < len(header_row):
+                    column_indices.append(index)
+                    self.logger.warning(
+                        f"ヘッダー '{required_header}' が見つかりません。"
+                        f"列{index + 1}を使用します。"
+                    )
+        
+        return column_indices
     
     def _is_valid_url(self, url: str) -> bool:
         """
