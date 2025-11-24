@@ -1,6 +1,7 @@
 """TSVファイルの書き込みを管理するリポジトリ"""
 
 import os
+from datetime import datetime, date
 from pathlib import Path
 from typing import List, Any
 import logging
@@ -95,6 +96,12 @@ class TsvRepository:
             # Noneや空の値を空文字列に変換
             if field is None:
                 field_str = ""
+            # datetimeオブジェクトの場合はYYYY-MM-DD形式に変換
+            elif isinstance(field, datetime):
+                field_str = field.strftime('%Y-%m-%d')
+            # dateオブジェクトの場合はYYYY-MM-DD形式に変換
+            elif isinstance(field, date):
+                field_str = field.strftime('%Y-%m-%d')
             else:
                 field_str = str(field)
             

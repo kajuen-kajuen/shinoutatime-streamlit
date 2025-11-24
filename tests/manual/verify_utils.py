@@ -6,7 +6,8 @@ import sys
 import os
 
 # プロジェクトルートをパスに追加
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, project_root)
 
 print("=== ユーティリティコンポーネントの検証 ===\n")
 
