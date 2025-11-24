@@ -50,6 +50,23 @@ class DataProcessingError(ShinoutaTimeError):
         super().__init__(f"データ処理エラー ({step}): {message}")
 
 
+class DataSaveError(ShinoutaTimeError):
+    """データ保存エラー
+    
+    ファイルへのデータ保存時に発生するエラーです。
+    """
+    
+    def __init__(self, file_path: str, message: str):
+        """
+        Args:
+            file_path: エラーが発生したファイルのパス
+            message: エラーメッセージ
+        """
+        self.file_path = file_path
+        self.message = message
+        super().__init__(f"データ保存エラー ({file_path}): {message}")
+
+
 class ConfigurationError(ShinoutaTimeError):
     """設定エラー
     
