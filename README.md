@@ -936,3 +936,30 @@ python -m src.cli.excel_to_tsv_cli
 **制作**: ファン有志  
 **対象VTuber**: 幽音しの（[@Shino_Kasukane_](https://x.com/Shino_Kasukane_)）  
 **公式YouTubeチャンネル**: [幽音しの / Shino Kasukane](https://www.youtube.com/@Shino_Kasukane)
+
+
+## 🛠️ ツールとスクリプト
+
+### Excel to TSV変換ツール
+
+Excelファイル（data.xlsx）から2つのTSVファイルを自動生成するツールです。
+
+**利用可能なスクリプト:**
+
+- `scripts/excel_to_tsv_converter.bat` - TSVファイルのみを生成（推奨）
+- `scripts/excel_to_tsv_full.bat` - TSVファイル + V_SONG_LIST.TSVを生成
+- `scripts/excel_to_tsv_dryrun.bat` - ドライランモード（ファイルを生成せずに確認）
+
+**使い方:**
+1. `data/data.xlsx` を配置
+2. `scripts/excel_to_tsv_converter.bat` をダブルクリック
+3. 処理完了を待つ
+
+詳細は [Excel to TSV変換ガイド](docs/guides/excel-to-tsv-guide.md) を参照してください。
+
+### 環境検証スクリプト
+
+開発環境が正しくセットアップされているか確認するスクリプトです。
+
+- `scripts/verify_environment.bat` (Windows)
+- `scripts/verify_environment.sh` (Linux/Mac)
