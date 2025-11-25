@@ -75,6 +75,32 @@ Excelファイルから配信データと楽曲データのTSVファイルを自
 
 詳細は「[Excel to TSV変換ツール](#excel-to-tsv変換ツール管理者向け)」セクションを参照してください。
 
+#### アーティスト名ソート修正機能
+
+V_SONG_LIST.TSVのアーティスト名（ソート用）が誤っている場合に修正できる機能です。
+
+**主な機能:**
+- ✅ 誤ったソート名の手動修正
+- ✅ 修正マッピングの永続化
+- ✅ コマンドラインインターフェース（CLI）
+- ✅ 修正マッピングの追加・更新・削除・一覧表示
+- ✅ 曲リスト生成時の自動適用
+
+**使用例:**
+
+```bash
+# 修正マッピングを追加
+docker exec shinoutatime-streamlit-shinouta-time-1 python -m src.cli.artist_sort_cli add "Vaundy" "Vaundy"
+
+# 修正マッピングを一覧表示
+docker exec shinoutatime-streamlit-shinouta-time-1 python -m src.cli.artist_sort_cli list
+
+# 修正マッピングを削除
+docker exec shinoutatime-streamlit-shinouta-time-1 python -m src.cli.artist_sort_cli delete "Vaundy"
+```
+
+詳細は[アーティスト名ソート修正機能 使い方](docs/guides/artist-sort-correction-guide.md)を参照してください。
+
 ## セットアップ手順
 
 本アプリケーションは、以下の2つの方法で環境構築が可能です：
@@ -280,6 +306,7 @@ data/
 ├── M_YT_LIVE.TSV               # 配信データ
 ├── M_YT_LIVE_TIMESTAMP.TSV     # 楽曲タイムスタンプデータ
 ├── V_SONG_LIST.TSV             # 楽曲リストデータ
+├── ARTIST_SORT_MAPPING.TSV     # アーティスト名ソート修正マッピング
 ├── tweet_embed_code.html       # Twitter埋め込みコード
 ├── tweet_height.txt            # Twitter埋め込み高さ設定
 └── backups/                    # バックアップディレクトリ
@@ -320,6 +347,18 @@ data/
 | アーティスト(ソート用) | 文字列 | アーティスト名（ソート用） |
 | 曲名 | 文字列 | 楽曲名 |
 | 最近の歌唱 | 文字列 | 最近の歌唱へのYouTube URL |
+
+#### ARTIST_SORT_MAPPING.TSV（アーティスト名ソート修正マッピング）
+アーティスト名とその正しいソート名の対応関係を保存するファイルです。
+
+| カラム名 | データ型 | 説明 |
+|---------|---------|------|
+| アーティスト名 | 文字列 | アーティスト名 |
+| ソート名 | 文字列 | 正しいソート名 |
+
+**形式**: TSV（タブ区切り）、UTF-8エンコーディング
+
+**用途**: 自動生成されたソート名が誤っている場合に、正しいソート名を手動で設定できます。
 
 ## Twitter埋め込みコード自動取得機能
 
@@ -711,7 +750,8 @@ python -m src.cli.excel_to_tsv_cli
 │   │   ├── data_service.py         # データ読み込みサービス
 │   │   ├── search_service.py       # 検索サービス
 │   │   ├── twitter_embed_service.py # Twitter埋め込みサービス
-│   │   └── excel_to_tsv_service.py # Excel to TSV変換サービス
+│   │   ├── excel_to_tsv_service.py # Excel to TSV変換サービス
+│   │   └── song_list_service.py    # 楽曲リスト生成サービス
 │   ├── clients/                     # APIクライアント層
 │   │   ├── __init__.py
 │   │   └── twitter_api_client.py   # Twitter APIクライアント
@@ -720,12 +760,14 @@ python -m src.cli.excel_to_tsv_cli
 │   │   ├── file_repository.py      # ファイルリポジトリ
 │   │   ├── excel_repository.py     # Excelリポジトリ
 │   │   ├── tsv_repository.py       # TSVリポジトリ
-│   │   └── backup_repository.py    # バックアップリポジトリ
+│   │   ├── backup_repository.py    # バックアップリポジトリ
+│   │   └── artist_sort_mapping_repository.py # アーティスト名ソート修正マッピングリポジトリ
 │   ├── models/                      # データモデル層
 │   │   ├── __init__.py
 │   │   ├── embed_result.py         # 埋め込みコード取得結果
 │   │   ├── oembed_response.py      # oEmbedレスポンス
-│   │   └── excel_to_tsv_models.py  # Excel to TSV変換モデル
+│   │   ├── excel_to_tsv_models.py  # Excel to TSV変換モデル
+│   │   └── artist_sort_models.py   # アーティスト名ソート修正モデル
 │   ├── core/                        # コア機能層
 │   │   ├── __init__.py
 │   │   ├── data_pipeline.py        # データ処理パイプライン
@@ -738,12 +780,14 @@ python -m src.cli.excel_to_tsv_cli
 │   │   ├── __init__.py
 │   │   ├── __main__.py
 │   │   ├── twitter_embed_cli.py    # Twitter埋め込みCLI
-│   │   └── excel_to_tsv_cli.py     # Excel to TSV変換CLI
+│   │   ├── excel_to_tsv_cli.py     # Excel to TSV変換CLI
+│   │   └── artist_sort_cli.py      # アーティスト名ソート修正CLI
 │   ├── utils/                       # ユーティリティ層
 │   │   ├── __init__.py
 │   │   ├── validators.py           # バリデーター
 │   │   ├── retry.py                # リトライロジック
-│   │   └── html_validator.py       # HTML検証
+│   │   ├── html_validator.py       # HTML検証
+│   │   └── artist_sort_generator.py # アーティスト名ソート生成
 │   ├── config/                      # 設定管理層
 │   │   ├── __init__.py
 │   │   ├── settings.py             # アプリケーション設定
@@ -757,6 +801,7 @@ python -m src.cli.excel_to_tsv_cli
 │   ├── M_YT_LIVE.TSV               # 配信データ
 │   ├── M_YT_LIVE_TIMESTAMP.TSV     # 楽曲タイムスタンプデータ
 │   ├── V_SONG_LIST.TSV             # 楽曲リストデータ
+│   ├── ARTIST_SORT_MAPPING.TSV     # アーティスト名ソート修正マッピング
 │   ├── tweet_embed_code.html       # Twitter埋め込みコード
 │   ├── tweet_height.txt            # Twitter埋め込み高さ設定
 │   └── backups/                    # バックアップディレクトリ
@@ -774,7 +819,10 @@ python -m src.cli.excel_to_tsv_cli
 │   ├── user-guide.md              # ユーザーガイド
 │   ├── twitter-embed-automation.md # Twitter埋め込み自動取得システム
 │   ├── twitter-embed-admin-guide.md # Twitter埋め込み管理画面ガイド
-│   └── twitter-embed-credentials.md # Twitter埋め込み技術ドキュメント
+│   ├── twitter-embed-credentials.md # Twitter埋め込み技術ドキュメント
+│   └── guides/                     # ガイドドキュメント
+│       ├── excel-to-tsv-guide.md  # Excel to TSV変換ガイド
+│       └── artist-sort-correction-guide.md # アーティスト名ソート修正ガイド
 ├── tests/                           # テストコード
 │   ├── unit/                       # ユニットテスト
 │   ├── property/                   # プロパティベーステスト
@@ -887,6 +935,11 @@ python -m src.cli.excel_to_tsv_cli
 - `.kiro/specs/excel-to-tsv-converter/design.md` - 設計書
 - `.kiro/specs/excel-to-tsv-converter/tasks.md` - 実装タスクリスト
 
+**アーティスト名ソート修正:**
+- `.kiro/specs/artist-sort-correction/requirements.md` - 要件定義書
+- `.kiro/specs/artist-sort-correction/design.md` - 設計書
+- `.kiro/specs/artist-sort-correction/tasks.md` - 実装タスクリスト
+
 ### 開発者向けドキュメント
 
 `docs/` ディレクトリに各種ドキュメントがあります：
@@ -905,6 +958,9 @@ python -m src.cli.excel_to_tsv_cli
 - `twitter-embed-automation.md` - Twitter埋め込みコード自動取得システム（使用方法、セットアップ手順）
 - `twitter-embed-admin-guide.md` - Twitter埋め込みコード管理画面 使用ガイド
 - `twitter-embed-credentials.md` - Twitter埋め込み機能 技術ドキュメント
+
+**アーティスト名ソート修正機能:**
+- `guides/artist-sort-correction-guide.md` - アーティスト名ソート修正機能 使い方
 
 ## 注意事項
 
