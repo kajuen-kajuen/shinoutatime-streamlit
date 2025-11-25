@@ -306,7 +306,7 @@ data/
 ├── M_YT_LIVE.TSV               # 配信データ
 ├── M_YT_LIVE_TIMESTAMP.TSV     # 楽曲タイムスタンプデータ
 ├── V_SONG_LIST.TSV             # 楽曲リストデータ
-├── artist_sort_mapping.tsv     # アーティスト名ソート修正マッピング
+├── ARTIST_SORT_MAPPING.TSV     # アーティスト名ソート修正マッピング
 ├── tweet_embed_code.html       # Twitter埋め込みコード
 ├── tweet_height.txt            # Twitter埋め込み高さ設定
 └── backups/                    # バックアップディレクトリ
@@ -348,7 +348,7 @@ data/
 | 曲名 | 文字列 | 楽曲名 |
 | 最近の歌唱 | 文字列 | 最近の歌唱へのYouTube URL |
 
-#### artist_sort_mapping.tsv（アーティスト名ソート修正マッピング）
+#### ARTIST_SORT_MAPPING.TSV（アーティスト名ソート修正マッピング）
 アーティスト名とその正しいソート名の対応関係を保存するファイルです。
 
 | カラム名 | データ型 | 説明 |
@@ -801,7 +801,7 @@ python -m src.cli.excel_to_tsv_cli
 │   ├── M_YT_LIVE.TSV               # 配信データ
 │   ├── M_YT_LIVE_TIMESTAMP.TSV     # 楽曲タイムスタンプデータ
 │   ├── V_SONG_LIST.TSV             # 楽曲リストデータ
-│   ├── artist_sort_mapping.tsv     # アーティスト名ソート修正マッピング
+│   ├── ARTIST_SORT_MAPPING.TSV     # アーティスト名ソート修正マッピング
 │   ├── tweet_embed_code.html       # Twitter埋め込みコード
 │   ├── tweet_height.txt            # Twitter埋め込み高さ設定
 │   └── backups/                    # バックアップディレクトリ

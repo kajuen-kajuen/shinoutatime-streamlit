@@ -42,14 +42,14 @@ class SongListService:
         Args:
             live_repo: 配信情報リポジトリ
             timestamp_repo: タイムスタンプ情報リポジトリ
-            mapping_file_path: 修正マッピングファイルのパス（オプション、デフォルト: data/artist_sort_mapping.tsv）
+            mapping_file_path: 修正マッピングファイルのパス（オプション、デフォルト: data/ARTIST_SORT_MAPPING.TSV）
         """
         self.live_repo = live_repo
         self.timestamp_repo = timestamp_repo
         
         # 修正マッピングファイルのパスを設定
         if mapping_file_path is None:
-            mapping_file_path = 'data/artist_sort_mapping.tsv'
+            mapping_file_path = 'data/ARTIST_SORT_MAPPING.TSV'
         
         # ArtistSortMappingRepositoryを初期化
         self.mapping_repository = ArtistSortMappingRepository(mapping_file_path)

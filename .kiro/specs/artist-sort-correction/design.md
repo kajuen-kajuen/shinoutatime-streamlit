@@ -44,7 +44,7 @@
                         ▼
 ┌─────────────────────────────────────────────────────────────┐
 │              修正マッピングファイル                            │
-│              (data/artist_sort_mapping.tsv)                   │
+│              (data/ARTIST_SORT_MAPPING.TSV)                   │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
@@ -286,7 +286,7 @@ class ArtistSortCLI:
 
 ### 修正マッピングファイル形式
 
-**ファイルパス**: `data/artist_sort_mapping.tsv`
+**ファイルパス**: `data/ARTIST_SORT_MAPPING.TSV`
 
 **形式**: TSV（タブ区切り）
 
@@ -554,7 +554,7 @@ Vaundy	ばうんでぃ
 
 ### ファイルパス
 
-- デフォルトパス: `data/artist_sort_mapping.tsv`
+- デフォルトパス: `data/ARTIST_SORT_MAPPING.TSV`
 - 環境変数での上書き: `ARTIST_SORT_MAPPING_FILE`
 
 ### ログ出力

@@ -199,8 +199,8 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         '--file',
         type=str,
-        default='data/artist_sort_mapping.tsv',
-        help='修正マッピングファイルのパス (デフォルト: data/artist_sort_mapping.tsv)'
+        default='data/ARTIST_SORT_MAPPING.TSV',
+        help='修正マッピングファイルのパス (デフォルト: data/ARTIST_SORT_MAPPING.TSV)'
     )
     
     # ログレベルのオプション

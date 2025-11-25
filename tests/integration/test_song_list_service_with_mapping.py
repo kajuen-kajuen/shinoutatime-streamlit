@@ -34,7 +34,7 @@ class TestSongListServiceWithMapping:
             # テスト用のTSVファイルを作成
             live_file = tmpdir_path / "M_YT_LIVE.TSV"
             timestamp_file = tmpdir_path / "M_YT_LIVE_TIMESTAMP.TSV"
-            mapping_file = tmpdir_path / "artist_sort_mapping.tsv"
+            mapping_file = tmpdir_path / "ARTIST_SORT_MAPPING.TSV"
             
             # M_YT_LIVE.TSVを作成
             live_file.write_text(
@@ -105,7 +105,7 @@ class TestSongListServiceWithMapping:
             # テスト用のTSVファイルを作成
             live_file = tmpdir_path / "M_YT_LIVE.TSV"
             timestamp_file = tmpdir_path / "M_YT_LIVE_TIMESTAMP.TSV"
-            mapping_file = tmpdir_path / "artist_sort_mapping.tsv"
+            mapping_file = tmpdir_path / "ARTIST_SORT_MAPPING.TSV"
             
             # M_YT_LIVE.TSVを作成
             live_file.write_text(
@@ -224,7 +224,7 @@ class TestSongListServiceWithMapping:
             # テスト用のTSVファイルを作成
             live_file = tmpdir_path / "M_YT_LIVE.TSV"
             timestamp_file = tmpdir_path / "M_YT_LIVE_TIMESTAMP.TSV"
-            mapping_file = tmpdir_path / "artist_sort_mapping.tsv"
+            mapping_file = tmpdir_path / "ARTIST_SORT_MAPPING.TSV"
             
             # M_YT_LIVE.TSVを作成
             live_file.write_text(
@@ -287,7 +287,7 @@ class TestSongListServiceWithMapping:
             # テスト用のTSVファイルを作成
             live_file = tmpdir_path / "M_YT_LIVE.TSV"
             timestamp_file = tmpdir_path / "M_YT_LIVE_TIMESTAMP.TSV"
-            mapping_file = tmpdir_path / "artist_sort_mapping.tsv"
+            mapping_file = tmpdir_path / "ARTIST_SORT_MAPPING.TSV"
             
             # M_YT_LIVE.TSVを作成（2つの配信）
             live_file.write_text(
