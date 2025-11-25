@@ -5,6 +5,7 @@ SongListServiceのユニットテスト
 import pytest
 from datetime import datetime
 from unittest.mock import Mock, MagicMock
+import unittest.mock
 
 from src.services.song_list_service import SongListService
 from src.models.song_list_models import LiveInfo, TimestampInfo, SongInfo
@@ -238,6 +239,59 @@ class TestSongListService:
         # 曲名が昇順にソートされていることを確認
         song_names = [song.song_name for song in songs]
         assert song_names == sorted(song_names)
+
+    def test_check_similarity(self, service):
+        """類似性チェックのテスト"""
+        songs = [
+            SongInfo(artist="ArtistA", artist_sort="A", song_name="SongA", latest_url="url1"),
+            SongInfo(artist="ArtistB", artist_sort="B", song_name="SongB", latest_url="url2"),
+            SongInfo(artist="ArtistA", artist_sort="A", song_name="SongA (cover)", latest_url="url3"), # Similar to SongA
+        ]
+        
+        # Mock similarity checker to return a match
+        service.similarity_checker.find_similar_pairs = Mock(return_value=[
+            ("SongA", "SongA (cover)", 0.9)
+        ])
+        
+        warnings = service.check_similarity(songs)
+        
+        # Check if warnings are generated
+        assert len(warnings) > 0
+        # We might get artist warnings too because the mock returns the same result for both calls
+        # So we check if at least one warning is of type 'song'
+        song_warnings = [w for w in warnings if w.type == 'song']
+        assert len(song_warnings) > 0
+        assert song_warnings[0].similarity == 0.9
+
+    def test_compare_with_existing(self, service):
+        """既存ファイルとの差分検出テスト"""
+        new_songs = [
+            SongInfo(artist="A", artist_sort="A", song_name="Song1", latest_url="url1"), # Existing
+            SongInfo(artist="B", artist_sort="B", song_name="Song2", latest_url="url2"), # New
+        ]
+        
+        # Mock SongListRepository to return existing songs
+        with unittest.mock.patch('src.services.song_list_service.SongListRepository') as MockRepo:
+            mock_repo_instance = MockRepo.return_value
+            mock_repo_instance.load_all.return_value = [
+                SongInfo(artist="A", artist_sort="A", song_name="Song1", latest_url="url1"),
+                SongInfo(artist="C", artist_sort="C", song_name="Song3", latest_url="url3"), # Removed
+            ]
+            
+            diff = service.compare_with_existing(new_songs, "dummy_path")
+            
+            assert len(diff.added) == 1
+            assert diff.added[0].song_name == "Song2"
+            
+            assert len(diff.removed) == 1
+            assert diff.removed[0].song_name == "Song3"
+            
+            assert len(diff.updated) == 0
+
+    def test_select_latest_from_records_empty(self, service):
+        """空のレコードリストからの選択テスト"""
+        result = service._select_latest_from_records([])
+        assert result is None
 
 
 if __name__ == "__main__":
