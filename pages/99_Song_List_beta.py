@@ -180,6 +180,16 @@ df_original = load_song_list()
 
 # --- メインコンテンツの表示 ---
 if df_original is not None:
+    # フィルタリング処理: アーティスト名が「-」の楽曲を除外
+    # 
+    # フィルタリング仕様:
+    # - "アーティスト" 列が「-」（ハイフン）の行を除外
+    # - Pandasのベクトル化された操作を使用して効率的に処理
+    # - 元のデータファイルは変更せず、メモリ上のDataFrameのみを操作
+    # 
+    # 要件: 1.1, 1.2, 1.5, 2.1
+    df_filtered = df_original[df_original["アーティスト"] != "-"].copy()
+    
     # ソート処理: アーティスト名でデータを並び替え
     # 
     # ソート仕様:
@@ -193,7 +203,7 @@ if df_original is not None:
     # - 日本語の五十音順ソートには対応していません
     #
     # 要件: 8.2, 8.3
-    df_sorted = df_original.sort_values(
+    df_sorted = df_filtered.sort_values(
         by="アーティスト(ソート用)", 
         na_position='last',
         key=lambda col: col.str.lower(),
@@ -220,8 +230,13 @@ if df_original is not None:
     )
 
     # 全件数の表示
-    # 要件: 8.5
-    st.markdown(f"**全 {len(df_original)} 件表示**")
+    # 
+    # フィルタリング後の正確な件数を表示します。
+    # アーティスト名が「-」の楽曲は除外されているため、
+    # df_filtered（フィルタリング済みDataFrame）の行数を使用します。
+    # 
+    # 要件: 1.4（フィルタリング後の正確な件数を表示）, 8.5
+    st.markdown(f"**全 {len(df_filtered)} 件表示**")
 
     # テーブルの表示
     # 表示列の選択（ソート用の列は内部処理のみで使用）

@@ -96,15 +96,37 @@ inclusion: always
 - すべてのPython関連コマンドは、Dev ContainerまたはDockerコンテナ内で実行してください
 - これにより、環境の一貫性が保たれ、依存関係の問題を回避できます
 
+#### Docker実行コマンド
+
+テスト時やPythonコマンドを実行する際は、以下のコマンドを使用してください：
+
+```bash
+docker exec shinoutatime-streamlit-shinouta-time-1 <コマンド>
+```
+
+**例**：
+```bash
+# pytestの実行
+docker exec shinoutatime-streamlit-shinouta-time-1 pytest
+
+# 特定のテストファイルの実行
+docker exec shinoutatime-streamlit-shinouta-time-1 pytest tests/unit/test_example.py
+
+# Pythonスクリプトの実行
+docker exec shinoutatime-streamlit-shinouta-time-1 python src/script.py
+```
+
 #### Kiroへの指示
 
-- **すべてのPythonコマンドは、Dockerコンテナ内で実行してください**
+- **すべてのPythonコマンドは、`docker exec shinoutatime-streamlit-shinouta-time-1`を使用してDockerコンテナ内で実行してください**
+- **動作確認および単体テストを行う際は、必ずDockerコンテナを起動して対応してください**
 - コード変更後は、必要に応じてPythonコマンドを実行して動作確認してください
-- テストコードを記述した場合は、`pytest`を実行して結果を確認してください
+- テストコードを記述した場合は、`docker exec shinoutatime-streamlit-shinouta-time-1 pytest`を実行して結果を確認してください
 - 新しい機能を実装した場合は、実際に動作することを確認してください
 - エラーが発生した場合は、適切にデバッグして修正してください
 - 開発サーバーの起動が必要な場合は、`streamlit run`などのコマンドを使用してください
 - Python実行時は、Dev Container環境内であることを前提としてください
+- テスト実行前に、Dockerコンテナが起動していることを確認してください
 
 ## 理由
 
