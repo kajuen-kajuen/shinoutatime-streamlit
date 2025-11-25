@@ -6,7 +6,7 @@
 
 import logging
 import re
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 from datetime import datetime
 
 from src.models.song_list_models import (
@@ -15,6 +15,7 @@ from src.models.song_list_models import (
 from src.repositories.live_repository import LiveRepository
 from src.repositories.timestamp_repository import TimestampRepository
 from src.repositories.song_list_repository import SongListRepository
+from src.repositories.artist_sort_mapping_repository import ArtistSortMappingRepository
 from src.utils.artist_sort_generator import ArtistSortGenerator
 from src.utils.url_generator import URLGenerator
 from src.utils.similarity_checker import SimilarityChecker
@@ -32,7 +33,8 @@ class SongListService:
     def __init__(
         self, 
         live_repo: LiveRepository, 
-        timestamp_repo: TimestampRepository
+        timestamp_repo: TimestampRepository,
+        mapping_file_path: Optional[str] = None
     ):
         """
         サービスを初期化
@@ -40,10 +42,21 @@ class SongListService:
         Args:
             live_repo: 配信情報リポジトリ
             timestamp_repo: タイムスタンプ情報リポジトリ
+            mapping_file_path: 修正マッピングファイルのパス（オプション、デフォルト: data/artist_sort_mapping.tsv）
         """
         self.live_repo = live_repo
         self.timestamp_repo = timestamp_repo
-        self.artist_sort_generator = ArtistSortGenerator()
+        
+        # 修正マッピングファイルのパスを設定
+        if mapping_file_path is None:
+            mapping_file_path = 'data/artist_sort_mapping.tsv'
+        
+        # ArtistSortMappingRepositoryを初期化
+        self.mapping_repository = ArtistSortMappingRepository(mapping_file_path)
+        
+        # ArtistSortGeneratorを初期化し、マッピングリポジトリを設定
+        self.artist_sort_generator = ArtistSortGenerator(self.mapping_repository)
+        
         self.url_generator = URLGenerator()
         self.similarity_checker = SimilarityChecker()
         self.logger = logging.getLogger(__name__)
@@ -57,6 +70,13 @@ class SongListService:
         Returns:
             曲情報のリスト
         """
+        # 修正マッピングの読み込み状況をログに記録
+        mappings = self.mapping_repository.get_all_mappings()
+        if mappings:
+            self.logger.info(f"修正マッピングを読み込みました: {len(mappings)}件")
+        else:
+            self.logger.info("修正マッピングは設定されていません")
+        
         # データを読み込む
         self.logger.info("配信情報を読み込んでいます...")
         live_infos = self.live_repo.load_all()
@@ -82,6 +102,9 @@ class SongListService:
         song_list = self._select_latest_songs_with_normalization(filtered_data)
         
         self.logger.info(f"生成された曲数: {len(song_list)}")
+        
+        # 修正マッピングの適用状況をログに記録
+        self._log_mapping_application_status(song_list, mappings)
         
         # ソート処理
         self.logger.info("曲リストをソートしています...")
@@ -350,6 +373,38 @@ class SongListService:
         )
         
         return sorted_records[0]
+    
+    def _log_mapping_application_status(
+        self, 
+        songs: List[SongInfo], 
+        mappings: Dict[str, str]
+    ) -> None:
+        """
+        修正マッピングの適用状況をログに記録
+        
+        Args:
+            songs: 曲情報のリスト
+            mappings: 修正マッピング辞書
+        """
+        if not mappings:
+            return
+        
+        # 適用されたマッピングを追跡
+        applied_mappings = set()
+        
+        for song in songs:
+            if song.artist in mappings:
+                applied_mappings.add(song.artist)
+        
+        # ログに記録
+        if applied_mappings:
+            self.logger.info(
+                f"修正マッピングを適用しました: {len(applied_mappings)}件 / {len(mappings)}件"
+            )
+            for artist in sorted(applied_mappings):
+                self.logger.info(f"  - {artist} -> {mappings[artist]}")
+        else:
+            self.logger.info("修正マッピングは適用されませんでした")
     
     def _sort_songs(self, songs: List[SongInfo]) -> List[SongInfo]:
         """

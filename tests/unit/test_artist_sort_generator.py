@@ -2,7 +2,10 @@
 ArtistSortGeneratorのユニットテスト
 """
 import pytest
+import tempfile
+import os
 from src.utils.artist_sort_generator import ArtistSortGenerator
+from src.repositories.artist_sort_mapping_repository import ArtistSortMappingRepository
 
 
 class TestArtistSortGenerator:
@@ -56,3 +59,68 @@ class TestArtistSortGenerator:
         
         result2 = generator.generate("ヨルシカ")
         assert result2 is not None
+
+
+class TestArtistSortGeneratorWithMapping:
+    """マッピングリポジトリを使用したArtistSortGeneratorのテストクラス"""
+    
+    @pytest.fixture
+    def temp_mapping_file(self):
+        """テスト用の一時マッピングファイル"""
+        with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', delete=False, suffix='.tsv') as f:
+            temp_file = f.name
+            # ヘッダーとサンプルマッピングを書き込む
+            f.write("アーティスト名\tソート名\n")
+            f.write("米津玄師\tよねづけんし\n")
+            f.write("Official髭男dism\tおふぃしゃるひげだんでぃずむ\n")
+        
+        yield temp_file
+        
+        # クリーンアップ
+        if os.path.exists(temp_file):
+            os.unlink(temp_file)
+    
+    def test_mapping_exists(self, temp_mapping_file):
+        """マッピングが存在する場合、マッピングのソート名が返される"""
+        # 要件2.1: マッピングが存在する場合はマッピングを使用
+        repository = ArtistSortMappingRepository(temp_mapping_file)
+        generator = ArtistSortGenerator(mapping_repository=repository)
+        
+        result = generator.generate("米津玄師")
+        assert result == "よねづけんし"
+        
+        result2 = generator.generate("Official髭男dism")
+        assert result2 == "おふぃしゃるひげだんでぃずむ"
+    
+    def test_mapping_not_exists(self, temp_mapping_file):
+        """マッピングが存在しない場合、自動生成されたソート名が返される"""
+        # 要件2.2: マッピングが存在しない場合は自動生成
+        repository = ArtistSortMappingRepository(temp_mapping_file)
+        generator = ArtistSortGenerator(mapping_repository=repository)
+        
+        # マッピングに存在しないアーティスト名
+        result = generator.generate("Vaundy")
+        assert result == "Vaundy"  # 英数字のみなのでそのまま
+    
+    def test_no_mapping_repository(self):
+        """マッピングリポジトリが設定されていない場合、自動生成される"""
+        # 要件2.2: マッピングリポジトリがない場合は自動生成
+        generator = ArtistSortGenerator()
+        
+        result = generator.generate("Vaundy")
+        assert result == "Vaundy"
+    
+    def test_set_mapping_repository(self, temp_mapping_file):
+        """set_mapping_repository()でマッピングリポジトリを設定できる"""
+        generator = ArtistSortGenerator()
+        repository = ArtistSortMappingRepository(temp_mapping_file)
+        
+        # 最初はマッピングなし
+        result_before = generator.generate("米津玄師")
+        
+        # マッピングリポジトリを設定
+        generator.set_mapping_repository(repository)
+        
+        # マッピングが適用される
+        result_after = generator.generate("米津玄師")
+        assert result_after == "よねづけんし"
