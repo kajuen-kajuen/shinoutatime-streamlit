@@ -70,7 +70,8 @@ class TestExcelToTsvServiceConversion:
             # ファイルの内容を確認
             live_content = live_file.read_text(encoding='utf-8')
             assert "ID\t配信日\tタイトル\tURL" in live_content
-            assert "1\t2024-01-01\tテスト配信\thttps://example.com/1" in live_content
+            # Excelから読み込んだ日付は YYYY/M/D 形式で出力される
+            assert "1\t2024/1/1\tテスト配信\thttps://example.com/1" in live_content
     
     def test_convert_excel_to_tsv_file_not_exists(self):
         """存在しないファイルの処理（要件1.3）"""

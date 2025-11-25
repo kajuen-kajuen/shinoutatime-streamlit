@@ -86,9 +86,10 @@ class TestExcelToTsvIntegrationEndToEnd:
             
             # データ行を検証（要件3.1, 4.1）
             assert len(lines) == 4  # ヘッダー + 3データ行
-            assert "1\t2024-01-01\t新年配信\thttps://youtube.com/watch?v=1" in lines[1]
-            assert "2\t2024-01-15\t歌枠配信\thttps://youtube.com/watch?v=2" in lines[2]
-            assert "3\t2024-02-01\t雑談配信\thttps://youtube.com/watch?v=3" in lines[3]
+            # Excelから読み込んだ日付は YYYY/M/D 形式で出力される
+            assert "1\t2024/1/1\t新年配信\thttps://youtube.com/watch?v=1" in lines[1]
+            assert "2\t2024/1/15\t歌枠配信\thttps://youtube.com/watch?v=2" in lines[2]
+            assert "3\t2024/2/1\t雑談配信\thttps://youtube.com/watch?v=3" in lines[3]
             
             # M_YT_LIVE_TIMESTAMP.TSVの内容を検証
             timestamp_content = timestamp_file.read_text(encoding='utf-8')
