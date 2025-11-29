@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 import logging
+import chardet # chardetをインポート
 
 from src.exceptions.errors import FileWriteError
 
@@ -57,12 +58,24 @@ class FileRepository:
                 )
                 return None
             
-            with open(self.embed_code_path, 'r', encoding='utf-8') as f:
-                content = f.read()
+            # ファイルをバイナリモードで読み込み、エンコーディングを検出
+            with open(self.embed_code_path, 'rb') as f_raw:
+                raw_data = f_raw.read()
             
-            self.logger.debug(
-                f"埋め込みコードを読み込みました: {self.embed_code_path}"
-            )
+            detected_encoding = chardet.detect(raw_data)['encoding']
+            
+            if detected_encoding:
+                # 検出されたエンコーディングでファイルを読み込む
+                content = raw_data.decode(detected_encoding)
+                self.logger.debug(
+                    f"埋め込みコードを読み込みました: {self.embed_code_path} (エンコーディング: {detected_encoding})"
+                )
+            else:
+                self.logger.warning(
+                    f"埋め込みコードファイルのエンコーディングを検出できませんでした: {self.embed_code_path}。UTF-8として読み込みを試みます。"
+                )
+                content = raw_data.decode('utf-8', errors='replace') # デコードエラーを置換
+            
             return content
             
         except Exception as e:

@@ -10,11 +10,17 @@
 
 ```
 data/
-├── M_YT_LIVE.TSV              # 配信データ
-├── M_YT_LIVE_TIMESTAMP.TSV    # 楽曲タイムスタンプデータ
-├── V_SONG_LIST.TSV            # 楽曲リストデータ
-├── tweet_embed_code.html      # Twitter埋め込みコード
-└── tweet_height.txt           # Twitter埋め込み高さ設定
+├── data.xlsx                   # 入力用Excelファイル（管理者向け）
+├── M_YT_LIVE.TSV               # 配信データ
+├── M_YT_LIVE_TIMESTAMP.TSV     # 楽曲タイムスタンプデータ
+├── V_SONG_LIST.TSV             # 楽曲リストデータ
+├── ARTIST_SORT_MAPPING.TSV     # アーティスト名ソート修正マッピング
+├── tweet_embed_code.html       # Twitter埋め込みコード
+├── tweet_height.txt            # Twitter埋め込み高さ設定
+└── backups/                    # バックアップディレクトリ
+    ├── M_YT_LIVE_*.TSV         # 配信データのバックアップ
+    ├── M_YT_LIVE_TIMESTAMP_*.TSV # タイムスタンプデータのバックアップ
+    └── tweet_embed_code_*.html # Twitter埋め込みコードのバックアップ
 ```
 
 ## データフォーマット仕様
@@ -175,42 +181,33 @@ Twitter埋め込みの表示高さを設定するファイルです。
 
 ## データ更新手順
 
-### 新しい配信データの追加
+### Excelファイルからのデータ更新 (推奨)
 
-1. **M_YT_LIVE.TSVの更新**
-   ```
-   1. ファイルを開く
-   2. 最終行の次に新しい行を追加
-   3. ID: 既存の最大ID + 1
-   4. 配信日: YYYY/M/D形式で入力
-   5. タイトル: 配信タイトルを入力
-   6. URL: YouTube配信URLを入力
-   7. 保存
-   ```
+`data/data.xlsx`を更新した後、以下の統合スクリプトを実行することで、関連するTSVファイルを自動的に生成・更新できます。
 
-2. **M_YT_LIVE_TIMESTAMP.TSVの更新**
-   ```
-   1. ファイルを開く
-   2. 配信内で歌唱された各楽曲について、新しい行を追加
-   3. ID: 既存の最大ID + 1（楽曲ごとに連番）
-   4. LIVE_ID: 手順1で追加した配信のID
-   5. タイムスタンプ: 配信動画から歌唱開始時刻を確認して入力
-   6. 曲名: 楽曲名を入力
-   7. アーティスト: アーティスト名を入力
-   8. 保存
-   ```
+1.  `data/data.xlsx` を最新の情報に更新します。
+2.  以下のコマンドを実行します。
+    ```bash
+    scripts/excel_to_tsv.bat full
+    ```
+    - このコマンドは、`M_YT_LIVE.TSV`、`M_YT_LIVE_TIMESTAMP.TSV`、`V_SONG_LIST.TSV`を生成・更新します。
+    - 各TSVファイルは更新前に自動的にバックアップされます。
+    - 詳細は [Excel to TSV変換ガイド](../guides/excel-to-tsv-guide.md) を参照してください。
 
-3. **V_SONG_LIST.TSVの更新**
-   ```
-   1. ファイルを開く
-   2. 新しく追加した楽曲について、既存のエントリを検索
-   3. 既存のエントリがある場合:
-      - 「最近の歌唱」列のURLを更新
-   4. 既存のエントリがない場合:
-      - 新しい行を追加
-      - アーティスト、アーティスト(ソート用)、曲名、最近の歌唱を入力
-   5. 保存
-   ```
+### Twitter埋め込みコードの更新
+
+Twitterの埋め込みコードは、以下のCLIツールまたはStreamlit管理画面から更新できます。
+
+#### コマンドラインインターフェース (CLI)
+```bash
+docker-compose exec shinouta-time python -m src.cli.twitter_embed_cli [ツイートURL...]
+```
+- 詳細は [Twitter埋め込みコード自動取得システム](../twitter-embed-automation.md) を参照してください。
+
+#### Streamlit管理画面 (UI)
+1. Streamlitアプリケーションを起動し、サイドバーから「Twitter Embed Admin」ページにアクセスします。
+2. 管理者パスワードを入力してログインし、ツイートURLを入力して更新します。
+- 詳細は [Twitter埋め込みコード管理画面 使用ガイド](../twitter-embed-admin-guide.md) を参照してください。
 
 ### タイムスタンプ付きURLの作成方法
 

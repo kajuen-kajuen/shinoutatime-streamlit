@@ -78,9 +78,6 @@
 shinoutatime-streamlit/
 ├── .devcontainer/          # Dev Container設定
 ├── .github/                # GitHub設定
-├── .kiro/                  # Kiro設定
-│   ├── specs/             # 機能仕様書
-│   └── steering/          # ステアリングルール
 ├── .streamlit/            # Streamlit設定
 ├── data/                  # データファイル
 │   ├── backups/          # バックアップ
@@ -88,23 +85,13 @@ shinoutatime-streamlit/
 │   └── *.TSV             # 生成されたTSVファイル
 ├── docs/                  # ドキュメント
 │   ├── architecture/     # アーキテクチャドキュメント
-│   │   ├── architecture.md
-│   │   ├── data-flow.md
-│   │   └── error-handling.md
 │   ├── development/      # 開発関連ドキュメント
-│   │   ├── BRANCH_STRATEGY.md
-│   │   └── FILE_ORGANIZATION_SUMMARY.md
 │   ├── guides/           # ガイド
-│   │   ├── developer-guide.md
-│   │   ├── excel-to-tsv-guide.md
-│   │   └── user-guide.md
 │   └── testing/          # テスト関連
 ├── logs/                  # ログファイル
 ├── pages/                 # Streamlitページ
-├── scripts/               # 実行スクリプト ⭐ 新規
-│   ├── excel_to_tsv_converter.bat
-│   ├── excel_to_tsv_dryrun.bat
-│   ├── excel_to_tsv_full.bat
+├── scripts/               # 実行スクリプト
+│   ├── excel_to_tsv.bat
 │   ├── verify_environment.bat
 │   └── verify_environment.sh
 ├── src/                   # ソースコード
@@ -121,7 +108,7 @@ shinoutatime-streamlit/
 ├── tests/                 # テスト
 │   ├── fixtures/         # テストフィクスチャ
 │   ├── integration/      # 統合テスト
-│   ├── manual/           # 手動テスト ⭐ 整理済み
+│   ├── manual/           # 手動テスト
 │   ├── property/         # プロパティベーステスト
 │   └── unit/             # ユニットテスト
 ├── .gitignore             # Git除外設定
@@ -131,8 +118,7 @@ shinoutatime-streamlit/
 ├── Dockerfile             # Dockerイメージ定義
 ├── Home.py                # Streamlitメインページ
 ├── LICENSE                # ライセンス
-├── PROJECT_STRUCTURE.md   # プロジェクト構造ガイド
-├── README.md              # プロジェクト概要 ⭐ 更新済み
+├── README.md              # プロジェクト概要
 ├── requirements.txt       # Python依存関係
 ├── SETUP.md               # セットアップガイド
 └── TROUBLESHOOTING.md     # トラブルシューティング
@@ -140,17 +126,16 @@ shinoutatime-streamlit/
 
 ## 削除されたファイル（ルートディレクトリから）
 
-- ❌ `excel_to_tsv_converter.bat` → `scripts/` に移動
-- ❌ `excel_to_tsv_full.bat` → `scripts/` に移動
-- ❌ `excel_to_tsv_dryrun.bat` → `scripts/` に移動
-- ❌ `verify_environment.bat` → `scripts/` に移動
-- ❌ `verify_environment.sh` → `scripts/` に移動
+- ❌ `excel_to_tsv_converter.bat` → `scripts/excel_to_tsv.bat` に統合
+- ❌ `excel_to_tsv_full.bat` → `scripts/excel_to_tsv.bat` に統合
+- ❌ `excel_to_tsv_dryrun.bat` → `scripts/excel_to_tsv.bat` に統合
 - ❌ `test_repositories_manual.py` → `tests/manual/` に移動
 - ❌ `test_utils_manual.py` → `tests/manual/` に移動
 - ❌ `verify_utils.py` → `tests/manual/` に移動
-- ❌ `EXCEL_TO_TSV_README.md` → `docs/guides/` に移動
+- ❌ `EXCEL_TO_TSV_README.md` → `docs/guides/excel-to-tsv-guide.md` に移動
 - ❌ `BRANCH_STRATEGY.md` → `docs/development/` に移動
 - ❌ `FILE_ORGANIZATION_SUMMARY.md` → `docs/development/` に移動
+- ❌ `PROJECT_STRUCTURE.md` → `README.md` に統合（記載内容を更新）
 
 ## 整理の効果
 

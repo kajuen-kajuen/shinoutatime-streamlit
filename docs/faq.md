@@ -357,7 +357,7 @@
 - **データ形式**: TSV (Tab-Separated Values)
 - **スタイリング**: CSS
 
-詳細は、[開発者ガイド](developer-guide.md)をご覧ください。
+詳細は、[開発者ガイド](guides/developer-guide.md)をご覧ください。
 
 ### Q32: ソースコードは公開されていますか？
 
@@ -380,7 +380,7 @@
    streamlit run Home.py
    ```
 
-詳細は、[README.md](../README.md)および[開発者ガイド](developer-guide.md)をご覧ください。
+詳細は、[README.md](../README.md)および[開発者ガイド](guides/developer-guide.md)をご覧ください。
 
 ### Q34: データファイルの形式は何ですか？
 
@@ -443,10 +443,10 @@
 
 ## 関連ドキュメント
 
-- [ユーザーガイド](user-guide.md): 各機能の詳しい使い方
+- [ユーザーガイド](guides/user-guide.md): 各機能の詳しい使い方
 - [README.md](../README.md): プロジェクト概要とセットアップ手順
-- [開発者ガイド](developer-guide.md): 開発者向けの技術情報
-- [About Us](../pages/02_About_Us.py): サイトの目的と注意事項
+- [開発者ガイド](guides/developer-guide.md): 開発者向けの技術情報
+- **About Us**: サイトの「About Us」ページをご覧ください。
 
 ---
 
