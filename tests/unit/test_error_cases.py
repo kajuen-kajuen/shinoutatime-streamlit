@@ -72,16 +72,13 @@ class TestErrorCases:
             temp_file = f.name
 
         try:
-            repo = FileRepository()
+            # embed_code_pathとしてtemp_fileを渡し、chardetによるエンコーディング検出をテスト
+            repo = FileRepository(temp_file, "dummy_height.txt")
 
-            # UTF-8として読み込み、エンコーディングエラーが発生することを確認
-            with pytest.raises(UnicodeDecodeError):
-                with open(temp_file, 'r', encoding='utf-8') as f:
-                    f.read()
-
-            # FileRepositoryはchardetでエンコーディングを検出するので、正しく読み込めるはず
-            result = repo.read_file(temp_file)
-            assert result is not None
+            # FileRepositoryのread_embed_codeがShift-JISファイルを正しく読み込めることを確認
+            result = repo.read_embed_code()
+            assert result.strip() == test_content.strip()
+            # UnicodeDecodeErrorは内部で処理されるため、pytest.raisesは不要
 
         finally:
             os.unlink(temp_file)
