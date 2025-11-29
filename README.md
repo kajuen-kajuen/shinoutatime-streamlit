@@ -738,103 +738,43 @@ python -m src.cli.excel_to_tsv_cli
 
 ```
 .
-├── Home.py                          # メインページ（検索機能）
-├── pages/
-│   ├── 01_Information.py           # 情報ページ
-│   ├── 02_About_Us.py              # About Usページ
-│   ├── 80_Twitter_Embed_Admin.py   # Twitter埋め込みコード管理画面
-│   └── 99_Song_List_beta.py        # 楽曲リストページ（β版）
-├── src/                             # ソースコードモジュール
-│   ├── services/                    # ビジネスロジック層
-│   │   ├── __init__.py
-│   │   ├── data_service.py         # データ読み込みサービス
-│   │   ├── search_service.py       # 検索サービス
-│   │   ├── twitter_embed_service.py # Twitter埋め込みサービス
-│   │   ├── excel_to_tsv_service.py # Excel to TSV変換サービス
-│   │   └── song_list_service.py    # 楽曲リスト生成サービス
-│   ├── clients/                     # APIクライアント層
-│   │   ├── __init__.py
-│   │   └── twitter_api_client.py   # Twitter APIクライアント
-│   ├── repositories/                # データアクセス層
-│   │   ├── __init__.py
-│   │   ├── file_repository.py      # ファイルリポジトリ
-│   │   ├── excel_repository.py     # Excelリポジトリ
-│   │   ├── tsv_repository.py       # TSVリポジトリ
-│   │   ├── backup_repository.py    # バックアップリポジトリ
-│   │   └── artist_sort_mapping_repository.py # アーティスト名ソート修正マッピングリポジトリ
-│   ├── models/                      # データモデル層
-│   │   ├── __init__.py
-│   │   ├── embed_result.py         # 埋め込みコード取得結果
-│   │   ├── oembed_response.py      # oEmbedレスポンス
-│   │   ├── excel_to_tsv_models.py  # Excel to TSV変換モデル
-│   │   └── artist_sort_models.py   # アーティスト名ソート修正モデル
-│   ├── core/                        # コア機能層
-│   │   ├── __init__.py
-│   │   ├── data_pipeline.py        # データ処理パイプライン
-│   │   └── utils.py                # ユーティリティ関数
-│   ├── ui/                          # UIコンポーネント層
-│   │   ├── __init__.py
-│   │   ├── components.py           # 再利用可能なUIコンポーネント
-│   │   └── twitter_embed_admin.py  # Twitter埋め込み管理画面UI
-│   ├── cli/                         # コマンドラインインターフェース層
-│   │   ├── __init__.py
-│   │   ├── __main__.py
-│   │   ├── twitter_embed_cli.py    # Twitter埋め込みCLI
-│   │   ├── excel_to_tsv_cli.py     # Excel to TSV変換CLI
-│   │   └── artist_sort_cli.py      # アーティスト名ソート修正CLI
-│   ├── utils/                       # ユーティリティ層
-│   │   ├── __init__.py
-│   │   ├── validators.py           # バリデーター
-│   │   ├── retry.py                # リトライロジック
-│   │   ├── html_validator.py       # HTML検証
-│   │   └── artist_sort_generator.py # アーティスト名ソート生成
-│   ├── config/                      # 設定管理層
-│   │   ├── __init__.py
-│   │   ├── settings.py             # アプリケーション設定
-│   │   └── logging_config.py       # ロギング設定
-│   ├── exceptions/                  # 例外処理層
-│   │   ├── __init__.py
-│   │   └── errors.py               # カスタム例外クラス
-│   └── __init__.py
-├── data/
-│   ├── data.xlsx                   # 入力用Excelファイル（管理者向け）
-│   ├── M_YT_LIVE.TSV               # 配信データ
-│   ├── M_YT_LIVE_TIMESTAMP.TSV     # 楽曲タイムスタンプデータ
-│   ├── V_SONG_LIST.TSV             # 楽曲リストデータ
-│   ├── ARTIST_SORT_MAPPING.TSV     # アーティスト名ソート修正マッピング
-│   ├── tweet_embed_code.html       # Twitter埋め込みコード
-│   ├── tweet_height.txt            # Twitter埋め込み高さ設定
-│   └── backups/                    # バックアップディレクトリ
-│       ├── M_YT_LIVE_*.TSV         # 配信データのバックアップ
-│       ├── M_YT_LIVE_TIMESTAMP_*.TSV # タイムスタンプデータのバックアップ
-│       └── tweet_embed_code_*.html # Twitter埋め込みコードのバックアップ
-├── docs/                            # ドキュメント
-│   ├── architecture.md             # アーキテクチャドキュメント
-│   ├── data-flow.md               # データフロードキュメント
-│   ├── data-management.md         # データ管理ドキュメント
-│   ├── deployment.md              # デプロイメントガイド
-│   ├── developer-guide.md         # 開発者ガイド
-│   ├── error-handling.md          # エラーハンドリングガイド
-│   ├── faq.md                     # よくある質問
-│   ├── user-guide.md              # ユーザーガイド
-│   ├── twitter-embed-automation.md # Twitter埋め込み自動取得システム
-│   ├── twitter-embed-admin-guide.md # Twitter埋め込み管理画面ガイド
-│   ├── twitter-embed-credentials.md # Twitter埋め込み技術ドキュメント
-│   └── guides/                     # ガイドドキュメント
-│       ├── excel-to-tsv-guide.md  # Excel to TSV変換ガイド
-│       └── artist-sort-correction-guide.md # アーティスト名ソート修正ガイド
-├── tests/                           # テストコード
-│   ├── unit/                       # ユニットテスト
-│   ├── property/                   # プロパティベーステスト
-│   ├── integration/                # 統合テスト
-│   └── __init__.py
-├── logs/                            # ログファイル（自動生成）
-│   ├── shinouta.log                # アプリケーションログ
-│   └── twitter_embed.log           # Twitter埋め込み機能ログ
-├── footer.py                        # フッター表示モジュール
-├── style.css                        # カスタムCSSスタイル
-├── requirements.txt                 # 依存関係
-└── README.md                        # このファイル
+├── .devcontainer/          # Dev Container設定
+├── .github/                # GitHub設定
+├── .streamlit/             # Streamlit設定
+├── data/                   # データファイル
+│   ├── backups/            # バックアップ
+│   ├── data.xlsx           # 入力データ
+│   └── *.TSV               # 生成されたTSVファイル
+├── docs/                   # ドキュメント
+│   ├── architecture/       # アーキテクチャドキュメント
+│   ├── development/        # 開発関連ドキュメント
+│   ├── guides/             # ガイド
+│   └── testing/            # テスト関連
+├── pages/                  # Streamlitページ
+├── scripts/                # 実行スクリプト
+├── src/                    # ソースコード
+│   ├── cli/                # CLIツール
+│   ├── clients/            # 外部APIクライアント
+│   ├── config/             # 設定
+│   ├── core/               # コア機能
+│   ├── exceptions/         # 例外定義
+│   ├── models/             # データモデル
+│   ├── repositories/       # データアクセス層
+│   ├── services/           # ビジネスロジック
+│   ├── ui/                 # UI コンポーネント
+│   └── utils/              # ユーティリティ
+├── tests/                  # テスト
+│   ├── fixtures/           # テストフィクスチャ
+│   ├── integration/        # 統合テスト
+│   ├── manual/             # 手動テスト
+│   ├── property/           # プロパティベーステスト
+│   └── unit/               # ユニットテスト
+├── .gitignore              # Git除外設定
+├── docker-compose.yml      # Docker Compose設定
+├── Dockerfile              # Dockerイメージ定義
+├── Home.py                 # Streamlitメインページ
+├── README.md               # プロジェクト概要
+└── requirements.txt        # Python依存関係
 ```
 
 ### モジュール構造の説明
@@ -916,51 +856,12 @@ python -m src.cli.excel_to_tsv_cli
 
 ## ドキュメント
 
-### 仕様書・設計書
+`docs/` ディレクトリに、より詳細なドキュメントがあります。
 
-詳細な仕様書と設計書は `.kiro/specs/` ディレクトリにあります：
-
-**リファクタリング:**
-- `.kiro/specs/refactoring/requirements.md` - リファクタリング要件定義書
-- `.kiro/specs/refactoring/design.md` - リファクタリング設計書
-- `.kiro/specs/refactoring/tasks.md` - リファクタリング実装タスクリスト
-
-**Twitter埋め込み自動取得:**
-- `.kiro/specs/twitter-embed-automation/requirements.md` - 要件定義書
-- `.kiro/specs/twitter-embed-automation/design.md` - 設計書
-- `.kiro/specs/twitter-embed-automation/tasks.md` - 実装タスクリスト
-
-**Excel to TSV変換:**
-- `.kiro/specs/excel-to-tsv-converter/requirements.md` - 要件定義書
-- `.kiro/specs/excel-to-tsv-converter/design.md` - 設計書
-- `.kiro/specs/excel-to-tsv-converter/tasks.md` - 実装タスクリスト
-
-**アーティスト名ソート修正:**
-- `.kiro/specs/artist-sort-correction/requirements.md` - 要件定義書
-- `.kiro/specs/artist-sort-correction/design.md` - 設計書
-- `.kiro/specs/artist-sort-correction/tasks.md` - 実装タスクリスト
-
-### 開発者向けドキュメント
-
-`docs/` ディレクトリに各種ドキュメントがあります：
-
-**一般:**
-- `architecture.md` - アーキテクチャドキュメント（システム構成、レイヤー構造）
-- `developer-guide.md` - 開発者ガイド（セットアップ、コーディング規約、モジュール使用方法）
-- `data-flow.md` - データフロードキュメント（データ処理の流れ）
-- `data-management.md` - データ管理ドキュメント（TSVファイルの管理方法）
-- `error-handling.md` - エラーハンドリングガイド（エラー処理の実装方法）
-- `deployment.md` - デプロイメントガイド（本番環境へのデプロイ方法）
-- `user-guide.md` - ユーザーガイド（アプリケーションの使い方）
-- `faq.md` - よくある質問
-
-**Twitter埋め込み機能:**
-- `twitter-embed-automation.md` - Twitter埋め込みコード自動取得システム（使用方法、セットアップ手順）
-- `twitter-embed-admin-guide.md` - Twitter埋め込みコード管理画面 使用ガイド
-- `twitter-embed-credentials.md` - Twitter埋め込み機能 技術ドキュメント
-
-**アーティスト名ソート修正機能:**
-- `guides/artist-sort-correction-guide.md` - アーティスト名ソート修正機能 使い方
+- **`docs/guides/`**: ユーザーおよび開発者向けのガイド
+- **`docs/architecture/`**: システムアーキテクチャ関連のドキュメント
+- **`docs/development/`**: 開発プロセスや規約に関するドキュメント
+- **`docs/testing/`**: テストに関するドキュメント
 
 ## 注意事項
 
@@ -998,18 +899,16 @@ python -m src.cli.excel_to_tsv_cli
 
 ### Excel to TSV変換ツール
 
-Excelファイル（data.xlsx）から2つのTSVファイルを自動生成するツールです。
-
-**利用可能なスクリプト:**
-
-- `scripts/excel_to_tsv_converter.bat` - TSVファイルのみを生成（推奨）
-- `scripts/excel_to_tsv_full.bat` - TSVファイル + V_SONG_LIST.TSVを生成
-- `scripts/excel_to_tsv_dryrun.bat` - ドライランモード（ファイルを生成せずに確認）
+`data/data.xlsx` からTSVファイルを自動生成する統合ツールです。
 
 **使い方:**
-1. `data/data.xlsx` を配置
-2. `scripts/excel_to_tsv_converter.bat` をダブルクリック
-3. 処理完了を待つ
+1. `data/data.xlsx` を `data/` フォルダに配置します。
+2. `scripts/excel_to_tsv.bat` を実行します。
+
+**モード:**
+- `excel_to_tsv.bat full` (デフォルト): 全てのTSVファイルを生成します。
+- `excel_to_tsv.bat tsv_only`: `V_SONG_LIST.TSV` を除くTSVファイルを生成します。
+- `excel_to_tsv.bat dryrun`: ファイルを生成せずに処理を検証します。
 
 詳細は [Excel to TSV変換ガイド](docs/guides/excel-to-tsv-guide.md) を参照してください。
 

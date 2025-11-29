@@ -90,9 +90,11 @@ def generate_youtube_url(base_url: str, timestamp_seconds: int) -> str:
         - base_urlにすでにタイムスタンプパラメータが含まれている場合でも、
           新しいタイムスタンプパラメータを追加します
     """
-    if pd.notna(base_url) and pd.notna(timestamp_seconds):
+    if pd.isna(base_url):
+        return ""
+    if pd.notna(timestamp_seconds):
         return f"{base_url}&t={int(timestamp_seconds)}s"
-    return ""
+    return base_url
 
 
 def generate_song_numbers(df: pd.DataFrame) -> pd.DataFrame:
