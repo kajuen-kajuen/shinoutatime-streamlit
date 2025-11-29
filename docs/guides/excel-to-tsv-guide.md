@@ -4,71 +4,35 @@
 
 このツールは、`data.xlsx`ファイルから2つのTSVファイル（`M_YT_LIVE.TSV`と`M_YT_LIVE_TIMESTAMP.TSV`）を自動生成します。
 
-## バッチファイル一覧
+## 使い方
 
-### 1. excel_to_tsv_converter.bat（推奨）
+1. `data/data.xlsx` を `data/` フォルダに配置します。
+2. `scripts/excel_to_tsv.bat` を実行します。
 
-**用途**: TSVファイルのみを生成
+### 実行モード
 
-**実行内容**:
-- `data.xlsx` を読み込み
-- `M_YT_LIVE.TSV` を生成（配信情報）
-- `M_YT_LIVE_TIMESTAMP.TSV` を生成（タイムスタンプ情報）
-- 既存ファイルを自動バックアップ
+バッチファイルは、引数に応じて3つのモードで動作します。
 
-**使い方**:
-1. `data.xlsx` を `data/` フォルダに配置
-2. `excel_to_tsv_converter.bat` をダブルクリック
-3. 処理完了を待つ
+#### 1. `full` モード (デフォルト)
+- **コマンド**: `excel_to_tsv.bat full` または `excel_to_tsv.bat`
+- **処理内容**:
+    - `M_YT_LIVE.TSV` と `M_YT_LIVE_TIMESTAMP.TSV` を生成します。
+    - `song_list_generator` を実行して `V_SONG_LIST.TSV` を生成します。
+- **用途**: 全てのデータファイルを一度に更新する場合に使用します。
 
-**生成されるファイル**:
-- `data/M_YT_LIVE.TSV`
-- `data/M_YT_LIVE_TIMESTAMP.TSV`
-- `data/backups/M_YT_LIVE_YYYYMMDD_HHMMSS.TSV`（バックアップ）
-- `data/backups/M_YT_LIVE_TIMESTAMP_YYYYMMDD_HHMMSS.TSV`（バックアップ）
+#### 2. `tsv_only` モード
+- **コマンド**: `excel_to_tsv.bat tsv_only`
+- **処理内容**:
+    - `M_YT_LIVE.TSV` と `M_YT_LIVE_TIMESTAMP.TSV` のみを生成します。
+- **用途**: `V_SONG_LIST.TSV` の更新が不要な場合や、手動で `song_list_generator` を実行したい場合に使用します。
 
----
-
-### 2. excel_to_tsv_full.bat
-
-**用途**: TSVファイルとV_SONG_LIST.TSVを生成
-
-**実行内容**:
-- `excel_to_tsv_converter.bat` と同じ処理
-- さらに `song_list_generator` を実行して `V_SONG_LIST.TSV` を生成
-
-**使い方**:
-1. `data.xlsx` を `data/` フォルダに配置
-2. `excel_to_tsv_full.bat` をダブルクリック
-3. 処理完了を待つ
-
-**生成されるファイル**:
-- `data/M_YT_LIVE.TSV`
-- `data/M_YT_LIVE_TIMESTAMP.TSV`
-- `data/V_SONG_LIST.TSV`
-- バックアップファイル
-
-**注意**: `song_list_generator` が失敗する場合がありますが、TSVファイルは正常に生成されます。
-
----
-
-### 3. excel_to_tsv_dryrun.bat
-
-**用途**: 処理内容の確認（ファイルを生成しない）
-
-**実行内容**:
-- 実際のファイルを生成せずに、処理内容を確認
-- データの検証結果を表示
-
-**使い方**:
-1. `data.xlsx` を `data/` フォルダに配置
-2. `excel_to_tsv_dryrun.bat` をダブルクリック
-3. ログを確認
-
-**用途**:
-- 初めて使用する前の動作確認
-- データの検証エラーを事前に確認
-- 処理時間の見積もり
+#### 3. `dryrun` モード
+- **コマンド**: `excel_to_tsv.bat dryrun`
+- **処理内容**:
+    - 実際のファイル生成は行わず、処理内容の検証のみを実行します。
+- **用途**:
+    - 実行前のデータ検証
+    - エラーの事前確認
 
 ---
 

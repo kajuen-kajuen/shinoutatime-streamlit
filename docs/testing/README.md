@@ -4,9 +4,9 @@
 
 ## ドキュメント一覧
 
-### test_results_summary.md
+### coverage_report_summary.md
 
-最新のテスト実行結果の詳細サマリーです。
+最新のテストカバレッジレポートのサマリーです。
 
 **内容:**
 - 総合テスト結果（84件のテスト）
@@ -18,9 +18,9 @@
 
 **最終更新**: 2025年11月19日
 
-### TESTING_COMPLETE.md
+### `docs/archive/TESTING_COMPLETE.md`
 
-テスト完了報告書です。
+テスト完了報告書（アーカイブ）です。
 
 **内容:**
 - 実施内容のサマリー
@@ -49,7 +49,7 @@ docker-compose exec shinouta-time pytest tests/test_utils.py -v
 
 ## テスト結果の確認
 
-最新のテスト結果は `test_results_summary.md` で確認できます。
+最新のテスト結果は [カバレッジレポートサマリー](coverage_report_summary.md) で確認できます。
 
 ### 最新の結果（2025年11月19日）
 
@@ -74,7 +74,6 @@ docker-compose exec shinouta-time pytest tests/test_utils.py -v
 ## 関連ドキュメント
 
 - [テストガイド](../../tests/README.md) - テストの実行方法と拡張方法
-- [手動テストガイド](../../tests/manual/README.md) - 手動テストの実行方法
 - [開発者ガイド](../developer-guide.md) - 開発環境のセットアップ
 
 ## 継続的な改善
