@@ -1,0 +1,14 @@
+# Agent Behavior Guidelines
+
+## Language
+- **Japanese (日本語)**: This is the primary language for this project.
+- All artifacts (including `task.md`, `implementation_plan.md`, `walkthrough.md`), comments, and explanations must be written in Japanese.
+- Code comments and documentation strings (docstrings) should also be in Japanese unless otherwise specified.
+
+## Artifacts
+- Ensure all created artifacts follow the Japanese language rule.
+
+## Execution Environment
+- **Docker**: Always run commands (including tests, linting, and scripts) inside the Docker container.
+- Use `docker compose exec [service_name] [command]` or `docker compose run --rm [service_name] [command]`.
+- Do not run commands directly on the host machine unless explicitly instructed.
