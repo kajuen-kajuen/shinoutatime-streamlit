@@ -58,24 +58,43 @@ class FileRepository:
                 )
                 return None
             
-            # ファイルをバイナリモードで読み込み、エンコーディングを検出
+            # ファイルをバイナリモードで読み込み
             with open(self.embed_code_path, 'rb') as f_raw:
                 raw_data = f_raw.read()
             
+            # まずUTF-8での読み込みを試みる
+            try:
+                content = raw_data.decode('utf-8')
+                self.logger.debug(
+                    f"埋め込みコードを読み込みました: {self.embed_code_path} (エンコーディング: utf-8)"
+                )
+                return content
+            except UnicodeDecodeError:
+                self.logger.warning(
+                    f"UTF-8での読み込みに失敗しました。エンコーディングの自動検出を試みます: {self.embed_code_path}"
+                )
+
+            # UTF-8で失敗した場合、エンコーディングを検出
             detected_encoding = chardet.detect(raw_data)['encoding']
             
             if detected_encoding:
                 # 検出されたエンコーディングでファイルを読み込む
-                content = raw_data.decode(detected_encoding)
-                self.logger.debug(
-                    f"埋め込みコードを読み込みました: {self.embed_code_path} (エンコーディング: {detected_encoding})"
-                )
-            else:
-                self.logger.warning(
-                    f"埋め込みコードファイルのエンコーディングを検出できませんでした: {self.embed_code_path}。UTF-8として読み込みを試みます。"
-                )
-                content = raw_data.decode('utf-8', errors='replace') # デコードエラーを置換
+                try:
+                    content = raw_data.decode(detected_encoding)
+                    self.logger.info(
+                        f"自動検出されたエンコーディングで読み込みました: {self.embed_code_path} (エンコーディング: {detected_encoding})"
+                    )
+                    return content
+                except UnicodeDecodeError:
+                    self.logger.warning(
+                        f"検出されたエンコーディング ({detected_encoding}) での読み込みに失敗しました"
+                    )
             
+            # 最終手段: UTF-8でエラーを置換して読み込む
+            self.logger.warning(
+                f"エンコーディングの解決に失敗しました。UTF-8 (errors='replace') で読み込みます: {self.embed_code_path}"
+            )
+            content = raw_data.decode('utf-8', errors='replace')
             return content
             
         except Exception as e:
