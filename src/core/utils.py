@@ -94,7 +94,7 @@ def generate_youtube_url(base_url: str, timestamp_seconds: int) -> str:
         return ""
     if pd.notna(timestamp_seconds):
         return f"{base_url}&t={int(timestamp_seconds)}s"
-    return base_url
+    return ""
 
 
 def generate_song_numbers(df: pd.DataFrame) -> pd.DataFrame:
