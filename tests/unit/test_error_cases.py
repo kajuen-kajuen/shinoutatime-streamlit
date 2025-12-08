@@ -132,9 +132,10 @@ class TestErrorCases:
         assert result == "invalid_url&t=120s"  # タイムスタンプが追加される
 
         # Noneのタイムスタンプ
+        # Noneのタイムスタンプ
         result = generate_youtube_url("https://youtube.com/watch?v=abc", None)
-        # Noneの場合はデフォルト値が使用されるが、結果はURLによる
-        assert isinstance(result, str) and len(result) > 0
+        # Noneの場合は空文字列が返される
+        assert result == ""
 
     def test_validators_edge_cases(self):
         """バリデーターのエッジケーステスト"""
