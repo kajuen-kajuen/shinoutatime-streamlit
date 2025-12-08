@@ -19,7 +19,7 @@ VTuber「幽音しの」さんの配信で歌唱された楽曲を検索・閲�
 import streamlit as st
 import pandas as pd
 from typing import Optional
-from footer import display_footer
+from src.ui.components.footer import display_footer
 from src.config import setup_logging
 from src.config.settings import Config
 from src.services.data_service import DataService

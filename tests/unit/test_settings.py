@@ -26,7 +26,7 @@ class TestConfigEnvironmentVariables:
             assert config.song_list_file_path == "data/V_SONG_LIST.TSV"
             assert config.tweet_embed_code_path == "data/tweet_embed_code.html"
             assert config.tweet_height_path == "data/tweet_height.txt"
-            assert config.css_file_path == "style.css"
+            assert config.css_file_path == "src/ui/styles/style.css"
             assert config.initial_display_limit == 25
             assert config.display_increment == 25
             assert config.page_title == "しのうたタイム"
