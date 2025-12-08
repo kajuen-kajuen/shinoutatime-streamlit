@@ -15,7 +15,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import os
-from footer import display_footer  # footer.pyから関数をインポート
+from src.ui.components.footer import display_footer  # footer.pyから関数をインポート
 from src.ui.components import render_twitter_embed  # UIコンポーネントをインポート
 
 # --- ページ設定 ---

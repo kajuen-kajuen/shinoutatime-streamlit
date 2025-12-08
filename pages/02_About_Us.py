@@ -16,7 +16,7 @@ About Usページ
 
 import streamlit as st
 from PIL import Image
-from footer import display_footer  # ★ここを追加★
+from src.ui.components.footer import display_footer  # ★ここを追加★
 
 # ページ設定
 # ページタイトル、アイコン、レイアウトを設定

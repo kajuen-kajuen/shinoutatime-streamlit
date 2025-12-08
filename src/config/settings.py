@@ -27,7 +27,7 @@ class Config:
     song_list_file_path: str = "data/V_SONG_LIST.TSV"
     tweet_embed_code_path: str = "data/tweet_embed_code.html"
     tweet_height_path: str = "data/tweet_height.txt"
-    css_file_path: str = "style.css"
+    css_file_path: str = "src/ui/styles/style.css"
     
     # 表示設定
     initial_display_limit: int = 25
@@ -81,7 +81,7 @@ class Config:
             ),
             css_file_path=os.getenv(
                 "SHINOUTA_CSS_FILE_PATH",
-                "style.css"
+                "src/ui/styles/style.css"
             ),
             # 表示設定
             initial_display_limit=int(os.getenv(
