@@ -23,7 +23,7 @@
 
 import streamlit as st
 import pandas as pd
-from footer import display_footer
+from src.ui.components.footer import display_footer
 from src.config.settings import Config
 from src.services.data_service import DataService
 
