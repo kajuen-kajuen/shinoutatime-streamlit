@@ -3,6 +3,8 @@
 import tempfile
 import pytest
 from pathlib import Path
+from unittest.mock import patch, mock_open
+import builtins
 
 from src.repositories.artist_sort_mapping_repository import ArtistSortMappingRepository
 
@@ -217,3 +219,97 @@ class TestArtistSortMappingRepository:
             assert len(mappings) == 2
             assert mappings['Vaundy'] == 'Vaundy'
             assert mappings['米津玄師'] == 'よねづけんし'
+
+    def test_load_mappings_unicode_decode_error(self):
+        """エンコーディングエラーのテスト"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = Path(tmpdir) / "test_mapping.tsv"
+            repo = ArtistSortMappingRepository(str(file_path))
+            
+            # ファイルが存在する状態にする
+            file_path.touch()
+
+            # open関数がUnicodeDecodeErrorを発生させるようにモック
+            with patch('builtins.open', side_effect=UnicodeDecodeError('utf-8', b'', 0, 1, 'invalid')):
+                with pytest.raises(ValueError, match="エンコーディングが不正です"):
+                    repo.load_mappings()
+
+    def test_load_mappings_generic_error(self):
+        """予期しない読み込みエラーのテスト"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = Path(tmpdir) / "test_mapping.tsv"
+            repo = ArtistSortMappingRepository(str(file_path))
+            file_path.touch()
+
+            with patch('builtins.open', side_effect=IOError("Disk Error")):
+                with pytest.raises(ValueError, match="読み込みに失敗しました"):
+                    repo.load_mappings()
+    
+    def test_save_mapping_permission_error(self):
+        """保存時の権限エラーテスト"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = Path(tmpdir) / "test_mapping.tsv"
+            repo = ArtistSortMappingRepository(str(file_path))
+
+            with patch('builtins.open', side_effect=PermissionError("Denied")):
+                with pytest.raises(IOError, match="書き込み権限がありません"):
+                    repo.save_mapping('Artist', 'Sort')
+
+    def test_save_mapping_os_error(self):
+        """保存時のOSエラーテスト"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = Path(tmpdir) / "test_mapping.tsv"
+            repo = ArtistSortMappingRepository(str(file_path))
+
+            with patch('builtins.open', side_effect=OSError("Disk Full")):
+                with pytest.raises(IOError, match="書き込みに失敗しました"):
+                    repo.save_mapping('Artist', 'Sort')
+
+    def test_delete_mapping_permission_error(self):
+        """削除時の保存（書き込み）権限エラーテスト"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = Path(tmpdir) / "test_mapping.tsv"
+            # ファイルを作成してデータを書き込む
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write('アーティスト名\tソート名\n')
+                f.write('Target\tSort\n')
+                
+            repo = ArtistSortMappingRepository(str(file_path))
+
+            # loadは成功させて、その後のwriteでエラーにする
+            # _write_mappingsがopenを呼ぶので、そのタイミングでエラーにしたいが
+            # loadでもopenを使うため、モックの制御が少し複雑。
+            # ここではシンプルに、load_mappingsの実装は依存なしとして、
+            # _write_mappings内のopenをモックするのは難しい（メソッド内で完結しているため）。
+            # したがって、ArtistSortMappingRepository._write_mappings をモックする手もあるが、
+            # テスト対象はdelete_mappingなので、内部呼び出しのエラーをシミュレートする。
+            
+            with patch.object(ArtistSortMappingRepository, '_write_mappings', side_effect=PermissionError("Denied")):
+                 with pytest.raises(IOError, match="書き込み権限がありません"):
+                     repo.delete_mapping('Target')
+
+    def test_delete_mapping_os_error(self):
+        """削除時の保存（書き込み）OSエラーテスト"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = Path(tmpdir) / "test_mapping.tsv"
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write('アーティスト名\tソート名\n')
+                f.write('Target\tSort\n')
+                
+            repo = ArtistSortMappingRepository(str(file_path))
+
+            with patch.object(ArtistSortMappingRepository, '_write_mappings', side_effect=OSError("Disk Error")):
+                 with pytest.raises(IOError, match="書き込みに失敗しました"):
+                     repo.delete_mapping('Target')
+
+    def test_get_all_mappings_fallback(self):
+        """get_all_mappingsのエラーフォールバックテスト"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = Path(tmpdir) / "test_mapping.tsv"
+            repo = ArtistSortMappingRepository(str(file_path))
+            
+            # load_mappings が ValueError を投げる状況を作る
+            with patch.object(repo, 'load_mappings', side_effect=ValueError("Invalid Format")):
+                mappings = repo.get_all_mappings()
+                assert mappings == {}
+

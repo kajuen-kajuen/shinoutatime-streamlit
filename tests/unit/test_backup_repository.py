@@ -7,6 +7,7 @@ Backup Repositoryのユニットテスト
 import tempfile
 from pathlib import Path
 import pytest
+from unittest.mock import patch, MagicMock
 from datetime import datetime
 
 from src.repositories.backup_repository import BackupRepository
@@ -247,18 +248,48 @@ class TestBackupRepositoryErrors:
         with tempfile.TemporaryDirectory() as tmpdir:
             source_file = Path(tmpdir) / "test.txt"
             source_file.write_text("Test", encoding='utf-8')
-            
-            # 読み取り専用のバックアップディレクトリを作成
             backup_dir = Path(tmpdir) / "backups"
-            backup_dir.mkdir()
-            
-            # Windowsでは権限設定が異なるため、このテストはスキップ可能
-            # 実際の環境では権限エラーが発生する可能性がある
             
             repo = BackupRepository(str(backup_dir))
             
-            # 正常にバックアップが作成されることを確認
-            # （権限エラーのシミュレーションは環境依存のため、基本的な動作を確認）
-            backup_path = repo.create_backup(str(source_file))
-            assert Path(backup_path).exists()
+            # shutil.copy2 が PermissionError を発生させるようにモック
+            with patch('shutil.copy2', side_effect=PermissionError("Mock Permission Denied")):
+                with pytest.raises(DataSaveError) as exc_info:
+                    repo.create_backup(str(source_file))
+                assert "権限エラー" in str(exc_info.value)
+                assert exc_info.value.file_path == str(source_file)
+
+    def test_create_backup_generic_exception(self):
+        """予期しないエラーの処理"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            source_file = Path(tmpdir) / "test.txt"
+            source_file.write_text("Test", encoding="utf-8")
+            backup_dir = Path(tmpdir) / "backups"
+            
+            repo = BackupRepository(str(backup_dir))
+            
+            # shutil.copy2 が一般的な Exception を発生させるようにモック
+            with patch('shutil.copy2', side_effect=Exception("Unexpected Error")):
+                with pytest.raises(DataSaveError) as exc_info:
+                    repo.create_backup(str(source_file))
+                assert "バックアップの作成に失敗しました" in str(exc_info.value)
+                assert "Unexpected Error" in str(exc_info.value)
+
+    def test_init_permission_error(self):
+        """初期化時のディレクトリ作成権限エラー"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+             # pathlib.Path.mkdir が PermissionError を発生させるようにモック
+             with patch.object(Path, 'mkdir', side_effect=PermissionError("Mock mkdir Denied")):
+                 with pytest.raises(DataSaveError) as exc_info:
+                     BackupRepository(str(Path(tmpdir) / "new_dir"))
+                 assert "バックアップディレクトリの作成に失敗しました（権限エラー）" in str(exc_info.value)
+
+    def test_init_generic_exception(self):
+        """初期化時の予期しないエラー"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+             # pathlib.Path.mkdir が一般的な Exception を発生させるようにモック
+             with patch.object(Path, 'mkdir', side_effect=Exception("Mkdir Failed")):
+                 with pytest.raises(DataSaveError) as exc_info:
+                     BackupRepository(str(Path(tmpdir) / "new_dir"))
+                 assert "バックアップディレクトリの作成に失敗しました" in str(exc_info.value)
 
