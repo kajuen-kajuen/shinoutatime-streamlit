@@ -125,7 +125,7 @@ echo 7. 自動テストの実行...
 echo    テストを実行しています（数秒かかります）...
 echo.
 
-docker-compose exec -T shinouta-time pytest tests/test_environment_verification.py -v
+docker-compose exec -T shinouta-time pytest tests/integration/test_environment_verification.py -v
 if %errorlevel% equ 0 (
     echo.
     echo ==========================================

@@ -193,7 +193,7 @@ verify_environment.bat
 スクリプトを使用せず、手動でテストを実行する場合：
 
 ```bash
-docker-compose exec shinouta-time pytest tests/test_environment_verification.py -v
+docker-compose exec shinouta-time pytest tests/integration/test_environment_verification.py -v
 ```
 
 **テスト内容:**

@@ -69,11 +69,11 @@ Docker Composeで構築した環境が正しく動作することを確認する
 
 ### その他のテスト
 
-- `test_utils.py` - ユーティリティ関数のテスト
-- `test_search_service.py` - 検索サービスのテスト
-- `test_config.py` - 設定管理のテスト
-- `test_errors.py` - エラーハンドリングのテスト
-- `test_fixtures.py` - フィクスチャのテスト
+- `tests/unit/test_utils.py` - ユーティリティ関数のテスト
+- `tests/unit/test_search_service.py` - 検索サービスのテスト
+- `tests/unit/test_config.py` - 設定管理のテスト
+- `tests/unit/test_errors.py` - エラーハンドリングのテスト
+- `tests/unit/test_fixtures.py` - フィクスチャのテスト
 
 ## テストの実行方法
 
@@ -115,7 +115,7 @@ docker-compose exec shinouta-time pytest tests/unit/test_twitter_api_client.py -
 docker-compose exec shinouta-time pytest tests/property/test_file_repository_properties.py -v
 
 # 環境構築動作確認テスト
-docker-compose exec shinouta-time pytest tests/test_environment_verification.py -v
+docker-compose exec shinouta-time pytest tests/integration/test_environment_verification.py -v
 ```
 
 6. **詳細なテスト結果を表示**
@@ -183,7 +183,7 @@ pip install pytest
 3. **テストを実行**
 
 ```bash
-pytest tests/test_environment_verification.py -v
+pytest tests/integration/test_environment_verification.py -v
 ```
 
 ## テスト結果の見方
@@ -191,9 +191,9 @@ pytest tests/test_environment_verification.py -v
 ### 成功例
 
 ```
-tests/test_environment_verification.py::TestEnvironmentVerification::test_data_files_exist PASSED
-tests/test_environment_verification.py::TestEnvironmentVerification::test_python_version PASSED
-tests/test_environment_verification.py::TestEnvironmentVerification::test_load_lives_data PASSED
+tests/integration/test_environment_verification.py::TestEnvironmentVerification::test_data_files_exist PASSED
+tests/integration/test_environment_verification.py::TestEnvironmentVerification::test_python_version PASSED
+tests/integration/test_environment_verification.py::TestEnvironmentVerification::test_load_lives_data PASSED
 ...
 ```
 
@@ -202,7 +202,7 @@ tests/test_environment_verification.py::TestEnvironmentVerification::test_load_l
 ### 失敗例
 
 ```
-tests/test_environment_verification.py::TestEnvironmentVerification::test_data_files_exist FAILED
+tests/integration/test_environment_verification.py::TestEnvironmentVerification::test_data_files_exist FAILED
 ...
 AssertionError: 配信データファイルが見つかりません: data/M_YT_LIVE.TSV
 ```

@@ -157,7 +157,7 @@ verify_environment.bat
 または、手動でテストを実行：
 
 ```bash
-docker-compose exec shinouta-time pytest tests/test_environment_verification.py -v
+docker-compose exec shinouta-time pytest tests/integration/test_environment_verification.py -v
 ```
 
 全てのテストが成功すれば、環境構築は完了です。
