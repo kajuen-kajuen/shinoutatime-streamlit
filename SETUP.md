@@ -17,21 +17,6 @@
 ローカル環境で「しのうたタイム」を実行するには、以下のソフトウェアがインストールされている必要があります。
 
 ### 必須
-
-- **Docker Desktop** (Windows/Mac) または **Docker Engine** (Linux)
-  - バージョン: 20.10以降を推奨
-  - インストール方法: [Docker公式サイト](https://www.docker.com/get-started)
-- **Docker Compose**
-  - Docker Desktopには含まれています
-  - Linux環境では別途インストールが必要な場合があります
-- **Git**
-  - リポジトリのクローンに使用します
-  - インストール方法: [Git公式サイト](https://git-scm.com/)
-
-### 確認方法
-
-以下のコマンドでインストール状況を確認できます：
-
 ```bash
 # Dockerのバージョン確認
 docker --version
@@ -172,12 +157,12 @@ shinouta-time_1  |   Network URL: http://172.18.0.2:8501
 
 **Mac/Linux:**
 ```bash
-bash verify_environment.sh
+bash scripts/verify_environment.sh
 ```
 
 **Windows:**
 ```cmd
-verify_environment.bat
+scripts/verify_environment.bat
 ```
 
 このスクリプトは以下を自動的に確認します：
@@ -372,7 +357,7 @@ VS Codeユーザーは、Dev Container機能を使用することもできます
 
 ### Python仮想環境を使用する場合
 
-Dockerを使用せずにPython仮想環境で実行することも可能です。詳細は`docs/developer-guide.md`を参照してください。
+Dockerを使用せずにPython仮想環境で実行することも可能です。詳細は`docs/guides/developer-guide.md`を参照してください。
 
 ## サポート
 
