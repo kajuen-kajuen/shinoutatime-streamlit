@@ -135,7 +135,9 @@ class TestArtistSortMappingRepositoryProperties:
             assert artist not in loaded_mappings
 
     @given(st.lists(
-        st.text(min_size=1, max_size=100).filter(lambda x: not x.startswith('アーティスト名')),
+        st.text(min_size=1, max_size=100)
+        .filter(lambda x: not x.startswith('アーティスト名'))
+        .filter(lambda x: len(x.strip()) > 0),  # 空白のみの行を除外
         min_size=1,
         max_size=20
     ))

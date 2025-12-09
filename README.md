@@ -53,18 +53,6 @@ TwitterのツイートURLから埋め込みコードを自動的に取得し、�
 
 1. **コマンドラインインターフェース（CLI）**
    - スクリプトやバッチ処理での自動化に最適
-   - 詳細は[Twitter埋め込みコード自動取得システム](docs/twitter-embed-automation.md)を参照
-
-2. **Streamlit管理画面（UI）**
-   - ブラウザから簡単に操作できる管理画面
-   - パスワード認証によるアクセス制御
-   - プレビュー機能
-   - 詳細は[Twitter埋め込みコード管理画面 使用ガイド](docs/twitter-embed-admin-guide.md)を参照
-
-#### Excel to TSV変換ツール
-
-Excelファイルから配信データと楽曲データのTSVファイルを自動生成するツールです。
-
 **主な機能:**
 - ✅ Excelファイルからの自動TSV生成
 - ✅ データ検証機能（フィールド数、データ型、URL形式）
@@ -146,18 +134,18 @@ docker-compose up
 
 **Mac/Linux:**
 ```bash
-bash verify_environment.sh
+bash scripts/verify_environment.sh
 ```
 
 **Windows:**
 ```cmd
-verify_environment.bat
+scripts/verify_environment.bat
 ```
 
 または、手動でテストを実行：
 
 ```bash
-docker-compose exec shinouta-time pytest tests/test_environment_verification.py -v
+docker-compose exec shinouta-time pytest tests/integration/test_environment_verification.py -v
 ```
 
 全てのテストが成功すれば、環境構築は完了です。
@@ -225,9 +213,12 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-必要なパッケージ:
+必要なパッケージ（主なもの）:
 - `streamlit` - Webアプリケーションフレームワーク
 - `pandas` - データ処理ライブラリ
+- `openpyxl` - Excel操作
+- `pykakasi`, `python-Levenshtein` - 日本語処理と検索
+- その他（詳細は `requirements.txt` を参照）
 
 #### 4. アプリケーションの起動
 
@@ -404,7 +395,7 @@ docker-compose exec shinouta-time python -m src.cli.twitter_embed_cli \
 python -m src.cli.twitter_embed_cli --help
 ```
 
-詳細は[Twitter埋め込みコード自動取得システム](docs/twitter-embed-automation.md)を参照してください。
+詳細は[Twitter埋め込みコード自動取得システム](docs/archive/specs/twitter-embed-automation/design.md)を参照してください。
 
 #### 方法2: Streamlit管理画面（UI）
 
@@ -416,7 +407,7 @@ python -m src.cli.twitter_embed_cli --help
 4. ツイートURLを入力して「取得」ボタンをクリック
 5. プレビューを確認して「保存」ボタンをクリック
 
-詳細は[Twitter埋め込みコード管理画面 使用ガイド](docs/twitter-embed-admin-guide.md)を参照してください。
+詳細は[Twitter埋め込みコード管理画面 使用ガイド](docs/archive/specs/twitter-embed-automation/design.md#ui-design)を参照してください。
 
 ### 対応URL形式
 
@@ -455,7 +446,7 @@ TWITTER_API_RETRY_DELAY=1.0
 
 ### トラブルシューティング
 
-よくある問題と解決方法については、[Twitter埋め込みコード自動取得システム](docs/twitter-embed-automation.md#トラブルシューティング)を参照してください。
+よくある問題と解決方法については、[Twitter埋め込みコード自動取得システム](docs/archive/specs/twitter-embed-automation/design.md#troubleshooting)を参照してください。
 
 ## Excel to TSV変換ツール（管理者向け）
 
@@ -730,9 +721,9 @@ python -m src.cli.excel_to_tsv_cli
 
 詳細な仕様と設計については、以下のドキュメントを参照してください：
 
-- **要件定義書**: `.kiro/specs/excel-to-tsv-converter/requirements.md`
-- **設計書**: `.kiro/specs/excel-to-tsv-converter/design.md`
-- **実装タスクリスト**: `.kiro/specs/excel-to-tsv-converter/tasks.md`
+- **要件定義書**: `docs/archive/specs/excel-to-tsv-converter/requirements.md`
+- **設計書**: `docs/archive/specs/excel-to-tsv-converter/design.md`
+- **実装タスクリスト**: `docs/archive/specs/excel-to-tsv-converter/tasks.md`
 
 ## プロジェクト構造
 
