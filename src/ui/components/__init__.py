@@ -183,91 +183,42 @@ def render_pagination(
 
 
 def render_twitter_embed(
-    embed_code_path: str,
-    height_path: str,
-    default_height: int = 850
+    embed_code: str,
+    height: int,
 ) -> None:
     """
     Twitter埋め込みを表示する
     
-    ファイルからTwitterの埋め込みコードと高さを読み込み、中央カラムに表示します。
-    ファイルが見つからない場合や読み込みエラーが発生した場合は、適切なメッセージを表示します。
+    Twitterの埋め込みコードと高さを受け取り、中央カラムに表示します。
     
     Args:
-        embed_code_path: 埋め込みコードが書かれたHTMLファイルのパス
-        height_path: 高さが書かれたテキストファイルのパス
-        default_height: デフォルトの高さ（ピクセル単位、デフォルト: 850）
+        embed_code: 埋め込みHTMLコード
+        height: 高さ（ピクセル単位）
     
     Examples:
         >>> render_twitter_embed(
-        ...     "data/tweet_embed_code.html",
-        ...     "data/tweet_height.txt",
+        ...     '<blockquote class="twitter-tweet">...</blockquote>',
         ...     850
         ... )
     
     Notes:
-        - 埋め込みコードファイルが見つからない場合は情報メッセージを表示して終了します
-        - 高さ設定ファイルが見つからない場合はデフォルト値を使用します
+        - 埋め込みコードが空の場合は情報メッセージを表示します
         - 画面レイアウトは3カラム [1, 2, 1] で中央に表示されます
         - スクロール可能なコンポーネントとして表示されます
     """
     import streamlit.components.v1 as components
-    import os
     
-    logger.debug(f"Twitter埋め込みを表示中: embed_code_path={embed_code_path}, height_path={height_path}")
-    
-    # 変数の初期化
-    tweet_embed_code = ""
-    tweet_height = default_height
-    
-    # 埋め込みコードのファイルを読み込む
-    try:
-        logger.debug(f"埋め込みコードファイルを読み込み中: {embed_code_path}")
-        with open(embed_code_path, "r", encoding="utf-8") as f:
-            tweet_embed_code = f.read()
-        logger.info(f"埋め込みコードファイルを読み込みました: {embed_code_path}")
-    except FileNotFoundError:
-        # ファイルが見つからない場合は情報メッセージを表示
-        logger.warning(f"埋め込みコードファイルが見つかりません: {embed_code_path}")
-        st.info(f"情報: 表示するコンテンツがありません。（{os.path.basename(embed_code_path)}）")
-        return
-    
-    # 高さ設定ファイルを読み込む
-    try:
-        logger.debug(f"高さ設定ファイルを読み込み中: {height_path}")
-        with open(height_path, "r", encoding="utf-8") as f:
-            height_str = f.read().strip()
-            # 数値として有効かチェック
-            if height_str.isdigit():
-                tweet_height = int(height_str)
-                logger.info(f"高さ設定を読み込みました: {tweet_height}px")
-            else:
-                logger.warning(f"無効な高さ設定: {height_str}、デフォルト値を使用します")
-                st.warning(
-                    f"警告: '{height_path}' に無効な高さが指定されています。"
-                    f"デフォルト値 ({default_height}px) を使用します。"
-                )
-    except FileNotFoundError:
-        # ファイルがない場合はデフォルト値で続行
-        logger.debug(f"高さ設定ファイルが見つかりません（デフォルト値を使用）: {height_path}")
-        pass
-    except Exception as e:
-        logger.error(f"高さ設定ファイルの読み込み中にエラーが発生しました: {e}", exc_info=True)
-        st.warning(
-            f"警告: 高さ設定ファイルの読み込み中にエラーが発生しました: {e}。"
-            f"デフォルト値 ({default_height}px) を使用します。"
-        )
+    logger.debug(f"Twitter埋め込みを表示中: 高さ={height}px")
     
     # 画面レイアウトを3つのカラムに分割し、中央にコンテンツを配置
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        if tweet_embed_code:
+        if embed_code:
             # Streamlitのcomponents.htmlを使用してTwitter埋め込みコードを表示
-            logger.debug(f"Twitter埋め込みを表示: 高さ={tweet_height}px")
             components.html(
-                tweet_embed_code,
-                height=tweet_height,
+                embed_code,
+                height=height,
                 scrolling=True,
             )
             logger.info("Twitter埋め込みの表示が完了しました")
