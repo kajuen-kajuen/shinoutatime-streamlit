@@ -157,7 +157,7 @@ class TestHomeIntegration:
             mock_pipeline.execute.return_value = sample_data
 
             # 初回実行
-            from Home import load_and_process_data
+            from src.ui.pages.home_page import load_and_process_data
             result1 = load_and_process_data('lives.tsv', 'songs.tsv', True)
             assert result1 is not None
 
