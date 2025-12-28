@@ -30,10 +30,16 @@ st.title("Information")
 
 # --- 目次 ---
 st.markdown("## 目次")
+# st.markdown(
+#     """
+#     - [ふりちゃという名の予定表置き場](#youtube_schedule)
+#     - [WEEKLY SCHEDULE](#weekly_schedule)
+#     - [過去のInformation](#past_information)
+#     """
+# )
 st.markdown(
     """
     - [ふりちゃという名の予定表置き場](#youtube_schedule)
-    - [WEEKLY SCHEDULE](#weekly_schedule)
     - [過去のInformation](#past_information)
     """
 )
@@ -52,19 +58,19 @@ st.video("https://www.youtube.com/watch?v=LRowhAcHngc")
 st.write("---")
 
 
-# --- WEEKLY SCHEDULEセクション ---
-# Twitter投稿の埋め込み表示により、週間スケジュールを表示します
-# 要件: 9.2, 9.3, 9.4
-st.header("WEEKLY SCHEDULE", anchor="weekly_schedule")
+# # --- WEEKLY SCHEDULEセクション ---
+# # Twitter投稿の埋め込み表示により、週間スケジュールを表示します
+# # 要件: 9.2, 9.3, 9.4
+# st.header("WEEKLY SCHEDULE", anchor="weekly_schedule")
 
-# 現在のファイルのディレクトリを基準に、dataディレクトリ内のファイルパスを構築
-base_dir = os.path.dirname(__file__)
-tweet_file_path = os.path.join(base_dir, "..", "data", "tweet_embed_code.html")
-tweet_height_file_path = os.path.join(base_dir, "..", "data", "tweet_height.txt")
+# # 現在のファイルのディレクトリを基準に、dataディレクトリ内のファイルパスを構築
+# base_dir = os.path.dirname(__file__)
+# tweet_file_path = os.path.join(base_dir, "..", "data", "tweet_embed_code.html")
+# tweet_height_file_path = os.path.join(base_dir, "..", "data", "tweet_height.txt")
 
-# UIコンポーネントを使用してTwitter埋め込みを表示
-render_twitter_embed(tweet_file_path, tweet_height_file_path)
-st.write("---")
+# # UIコンポーネントを使用してTwitter埋め込みを表示
+# render_twitter_embed(tweet_file_path, tweet_height_file_path)
+# st.write("---")
 
 
 # --- ヘルパー関数 ---
@@ -95,7 +101,9 @@ with st.expander("過去のInformationはこちら"):
     
     # TODO: 秋ボイス
     # TODO: From now on リリース
-    
+    # TODO: 冬ボイス
+    # TODO: NHKラジオ
+
     # 誕生日グッズ発売のお知らせ
     render_past_tweet(
         "【2025/09/20】誕生日グッズ発売（～10月4日(土) 23:59まで）",
