@@ -103,6 +103,7 @@ with st.expander("過去のInformationはこちら"):
     # TODO: From now on リリース
     # TODO: 冬ボイス
     # TODO: NHKラジオ
+    # TODO: 掛け軸グッズ
 
     # 誕生日グッズ発売のお知らせ
     render_past_tweet(
