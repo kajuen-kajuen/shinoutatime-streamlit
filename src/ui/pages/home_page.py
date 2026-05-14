@@ -10,6 +10,9 @@ import pandas as pd
 from typing import Optional
 
 from src.config.settings import Config
+from src.repositories.live_repository import LiveRepository
+from src.repositories.timestamp_repository import TimestampRepository
+from src.repositories.song_list_repository import SongListRepository
 from src.services.data_service import DataService
 from src.core.data_pipeline import DataPipeline
 from src.services.search_service import SearchService
@@ -25,40 +28,35 @@ logger = logging.getLogger(__name__)
 
 
 @st.cache_data(ttl=3600, show_spinner="データを読み込み中...")
-def load_and_process_data(
-    lives_path: str,
-    songs_path: str,
-    enable_cache: bool
-) -> Optional[pd.DataFrame]:
+def load_and_process_data() -> pd.DataFrame:
     """
     データを読み込み、処理する
     
     DataPipelineを使用してデータの読み込み、結合、変換、ソートを実行します。
     Streamlitのキャッシュ機能により、同じパラメータでの再実行を防ぎます。
     
-    Args:
-        lives_path: 配信データファイルのパス
-        songs_path: 楽曲データファイルのパス
-        enable_cache: キャッシュを有効にするかどうか
-    
     Returns:
-        処理済みDataFrame。エラー時はNone
+        処理済みDataFrame
         
-    Note:
-        - TTL（Time To Live）は3600秒（1時間）
-        - データファイルのパスが変更された場合、自動的に再読み込みされる
-        - キャッシュにより初期表示時間を3秒以内に保つ
-        
-    要件: 12.1, 12.2, 12.6
+    Raises:
+        Exception: データ処理中にエラーが発生した場合
     """
-    # キャッシュされた関数内でConfigを再作成するのは避けたいため、
-    # パスなどのプリミティブな引数を受け取る設計を維持する
-    # しかし、内部でDataService/Pipelineを初期化するためにConfigが必要
-    # ここでは都度Configを作成するか、引数で必要な情報だけ渡すが、
-    # Config.from_env()は軽量なので許容する
     config = Config.from_env()
     
-    data_service = DataService(config)
+    # リポジトリの初期化
+    live_repo = LiveRepository(config.lives_file_path)
+    timestamp_repo = TimestampRepository(config.songs_file_path)
+    song_list_repo = SongListRepository(config.song_list_file_path)
+    
+    # サービスの初期化
+    data_service = DataService(
+        config, 
+        live_repo, 
+        timestamp_repo, 
+        song_list_repo
+    )
+    
+    # パイプラインの実行
     pipeline = DataPipeline(data_service, config)
     return pipeline.execute()
 
@@ -84,16 +82,12 @@ class HomePage:
         self._render_header()
         
         # データ読み込み
-        df_full = load_and_process_data(
-            self.config.lives_file_path,
-            self.config.songs_file_path,
-            self.config.enable_cache
-        )
-        
-        if df_full is not None:
+        try:
+            df_full = load_and_process_data()
             self._handle_search_and_display(df_full)
-        else:
-            self._handle_error()
+        except Exception as e:
+            logger.error(f"データの読み込みまたは処理中にエラーが発生しました: {e}", exc_info=True)
+            self._handle_error(str(e))
             
         display_footer()
 
@@ -237,12 +231,13 @@ class HomePage:
             st.session_state.display_limit = new_limit
             st.rerun()
 
-    def _handle_error(self):
-        """エラー時の表示"""
-        st.warning(
-            "必要なTSVファイルがすべて読み込めなかったため、結合データは表示できません。"
-        )
-        # エラー情報を表示するためにDataServiceのインスタンスを作成
-        data_service = DataService(self.config)
-        if data_service.get_last_error():
-            st.error(data_service.get_last_error())
+    def _handle_error(self, error_msg: str):
+        """
+        エラー時の表示
+        
+        Args:
+            error_msg: 表示するエラーメッセージ
+        """
+        st.error("データの読み込みまたは処理中にエラーが発生しました。")
+        st.warning(error_msg)
+        st.info("データファイル（TSV）の形式や存在を確認してください。")

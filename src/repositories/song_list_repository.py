@@ -9,6 +9,7 @@ import logging
 from pathlib import Path
 from typing import List, Optional
 import chardet
+import pandas as pd
 
 from src.models.song_list_models import SongInfo
 from src.exceptions.errors import DataLoadError, FileWriteError
@@ -218,3 +219,45 @@ class SongListRepository:
             
         except KeyError as e:
             raise ValueError(f"必須フィールドが見つかりません: {e}")
+
+    def load_as_dataframe(self) -> pd.DataFrame:
+        """
+        すべての曲リスト情報をDataFrameとして読み込む
+        
+        Returns:
+            曲リスト情報のDataFrame（ファイルが存在しない場合は空のDataFrame）
+            
+        Raises:
+            DataLoadError: ファイルの読み込みに失敗した場合
+        """
+        if not self.file_path.exists():
+            self.logger.info(f"ファイルが存在しないため、空のDataFrameを返します: {self.file_path}")
+            return pd.DataFrame(columns=['アーティスト', 'アーティスト(ソート用)', '曲名', '最近の歌唱'])
+            
+        try:
+            # エンコーディングを検出
+            encoding = self._detect_encoding()
+            
+            # DataFrameとして読み込み
+            df = pd.read_csv(self.file_path, delimiter="\t", encoding=encoding)
+            
+            # ヘッダーの検証
+            expected_headers = ['アーティスト', 'アーティスト(ソート用)', '曲名', '最近の歌唱']
+            if not all(col in df.columns for col in expected_headers):
+                error_msg = (
+                    f"ファイル形式が不正です。"
+                    f"期待されるヘッダー: {expected_headers}, "
+                    f"実際のヘッダー: {list(df.columns)}"
+                )
+                self.logger.error(error_msg)
+                raise DataLoadError(file_path=str(self.file_path), message=error_msg)
+                
+            self.logger.info(f"曲リストを読み込みました: {len(df)}件 ({self.file_path})")
+            return df
+            
+        except DataLoadError:
+            raise
+        except Exception as e:
+            error_msg = f"ファイルの読み込みに失敗しました: {e}"
+            self.logger.error(error_msg, exc_info=True)
+            raise DataLoadError(file_path=str(self.file_path), message=error_msg)
