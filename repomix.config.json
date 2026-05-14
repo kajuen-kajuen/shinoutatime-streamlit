@@ -1,0 +1,16 @@
+{
+  "output": {
+    "filePath": "repomix-output.xml",
+    "style": "xml",
+    "removeComments": false,
+    "removeEmptyLines": true,
+    "topFilesLength": 5
+  },
+  "ignore": {
+    "useGitignore": true,
+    "customPatterns": [
+      "data/**/*.TSV",
+      "data/**/*.csv"
+    ]
+  }
+}
