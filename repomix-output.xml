@@ -547,18 +547,6 @@ cython_debug/
 #.idea/
 </file>
 
-<file path=".repomixignore">
-# データファイルの除外
-data/*.TSV
-data/*.tsv
-data/*.csv
-
-# AIのコード解析に不要なバイナリやキャッシュ（念のため）
-__pycache__/
-*.pyc
-.streamlit/
-</file>
-
 <file path="CHANGELOG.md">
 # 変更履歴
 
@@ -2214,25 +2202,6 @@ Apache License
    limitations under the License.
 </file>
 
-<file path="repomix.config.json">
-{
-  "output": {
-    "filePath": "repomix-output.xml",
-    "style": "xml",
-    "removeComments": false,
-    "removeEmptyLines": true,
-    "topFilesLength": 5
-  },
-  "ignore": {
-    "useGitignore": true,
-    "customPatterns": [
-      "data/**/*.TSV",
-      "data/**/*.csv"
-    ]
-  }
-}
-</file>
-
 <file path="src/__init__.py">
 """
 しのうたタイムアプリケーション - メインパッケージ
@@ -3099,265 +3068,6 @@ __all__ = [
 ]
 </file>
 
-<file path="src/core/data_pipeline.py">
-"""
-データパイプラインモジュール
-データ処理の全体フローを管理するパイプラインクラスを提供します。
-データの読み込み、結合、変換、ソートの各ステップを明確に分離し、
-キャッシング機能とエラーハンドリングを提供します。
-"""
-import logging
-from typing import Optional, Tuple
-import pandas as pd
-from src.services.data_service import DataService
-from src.config.settings import Config
-from src.core.utils import (
-    convert_timestamp_to_seconds,
-    generate_youtube_url,
-    generate_song_numbers,
-    convert_date_string,
-)
-from src.exceptions.errors import DataProcessingError, log_error
-# ロガーの設定
-logger = logging.getLogger(__name__)
-class DataPipeline:
-    """
-    データ処理パイプライン
-    データの読み込みから最終的な表示用データの生成までの
-    全体フローを管理します。各処理ステップを明確に分離し、
-    キャッシング機能により効率的なデータ処理を実現します。
-    処理フロー:
-        1. データ読み込み（_load_data）
-        2. データ結合（_merge_data）
-        3. データ変換（_transform_data）
-        4. データソート（_sort_data）
-    Attributes:
-        data_service (DataService): データサービス
-        config (Config): 設定オブジェクト
-        _cache (dict): 処理結果のキャッシュ
-    Examples:
-        >>> config = Config()
-        >>> data_service = DataService(config)
-        >>> pipeline = DataPipeline(data_service, config)
-        >>> df = pipeline.execute()
-        >>> if df is not None:
-        ...     print(f"処理完了: {len(df)}件")
-    """
-    def __init__(self, data_service: DataService, config: Config):
-        """
-        DataPipelineを初期化する
-        Args:
-            data_service: データサービス
-            config: 設定オブジェクト
-        """
-        self.data_service = data_service
-        self.config = config
-        self._cache = {}
-        logger.info("DataPipelineを初期化しました")
-    def execute(self) -> Optional[pd.DataFrame]:
-        """
-        パイプライン全体を実行する
-        データの読み込みから最終的な表示用データの生成までの
-        全ての処理ステップを順次実行します。
-        キャッシュが有効な場合、2回目以降はキャッシュから結果を返します。
-        Returns:
-            処理済みDataFrame。エラー時はNone
-        Note:
-            各ステップでエラーが発生した場合、適切なエラーメッセージを
-            ログに記録し、Noneを返します。
-        """
-        import time
-        # キャッシュチェック
-        if self.config.enable_cache and "final_data" in self._cache:
-            logger.info("キャッシュからデータを返します")
-            return self._cache["final_data"]
-        start_time = time.time()
-        logger.info("データパイプラインを実行開始")
-        try:
-            # ステップ1: データ読み込み
-            lives_df, songs_df = self._load_data()
-            if lives_df is None or songs_df is None:
-                logger.error("データ読み込みに失敗しました")
-                return None
-            if not self._validate_step_result(lives_df, "load_lives"):
-                return None
-            if not self._validate_step_result(songs_df, "load_songs"):
-                return None
-            # ステップ2: データ結合
-            merged_df = self._merge_data(lives_df, songs_df)
-            if not self._validate_step_result(merged_df, "merge"):
-                return None
-            # ステップ3: データ変換
-            transformed_df = self._transform_data(merged_df)
-            if not self._validate_step_result(transformed_df, "transform"):
-                return None
-            # ステップ4: データソート
-            sorted_df = self._sort_data(transformed_df)
-            if not self._validate_step_result(sorted_df, "sort"):
-                return None
-            # キャッシュに保存
-            if self.config.enable_cache:
-                self._cache["final_data"] = sorted_df
-                logger.info("処理結果をキャッシュに保存しました")
-            # パフォーマンス情報をログに記録
-            elapsed_time = time.time() - start_time
-            logger.info(
-                f"データパイプライン実行完了: {len(sorted_df)}件、"
-                f"処理時間: {elapsed_time:.2f}秒"
-            )
-            return sorted_df
-        except Exception as e:
-            error_msg = f"データパイプライン実行中にエラーが発生しました: {e}"
-            logger.error(error_msg, exc_info=True)
-            log_error(DataProcessingError("execute", str(e)))
-            return None
-    def _load_data(self) -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
-        """
-        データ読み込みステップ
-        配信データと楽曲データをTSVファイルから読み込みます。
-        Returns:
-            (配信データ, 楽曲データ)のタプル。エラー時は(None, None)
-        """
-        logger.info("ステップ1: データ読み込み開始")
-        lives_df = self.data_service.load_lives_data()
-        songs_df = self.data_service.load_songs_data()
-        if lives_df is None:
-            logger.error(f"配信データの読み込みに失敗: {self.data_service.get_last_error()}")
-            return None, None
-        if songs_df is None:
-            logger.error(f"楽曲データの読み込みに失敗: {self.data_service.get_last_error()}")
-            return None, None
-        logger.info(f"データ読み込み完了: 配信{len(lives_df)}件、楽曲{len(songs_df)}件")
-        return lives_df, songs_df
-    def _merge_data(
-        self, 
-        lives_df: pd.DataFrame, 
-        songs_df: pd.DataFrame
-    ) -> pd.DataFrame:
-        """
-        データ結合ステップ
-        配信データと楽曲データをLIVE_IDをキーとして結合します。
-        Args:
-            lives_df: 配信データ
-            songs_df: 楽曲データ
-        Returns:
-            結合されたDataFrame
-        """
-        logger.info("ステップ2: データ結合開始")
-        try:
-            merged_df = self.data_service.merge_data(lives_df, songs_df)
-            # 表示用の「ライブ配信日」列を作成（元データをそのまま使用）
-            merged_df["ライブ配信日"] = merged_df["ライブ配信日_original"]
-            logger.info(f"データ結合完了: {len(merged_df)}件")
-            return merged_df
-        except Exception as e:
-            error_msg = f"データ結合中にエラーが発生しました: {e}"
-            logger.error(error_msg, exc_info=True)
-            raise DataProcessingError("merge", str(e))
-    def _transform_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        データ変換ステップ
-        タイムスタンプ変換、日付変換、URL生成、曲目番号生成を実行します。
-        Args:
-            df: 変換対象のDataFrame
-        Returns:
-            変換後のDataFrame
-        """
-        logger.info("ステップ3: データ変換開始")
-        try:
-            df_result = df.copy()
-            # タイムスタンプ変換: HH:MM:SSまたはMM:SS形式を秒数に変換
-            logger.debug("タイムスタンプを秒数に変換中")
-            df_result["タイムスタンプ_秒"] = df_result["タイムスタンプ"].apply(
-                convert_timestamp_to_seconds
-            )
-            # 日付変換: ソート用に配信日を日付型（datetime）に変換
-            logger.debug("配信日をdatetime型に変換中")
-            # まずUNIXミリ秒として変換を試みる
-            df_result["ライブ配信日_sortable"] = pd.to_datetime(
-                df_result["ライブ配信日_original"], unit="ms", errors="coerce"
-            )
-            # UNIXミリ秒で変換できなかった行（NaT）に対して、YYYY/MM/DD形式として再変換
-            mask_nat_sortable = df_result["ライブ配信日_sortable"].isna()
-            if mask_nat_sortable.any():
-                try:
-                    df_result.loc[mask_nat_sortable, "ライブ配信日_sortable"] = pd.to_datetime(
-                        df_result.loc[mask_nat_sortable, "ライブ配信日_original"],
-                        errors="coerce",
-                    )
-                except Exception as e:
-                    logger.warning(f"ソート用の「ライブ配信日」変換中にエラーが発生しました: {e}")
-            # YouTubeタイムスタンプ付きURL生成
-            logger.debug("YouTubeタイムスタンプ付きURLを生成中")
-            df_result["YouTubeタイムスタンプ付きURL"] = df_result.apply(
-                lambda row: generate_youtube_url(
-                    row["元ライブURL"], 
-                    row["タイムスタンプ_秒"]
-                ),
-                axis=1,
-            )
-            logger.info("データ変換完了")
-            return df_result
-        except Exception as e:
-            error_msg = f"データ変換中にエラーが発生しました: {e}"
-            logger.error(error_msg, exc_info=True)
-            raise DataProcessingError("transform", str(e))
-    def _sort_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        データソートステップ
-        データをソートし、曲目番号を生成します。
-        Args:
-            df: ソート対象のDataFrame
-        Returns:
-            ソート後のDataFrame
-        """
-        logger.info("ステップ4: データソート開始")
-        try:
-            # データをソート: 配信日降順（新しい順）→ LIVE_ID昇順 → タイムスタンプ昇順
-            logger.debug("データをソート中")
-            df_result = df.sort_values(
-                by=["ライブ配信日_sortable", "LIVE_ID", "タイムスタンプ_秒"],
-                ascending=[False, True, True],
-            ).reset_index(drop=True)
-            # 曲目番号生成
-            logger.debug("曲目番号を生成中")
-            df_result = generate_song_numbers(df_result)
-            logger.info("データソート完了")
-            return df_result
-        except Exception as e:
-            error_msg = f"データソート中にエラーが発生しました: {e}"
-            logger.error(error_msg, exc_info=True)
-            raise DataProcessingError("sort", str(e))
-    def _validate_step_result(self, df: pd.DataFrame, step_name: str) -> bool:
-        """
-        ステップ結果を検証する
-        各処理ステップの結果が有効かどうかを検証します。
-        Args:
-            df: 検証対象のDataFrame
-            step_name: ステップ名
-        Returns:
-            検証成功時True、失敗時False
-        """
-        if df is None:
-            logger.error(f"ステップ '{step_name}' の結果がNoneです")
-            return False
-        if not isinstance(df, pd.DataFrame):
-            logger.error(f"ステップ '{step_name}' の結果がDataFrameではありません")
-            return False
-        if len(df) == 0:
-            logger.warning(f"ステップ '{step_name}' の結果が空のDataFrameです")
-            # 空のDataFrameは警告のみで処理を継続
-        return True
-    def clear_cache(self):
-        """
-        キャッシュをクリアする
-        パイプラインの処理結果キャッシュをクリアします。
-        データファイルが更新された場合などに使用します。
-        """
-        self._cache.clear()
-        logger.info("キャッシュをクリアしました")
-</file>
-
 <file path="src/exceptions/__init__.py">
 """
 例外パッケージ
@@ -3503,194 +3213,6 @@ from src.services.data_service import DataService
 from src.services.search_service import SearchService
 from src.services.twitter_embed_service import TwitterEmbedService
 __all__ = ["DataService", "SearchService", "TwitterEmbedService"]
-</file>
-
-<file path="src/services/data_service.py">
-"""
-データサービスモジュール
-TSVファイルからのデータ読み込み、データの基本的な検証、
-エラーハンドリングを担当するサービスクラスを提供します。
-"""
-import logging
-from typing import Optional
-import pandas as pd
-from src.config.settings import Config
-from src.exceptions.errors import DataLoadError
-# ロガーの設定
-logger = logging.getLogger(__name__)
-class DataService:
-    """
-    データ読み込みサービス
-    TSVファイルからのデータ読み込みとデータ結合を担当します。
-    エラーハンドリングを内部で処理し、エラー情報を保持します。
-    Attributes:
-        config (Config): 設定オブジェクト
-        error_message (Optional[str]): 最後に発生したエラーメッセージ
-    Examples:
-        >>> config = Config()
-        >>> service = DataService(config)
-        >>> lives_df = service.load_lives_data()
-        >>> if lives_df is not None:
-        ...     print(f"配信データ: {len(lives_df)}件")
-    """
-    def __init__(self, config: Config):
-        """
-        DataServiceを初期化する
-        Args:
-            config: 設定オブジェクト
-        """
-        self.config = config
-        self.error_message: Optional[str] = None
-        logger.info("DataServiceを初期化しました")
-    def load_lives_data(self) -> Optional[pd.DataFrame]:
-        """
-        配信データを読み込む
-        M_YT_LIVE.TSVファイルから配信情報を読み込みます。
-        ファイルが存在しない場合や読み込みに失敗した場合は、
-        エラーメッセージを保持してNoneを返します。
-        Returns:
-            配信データのDataFrame。エラー時はNone
-        Note:
-            エラーが発生した場合、get_last_error()でエラーメッセージを取得できます
-        """
-        file_path = self.config.lives_file_path
-        try:
-            logger.info(f"配信データを読み込み中: {file_path}")
-            df = pd.read_csv(file_path, delimiter="\t")
-            logger.info(f"配信データを読み込みました: {len(df)}件")
-            self.error_message = None
-            return df
-        except FileNotFoundError:
-            error_msg = f'配信情報ファイル "{file_path}" が見つかりません'
-            self.error_message = error_msg
-            logger.error(error_msg)
-            return None
-        except Exception as e:
-            error_msg = f'配信情報ファイル "{file_path}" の読み込み中にエラーが発生しました: {e}'
-            self.error_message = error_msg
-            logger.error(error_msg, exc_info=True)
-            return None
-    def load_songs_data(self) -> Optional[pd.DataFrame]:
-        """
-        楽曲データを読み込む
-        M_YT_LIVE_TIMESTAMP.TSVファイルから楽曲タイムスタンプ情報を読み込みます。
-        ファイルが存在しない場合や読み込みに失敗した場合は、
-        エラーメッセージを保持してNoneを返します。
-        Returns:
-            楽曲データのDataFrame。エラー時はNone
-        Note:
-            エラーが発生した場合、get_last_error()でエラーメッセージを取得できます
-        """
-        file_path = self.config.songs_file_path
-        try:
-            logger.info(f"楽曲データを読み込み中: {file_path}")
-            df = pd.read_csv(file_path, delimiter="\t")
-            logger.info(f"楽曲データを読み込みました: {len(df)}件")
-            self.error_message = None
-            return df
-        except FileNotFoundError:
-            error_msg = f'楽曲情報ファイル "{file_path}" が見つかりません'
-            self.error_message = error_msg
-            logger.error(error_msg)
-            return None
-        except Exception as e:
-            error_msg = f'楽曲情報ファイル "{file_path}" の読み込み中にエラーが発生しました: {e}'
-            self.error_message = error_msg
-            logger.error(error_msg, exc_info=True)
-            return None
-    def load_song_list_data(self) -> Optional[pd.DataFrame]:
-        """
-        楽曲リストデータを読み込む
-        V_SONG_LIST.TSVファイルから楽曲リスト情報を読み込みます。
-        ファイルが存在しない場合や読み込みに失敗した場合は、
-        エラーメッセージを保持してNoneを返します。
-        Returns:
-            楽曲リストデータのDataFrame。エラー時はNone
-        Note:
-            エラーが発生した場合、get_last_error()でエラーメッセージを取得できます
-        """
-        file_path = self.config.song_list_file_path
-        try:
-            logger.info(f"楽曲リストデータを読み込み中: {file_path}")
-            df = pd.read_csv(file_path, delimiter="\t")
-            logger.info(f"楽曲リストデータを読み込みました: {len(df)}件")
-            self.error_message = None
-            return df
-        except FileNotFoundError:
-            error_msg = f'楽曲リストファイル "{file_path}" が見つかりません'
-            self.error_message = error_msg
-            logger.error(error_msg)
-            return None
-        except Exception as e:
-            error_msg = f'楽曲リストファイル "{file_path}" の読み込み中にエラーが発生しました: {e}'
-            self.error_message = error_msg
-            logger.error(error_msg, exc_info=True)
-            return None
-    def merge_data(
-        self, 
-        lives_df: pd.DataFrame, 
-        songs_df: pd.DataFrame
-    ) -> pd.DataFrame:
-        """
-        配信データと楽曲データを結合する
-        配信情報（lives_df）と楽曲情報（songs_df）をLIVE_IDをキーとして左結合します。
-        楽曲データを基準として配信情報を紐付けることで、
-        各楽曲がどの配信で歌われたかを特定できます。
-        Args:
-            lives_df: 配信データ（M_YT_LIVE.TSV）
-            songs_df: 楽曲データ（M_YT_LIVE_TIMESTAMP.TSV）
-        Returns:
-            結合されたDataFrame
-        Note:
-            - 左結合（left join）により、楽曲データを基準とする
-            - 結合後、不要な列（ID_live）は削除される
-            - 列名は日本語名に変更される
-        Examples:
-            >>> lives_df = service.load_lives_data()
-            >>> songs_df = service.load_songs_data()
-            >>> merged_df = service.merge_data(lives_df, songs_df)
-        """
-        logger.info("配信データと楽曲データを結合中")
-        try:
-            # LIVE_IDをキーとして左結合
-            df_merged = pd.merge(
-                songs_df,
-                lives_df[["ID", "配信日", "タイトル", "URL"]],
-                left_on="LIVE_ID",
-                right_on="ID",
-                how="left",
-                suffixes=("_song", "_live"),
-            )
-            # 不要な列を削除
-            df_merged = df_merged.drop(columns=["ID_live"])
-            # 列名を日本語名に変更
-            df_merged = df_merged.rename(
-                columns={
-                    "ID_song": "楽曲ID",
-                    "配信日": "ライブ配信日_original",
-                    "タイトル": "ライブタイトル",
-                    "URL": "元ライブURL",
-                }
-            )
-            logger.info(f"データ結合が完了しました: {len(df_merged)}件")
-            self.error_message = None
-            return df_merged
-        except Exception as e:
-            error_msg = f"データ結合中にエラーが発生しました: {e}"
-            self.error_message = error_msg
-            logger.error(error_msg, exc_info=True)
-            raise DataLoadError("merge_data", error_msg)
-    def get_last_error(self) -> Optional[str]:
-        """
-        最後に発生したエラーメッセージを取得
-        Returns:
-            エラーメッセージ。エラーがない場合はNone
-        Examples:
-            >>> lives_df = service.load_lives_data()
-            >>> if lives_df is None:
-            ...     print(service.get_last_error())
-        """
-        return self.error_message
 </file>
 
 <file path="src/services/search_service.py">
@@ -4947,6 +4469,18 @@ omit =
 - **Docker**: Always run commands (including tests, linting, and scripts) inside the Docker container.
 - Use `docker compose exec [service_name] [command]` or `docker compose run --rm [service_name] [command]`.
 - Do not run commands directly on the host machine unless explicitly instructed.
+</file>
+
+<file path=".repomixignore">
+# データファイルの除外
+data/*.TSV
+data/*.tsv
+data/*.csv
+
+# AIのコード解析に不要なバイナリやキャッシュ（念のため）
+__pycache__/
+*.pyc
+.streamlit/
 </file>
 
 <file path="docs/architecture/architecture.md">
@@ -20355,6 +19889,25 @@ st.markdown(
 display_footer()
 </file>
 
+<file path="repomix.config.json">
+{
+  "output": {
+    "filePath": "repomix-output.xml",
+    "style": "xml",
+    "removeComments": false,
+    "removeEmptyLines": true,
+    "topFilesLength": 5
+  },
+  "ignore": {
+    "useGitignore": true,
+    "customPatterns": [
+      "data/**/*.TSV",
+      "data/**/*.csv"
+    ]
+  }
+}
+</file>
+
 <file path="scripts/excel_to_tsv_converter.bat">
 @echo off
 chcp 65001 > nul
@@ -21742,6 +21295,238 @@ class TwitterEmbedConfig:
         return True
 </file>
 
+<file path="src/core/data_pipeline.py">
+"""
+データパイプラインモジュール
+データ処理の全体フローを管理するパイプラインクラスを提供します。
+データの読み込み、結合、変換、ソートの各ステップを明確に分離し、
+キャッシング機能とエラーハンドリングを提供します。
+"""
+import logging
+from typing import Optional, Tuple
+import pandas as pd
+from src.services.data_service import DataService
+from src.config.settings import Config
+from src.core.utils import (
+    convert_timestamp_to_seconds,
+    generate_youtube_url,
+    generate_song_numbers,
+    convert_date_string,
+)
+from src.exceptions.errors import DataProcessingError, DataLoadError, log_error
+# ロガーの設定
+logger = logging.getLogger(__name__)
+class DataPipeline:
+    """
+    データ処理パイプライン
+    データの読み込みから最終的な表示用データの生成までの
+    全体フローを管理します。各処理ステップを明確に分離し、
+    キャッシング機能により効率的なデータ処理を実現します。
+    処理フロー:
+        1. データ読み込み（_load_data）
+        2. データ結合（_merge_data）
+        3. データ変換（_transform_data）
+        4. データソート（_sort_data）
+    Attributes:
+        data_service (DataService): データサービス
+        config (Config): 設定オブジェクト
+        _cache (dict): 処理結果のキャッシュ
+    Examples:
+        >>> config = Config()
+        >>> data_service = DataService(config)
+        >>> pipeline = DataPipeline(data_service, config)
+        >>> df = pipeline.execute()
+        >>> if df is not None:
+        ...     print(f"処理完了: {len(df)}件")
+    """
+    def __init__(self, data_service: DataService, config: Config):
+        """
+        DataPipelineを初期化する
+        Args:
+            data_service: データサービス
+            config: 設定オブジェクト
+        """
+        self.data_service = data_service
+        self.config = config
+        logger.info("DataPipelineを初期化しました")
+    def execute(self) -> pd.DataFrame:
+        """
+        パイプライン全体を実行する
+        データの読み込みから最終的な表示用データの生成までの
+        全ての処理ステップを順次実行します。
+        Returns:
+            処理済みDataFrame
+        Raises:
+            DataProcessingError: データ処理中にエラーが発生した場合
+            DataLoadError: データ読み込み中にエラーが発生した場合
+        """
+        import time
+        start_time = time.time()
+        logger.info("データパイプラインを実行開始")
+        try:
+            # ステップ1: データ読み込み
+            lives_df, songs_df = self._load_data()
+            self._validate_step_result(lives_df, "load_lives")
+            self._validate_step_result(songs_df, "load_songs")
+            # ステップ2: データ結合
+            merged_df = self._merge_data(lives_df, songs_df)
+            self._validate_step_result(merged_df, "merge")
+            # ステップ3: データ変換
+            transformed_df = self._transform_data(merged_df)
+            self._validate_step_result(transformed_df, "transform")
+            # ステップ4: データソート
+            sorted_df = self._sort_data(transformed_df)
+            self._validate_step_result(sorted_df, "sort")
+            # パフォーマンス情報をログに記録
+            elapsed_time = time.time() - start_time
+            logger.info(
+                f"データパイプライン実行完了: {len(sorted_df)}件、"
+                f"処理時間: {elapsed_time:.2f}秒"
+            )
+            return sorted_df
+        except (DataProcessingError, DataLoadError):
+            # 既に適切にラップされている例外はそのまま送出
+            raise
+        except Exception as e:
+            error_msg = f"データパイプライン実行中に予期しないエラーが発生しました: {e}"
+            logger.error(error_msg, exc_info=True)
+            raise DataProcessingError("execute", str(e))
+    def _load_data(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        データ読み込みステップ
+        配信データと楽曲データをリポジトリから読み込みます。
+        Returns:
+            (配信データ, 楽曲データ)のタプル
+        Raises:
+            DataLoadError: データの読み込みに失敗した場合
+        """
+        logger.info("ステップ1: データ読み込み開始")
+        lives_df = self.data_service.load_lives_data()
+        songs_df = self.data_service.load_songs_data()
+        logger.info(f"データ読み込み完了: 配信{len(lives_df)}件、楽曲{len(songs_df)}件")
+        return lives_df, songs_df
+    def _merge_data(
+        self, 
+        lives_df: pd.DataFrame, 
+        songs_df: pd.DataFrame
+    ) -> pd.DataFrame:
+        """
+        データ結合ステップ
+        配信データと楽曲データをLIVE_IDをキーとして結合します。
+        Args:
+            lives_df: 配信データ
+            songs_df: 楽曲データ
+        Returns:
+            結合されたDataFrame
+        """
+        logger.info("ステップ2: データ結合開始")
+        try:
+            merged_df = self.data_service.merge_data(lives_df, songs_df)
+            # 表示用の「ライブ配信日」列を作成（元データをそのまま使用）
+            merged_df["ライブ配信日"] = merged_df["ライブ配信日_original"]
+            logger.info(f"データ結合完了: {len(merged_df)}件")
+            return merged_df
+        except Exception as e:
+            error_msg = f"データ結合中にエラーが発生しました: {e}"
+            logger.error(error_msg, exc_info=True)
+            raise DataProcessingError("merge", str(e))
+    def _transform_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        データ変換ステップ
+        タイムスタンプ変換、日付変換、URL生成、曲目番号生成を実行します。
+        Args:
+            df: 変換対象のDataFrame
+        Returns:
+            変換後のDataFrame
+        """
+        logger.info("ステップ3: データ変換開始")
+        try:
+            df_result = df.copy()
+            # タイムスタンプ変換: HH:MM:SSまたはMM:SS形式を秒数に変換
+            logger.debug("タイムスタンプを秒数に変換中")
+            df_result["タイムスタンプ_秒"] = df_result["タイムスタンプ"].apply(
+                convert_timestamp_to_seconds
+            )
+            # 日付変換: ソート用に配信日を日付型（datetime）に変換
+            logger.debug("配信日をdatetime型に変換中")
+            # まずUNIXミリ秒として変換を試みる
+            df_result["ライブ配信日_sortable"] = pd.to_datetime(
+                df_result["ライブ配信日_original"], unit="ms", errors="coerce"
+            )
+            # UNIXミリ秒で変換できなかった行（NaT）に対して、YYYY/MM/DD形式として再変換
+            mask_nat_sortable = df_result["ライブ配信日_sortable"].isna()
+            if mask_nat_sortable.any():
+                try:
+                    df_result.loc[mask_nat_sortable, "ライブ配信日_sortable"] = pd.to_datetime(
+                        df_result.loc[mask_nat_sortable, "ライブ配信日_original"],
+                        errors="coerce",
+                    )
+                except Exception as e:
+                    logger.warning(f"ソート用の「ライブ配信日」変換中にエラーが発生しました: {e}")
+            # YouTubeタイムスタンプ付きURL生成
+            logger.debug("YouTubeタイムスタンプ付きURLを生成中")
+            df_result["YouTubeタイムスタンプ付きURL"] = df_result.apply(
+                lambda row: generate_youtube_url(
+                    row["元ライブURL"], 
+                    row["タイムスタンプ_秒"]
+                ),
+                axis=1,
+            )
+            logger.info("データ変換完了")
+            return df_result
+        except Exception as e:
+            error_msg = f"データ変換中にエラーが発生しました: {e}"
+            logger.error(error_msg, exc_info=True)
+            raise DataProcessingError("transform", str(e))
+    def _sort_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        データソートステップ
+        データをソートし、曲目番号を生成します。
+        Args:
+            df: ソート対象のDataFrame
+        Returns:
+            ソート後のDataFrame
+        """
+        logger.info("ステップ4: データソート開始")
+        try:
+            # データをソート: 配信日降順（新しい順）→ LIVE_ID昇順 → タイムスタンプ昇順
+            logger.debug("データをソート中")
+            df_result = df.sort_values(
+                by=["ライブ配信日_sortable", "LIVE_ID", "タイムスタンプ_秒"],
+                ascending=[False, True, True],
+            ).reset_index(drop=True)
+            # 曲目番号生成
+            logger.debug("曲目番号を生成中")
+            df_result = generate_song_numbers(df_result)
+            logger.info("データソート完了")
+            return df_result
+        except Exception as e:
+            error_msg = f"データソート中にエラーが発生しました: {e}"
+            logger.error(error_msg, exc_info=True)
+            raise DataProcessingError("sort", str(e))
+    def _validate_step_result(self, df: pd.DataFrame, step_name: str) -> None:
+        """
+        ステップ結果を検証する
+        各処理ステップの結果が有効かどうかを検証します。
+        Args:
+            df: 検証対象のDataFrame
+            step_name: ステップ名
+        Raises:
+            DataProcessingError: 検証に失敗した場合
+        """
+        if df is None:
+            error_msg = f"ステップ '{step_name}' の結果がNoneです"
+            logger.error(error_msg)
+            raise DataProcessingError(step_name, error_msg)
+        if not isinstance(df, pd.DataFrame):
+            error_msg = f"ステップ '{step_name}' の結果がDataFrameではありません"
+            logger.error(error_msg)
+            raise DataProcessingError(step_name, error_msg)
+        if len(df) == 0:
+            logger.warning(f"ステップ '{step_name}' の結果が空のDataFrameです")
+            # 空のDataFrameは警告のみで処理を継続
+</file>
+
 <file path="src/exceptions/errors.py">
 """
 カスタム例外モジュール
@@ -22616,523 +22401,136 @@ class ExcelRepository:
             self.logger.debug("ワークブックを閉じました")
 </file>
 
-<file path="src/repositories/live_repository.py">
+<file path="src/services/data_service.py">
 """
-配信情報リポジトリモジュール
-M_YT_LIVE.TSVファイルの読み込みを管理します。
+データサービスモジュール
+TSVファイルからのデータ読み込み、データの基本的な検証、
+エラーハンドリングを担当するサービスクラスを提供します。
 """
-import csv
 import logging
-from datetime import datetime
-from pathlib import Path
-from typing import List, Optional
-import chardet
-from src.models.song_list_models import LiveInfo
+from typing import Optional
+import pandas as pd
+from src.config.settings import Config
 from src.exceptions.errors import DataLoadError
-class LiveRepository:
+from src.repositories.live_repository import LiveRepository
+from src.repositories.timestamp_repository import TimestampRepository
+from src.repositories.song_list_repository import SongListRepository
+# ロガーの設定
+logger = logging.getLogger(__name__)
+class DataService:
     """
-    配信情報リポジトリ
-    M_YT_LIVE.TSVファイルから配信情報を読み込みます。
+    データ読み込みサービス
+    TSVファイルからのデータ読み込みとデータ結合を担当します。
+    エラーハンドリングを内部で処理し、エラー情報を保持します。
+    Attributes:
+        config (Config): 設定オブジェクト
+        error_message (Optional[str]): 最後に発生したエラーメッセージ
+    Examples:
+        >>> config = Config()
+        >>> service = DataService(config)
+        >>> lives_df = service.load_lives_data()
+        >>> if lives_df is not None:
+        ...     print(f"配信データ: {len(lives_df)}件")
     """
-    def __init__(self, file_path: str):
+    def __init__(
+        self, 
+        config: Config,
+        live_repo: LiveRepository,
+        timestamp_repo: TimestampRepository,
+        song_list_repo: SongListRepository
+    ):
         """
-        リポジトリを初期化
+        DataServiceを初期化する
         Args:
-            file_path: M_YT_LIVE.TSVファイルのパス
+            config: 設定オブジェクト
+            live_repo: 配信情報リポジトリ
+            timestamp_repo: タイムスタンプ情報リポジトリ
+            song_list_repo: 曲リストリポジトリ
         """
-        self.file_path = Path(file_path)
-        self.logger = logging.getLogger(__name__)
-        self._cache: Optional[List[LiveInfo]] = None
-    def load_all(self) -> List[LiveInfo]:
+        self.config = config
+        self.live_repo = live_repo
+        self.timestamp_repo = timestamp_repo
+        self.song_list_repo = song_list_repo
+        logger.info("DataServiceを初期化しました")
+    def load_lives_data(self) -> pd.DataFrame:
         """
-        すべての配信情報を読み込む
+        配信データを読み込む
         Returns:
-            配信情報のリスト
+            配信データのDataFrame
         Raises:
             DataLoadError: ファイルの読み込みに失敗した場合
         """
-        # ファイルの存在確認
-        if not self.file_path.exists():
-            error_msg = f"ファイルが存在しません: {self.file_path}"
-            self.logger.error(error_msg)
-            raise DataLoadError(
-                file_path=str(self.file_path),
-                message=error_msg
-            )
-        try:
-            # エンコーディングを検出
-            encoding = self._detect_encoding()
-            self.logger.debug(f"検出されたエンコーディング: {encoding}")
-            # TSVファイルを読み込む
-            live_infos = []
-            with open(self.file_path, 'r', encoding=encoding) as f:
-                reader = csv.DictReader(f, delimiter='\t')
-                # ヘッダーの検証
-                expected_headers = ['ID', '配信日', 'タイトル', 'URL']
-                if reader.fieldnames != expected_headers:
-                    error_msg = (
-                        f"ファイル形式が不正です。"
-                        f"期待されるヘッダー: {expected_headers}, "
-                        f"実際のヘッダー: {reader.fieldnames}"
-                    )
-                    self.logger.error(error_msg)
-                    raise DataLoadError(
-                        file_path=str(self.file_path),
-                        message=error_msg
-                    )
-                # データ行を読み込む
-                for line_num, row in enumerate(reader, start=2):  # ヘッダーが1行目なので2から開始
-                    try:
-                        live_info = self._parse_row(row, line_num)
-                        live_infos.append(live_info)
-                    except Exception as e:
-                        error_msg = f"行 {line_num} の解析に失敗しました: {e}"
-                        self.logger.error(error_msg)
-                        raise DataLoadError(
-                            file_path=str(self.file_path),
-                            message=error_msg
-                        )
-            self.logger.info(
-                f"配信情報を読み込みました: {len(live_infos)}件 ({self.file_path})"
-            )
-            self._cache = live_infos
-            return live_infos
-        except DataLoadError:
-            raise
-        except Exception as e:
-            error_msg = f"ファイルの読み込みに失敗しました: {e}"
-            self.logger.error(error_msg, exc_info=True)
-            raise DataLoadError(
-                file_path=str(self.file_path),
-                message=error_msg
-            )
-    def get_by_id(self, live_id: int) -> Optional[LiveInfo]:
+        return self.live_repo.load_as_dataframe()
+    def load_songs_data(self) -> pd.DataFrame:
         """
-        IDで配信情報を取得
-        Args:
-            live_id: 配信ID
+        楽曲データを読み込む
         Returns:
-            配信情報（見つからない場合はNone）
-        """
-        # キャッシュがない場合は読み込む
-        if self._cache is None:
-            self.load_all()
-        # IDで検索
-        for live_info in self._cache:
-            if live_info.id == live_id:
-                return live_info
-        return None
-    def _detect_encoding(self) -> str:
-        """
-        ファイルのエンコーディングを検出
-        Returns:
-            検出されたエンコーディング名
-        """
-        try:
-            with open(self.file_path, 'rb') as f:
-                raw_data = f.read()
-            result = chardet.detect(raw_data)
-            encoding = result['encoding']
-            # UTF-8の場合はそのまま返す
-            if encoding and encoding.lower().startswith('utf'):
-                return 'utf-8'
-            # その他のエンコーディングの場合
-            return encoding if encoding else 'utf-8'
-        except Exception as e:
-            self.logger.warning(
-                f"エンコーディングの検出に失敗しました。UTF-8を使用します: {e}"
-            )
-            return 'utf-8'
-    def _parse_row(self, row: dict, line_num: int) -> LiveInfo:
-        """
-        TSVの1行をLiveInfoオブジェクトに変換
-        Args:
-            row: TSVの行データ（辞書形式）
-            line_num: 行番号（エラーメッセージ用）
-        Returns:
-            LiveInfoオブジェクト
-        Raises:
-            ValueError: データの解析に失敗した場合
-        """
-        try:
-            # IDを整数に変換
-            live_id = int(row['ID'])
-            # 配信日をパース（YYYY/M/D形式）
-            date_str = row['配信日'].strip()
-            date = self._parse_date(date_str)
-            # タイトルとURLを取得
-            title = row['タイトル'].strip()
-            url = row['URL'].strip()
-            return LiveInfo(
-                id=live_id,
-                date=date,
-                title=title,
-                url=url
-            )
-        except KeyError as e:
-            raise ValueError(f"必須フィールドが見つかりません: {e}")
-        except ValueError as e:
-            raise ValueError(f"データ形式が不正です: {e}")
-    def _parse_date(self, date_str: str) -> datetime:
-        """
-        配信日文字列をdatetimeオブジェクトに変換
-        Args:
-            date_str: 配信日文字列（YYYY/M/D形式）
-        Returns:
-            datetimeオブジェクト
-        Raises:
-            ValueError: 日付の解析に失敗した場合
-        """
-        try:
-            # YYYY/M/D形式をパース
-            parts = date_str.split('/')
-            if len(parts) != 3:
-                raise ValueError(f"日付形式が不正です: {date_str}")
-            year = int(parts[0])
-            month = int(parts[1])
-            day = int(parts[2])
-            return datetime(year, month, day)
-        except (ValueError, IndexError) as e:
-            raise ValueError(f"日付の解析に失敗しました: {date_str} ({e})")
-</file>
-
-<file path="src/repositories/song_list_repository.py">
-"""
-曲リストリポジトリモジュール
-V_SONG_LIST.TSVファイルの読み書きを管理します。
-"""
-import csv
-import logging
-from pathlib import Path
-from typing import List, Optional
-import chardet
-from src.models.song_list_models import SongInfo
-from src.exceptions.errors import DataLoadError, FileWriteError
-class SongListRepository:
-    """
-    曲リストリポジトリ
-    V_SONG_LIST.TSVファイルの読み込みと書き込みを管理します。
-    """
-    def __init__(self, file_path: str):
-        """
-        リポジトリを初期化
-        Args:
-            file_path: V_SONG_LIST.TSVファイルのパス
-        """
-        self.file_path = Path(file_path)
-        self.logger = logging.getLogger(__name__)
-    def load_all(self) -> List[SongInfo]:
-        """
-        既存の曲リストを読み込む
-        Returns:
-            曲情報のリスト（ファイルが存在しない場合は空リスト）
+            楽曲データのDataFrame
         Raises:
             DataLoadError: ファイルの読み込みに失敗した場合
         """
-        # ファイルが存在しない場合は空リストを返す
-        if not self.file_path.exists():
-            self.logger.info(
-                f"ファイルが存在しないため、空リストを返します: {self.file_path}"
-            )
-            return []
-        try:
-            # エンコーディングを検出
-            encoding = self._detect_encoding()
-            self.logger.debug(f"検出されたエンコーディング: {encoding}")
-            # TSVファイルを読み込む
-            song_infos = []
-            with open(self.file_path, 'r', encoding=encoding) as f:
-                reader = csv.DictReader(f, delimiter='\t')
-                # ヘッダーの検証
-                expected_headers = ['アーティスト', 'アーティスト(ソート用)', '曲名', '最近の歌唱']
-                if reader.fieldnames != expected_headers:
-                    error_msg = (
-                        f"ファイル形式が不正です。"
-                        f"期待されるヘッダー: {expected_headers}, "
-                        f"実際のヘッダー: {reader.fieldnames}"
-                    )
-                    self.logger.error(error_msg)
-                    raise DataLoadError(
-                        file_path=str(self.file_path),
-                        message=error_msg
-                    )
-                # データ行を読み込む
-                for line_num, row in enumerate(reader, start=2):  # ヘッダーが1行目なので2から開始
-                    try:
-                        song_info = self._parse_row(row, line_num)
-                        song_infos.append(song_info)
-                    except Exception as e:
-                        error_msg = f"行 {line_num} の解析に失敗しました: {e}"
-                        self.logger.error(error_msg)
-                        raise DataLoadError(
-                            file_path=str(self.file_path),
-                            message=error_msg
-                        )
-            self.logger.info(
-                f"曲リストを読み込みました: {len(song_infos)}件 ({self.file_path})"
-            )
-            return song_infos
-        except DataLoadError:
-            raise
-        except Exception as e:
-            error_msg = f"ファイルの読み込みに失敗しました: {e}"
-            self.logger.error(error_msg, exc_info=True)
-            raise DataLoadError(
-                file_path=str(self.file_path),
-                message=error_msg
-            )
-    def save_all(self, songs: List[SongInfo]) -> None:
+        return self.timestamp_repo.load_as_dataframe()
+    def load_song_list_data(self) -> pd.DataFrame:
         """
-        曲リストを保存
-        Args:
-            songs: 保存する曲情報のリスト
-        Raises:
-            FileWriteError: ファイルの書き込みに失敗した場合
-        """
-        try:
-            # 親ディレクトリが存在しない場合は作成
-            self.file_path.parent.mkdir(parents=True, exist_ok=True)
-            # UTF-8エンコーディングでTSVファイルに書き込む
-            with open(self.file_path, 'w', encoding='utf-8', newline='') as f:
-                writer = csv.writer(f, delimiter='\t')
-                # ヘッダーを書き込む
-                writer.writerow(['アーティスト', 'アーティスト(ソート用)', '曲名', '最近の歌唱'])
-                # データ行を書き込む
-                for song in songs:
-                    writer.writerow([
-                        song.artist,
-                        song.artist_sort,
-                        song.song_name,
-                        song.latest_url
-                    ])
-            self.logger.info(
-                f"曲リストを保存しました: {len(songs)}件 ({self.file_path})"
-            )
-        except PermissionError as e:
-            error_msg = "ファイルへの書き込み権限がありません"
-            self.logger.error(f"{error_msg}: {self.file_path}", exc_info=True)
-            raise FileWriteError(
-                file_path=str(self.file_path),
-                message=error_msg,
-                original_error=e
-            ) from e
-        except OSError as e:
-            error_msg = "ファイルの書き込みに失敗しました"
-            self.logger.error(f"{error_msg}: {e}", exc_info=True)
-            raise FileWriteError(
-                file_path=str(self.file_path),
-                message=error_msg,
-                original_error=e
-            ) from e
-        except Exception as e:
-            error_msg = "予期しないエラーが発生しました"
-            self.logger.error(f"{error_msg}: {e}", exc_info=True)
-            raise FileWriteError(
-                file_path=str(self.file_path),
-                message=error_msg,
-                original_error=e
-            ) from e
-    def _detect_encoding(self) -> str:
-        """
-        ファイルのエンコーディングを検出
+        楽曲リストデータを読み込む
         Returns:
-            検出されたエンコーディング名
-        """
-        try:
-            with open(self.file_path, 'rb') as f:
-                raw_data = f.read()
-            result = chardet.detect(raw_data)
-            encoding = result['encoding']
-            # UTF-8の場合はそのまま返す
-            if encoding and encoding.lower().startswith('utf'):
-                return 'utf-8'
-            # その他のエンコーディングの場合
-            return encoding if encoding else 'utf-8'
-        except Exception as e:
-            self.logger.warning(
-                f"エンコーディングの検出に失敗しました。UTF-8を使用します: {e}"
-            )
-            return 'utf-8'
-    def _parse_row(self, row: dict, line_num: int) -> SongInfo:
-        """
-        TSVの1行をSongInfoオブジェクトに変換
-        Args:
-            row: TSVの行データ（辞書形式）
-            line_num: 行番号（エラーメッセージ用）
-        Returns:
-            SongInfoオブジェクト
-        Raises:
-            ValueError: データの解析に失敗した場合
-        """
-        try:
-            # 各フィールドを取得
-            artist = row['アーティスト'].strip()
-            artist_sort = row['アーティスト(ソート用)'].strip()
-            song_name = row['曲名'].strip()
-            latest_url = row['最近の歌唱'].strip()
-            return SongInfo(
-                artist=artist,
-                artist_sort=artist_sort,
-                song_name=song_name,
-                latest_url=latest_url
-            )
-        except KeyError as e:
-            raise ValueError(f"必須フィールドが見つかりません: {e}")
-</file>
-
-<file path="src/repositories/timestamp_repository.py">
-"""
-タイムスタンプ情報リポジトリモジュール
-M_YT_LIVE_TIMESTAMP.TSVファイルの読み込みを管理します。
-"""
-import csv
-import logging
-from pathlib import Path
-from typing import List, Optional
-import chardet
-from src.models.song_list_models import TimestampInfo
-from src.exceptions.errors import DataLoadError
-class TimestampRepository:
-    """
-    タイムスタンプ情報リポジトリ
-    M_YT_LIVE_TIMESTAMP.TSVファイルからタイムスタンプ情報を読み込みます。
-    """
-    def __init__(self, file_path: str):
-        """
-        リポジトリを初期化
-        Args:
-            file_path: M_YT_LIVE_TIMESTAMP.TSVファイルのパス
-        """
-        self.file_path = Path(file_path)
-        self.logger = logging.getLogger(__name__)
-        self._cache: Optional[List[TimestampInfo]] = None
-    def load_all(self) -> List[TimestampInfo]:
-        """
-        すべてのタイムスタンプ情報を読み込む
-        Returns:
-            タイムスタンプ情報のリスト
+            楽曲リストデータのDataFrame
         Raises:
             DataLoadError: ファイルの読み込みに失敗した場合
         """
-        # ファイルの存在確認
-        if not self.file_path.exists():
-            error_msg = f"ファイルが存在しません: {self.file_path}"
-            self.logger.error(error_msg)
-            raise DataLoadError(
-                file_path=str(self.file_path),
-                message=error_msg
-            )
-        try:
-            # エンコーディングを検出
-            encoding = self._detect_encoding()
-            self.logger.debug(f"検出されたエンコーディング: {encoding}")
-            # TSVファイルを読み込む
-            timestamp_infos = []
-            with open(self.file_path, 'r', encoding=encoding) as f:
-                reader = csv.DictReader(f, delimiter='\t')
-                # ヘッダーの検証
-                expected_headers = ['ID', 'LIVE_ID', 'タイムスタンプ', '曲名', 'アーティスト']
-                if reader.fieldnames != expected_headers:
-                    error_msg = (
-                        f"ファイル形式が不正です。"
-                        f"期待されるヘッダー: {expected_headers}, "
-                        f"実際のヘッダー: {reader.fieldnames}"
-                    )
-                    self.logger.error(error_msg)
-                    raise DataLoadError(
-                        file_path=str(self.file_path),
-                        message=error_msg
-                    )
-                # データ行を読み込む
-                for line_num, row in enumerate(reader, start=2):  # ヘッダーが1行目なので2から開始
-                    try:
-                        timestamp_info = self._parse_row(row, line_num)
-                        timestamp_infos.append(timestamp_info)
-                    except Exception as e:
-                        error_msg = f"行 {line_num} の解析に失敗しました: {e}"
-                        self.logger.error(error_msg)
-                        raise DataLoadError(
-                            file_path=str(self.file_path),
-                            message=error_msg
-                        )
-            self.logger.info(
-                f"タイムスタンプ情報を読み込みました: {len(timestamp_infos)}件 ({self.file_path})"
-            )
-            self._cache = timestamp_infos
-            return timestamp_infos
-        except DataLoadError:
-            raise
-        except Exception as e:
-            error_msg = f"ファイルの読み込みに失敗しました: {e}"
-            self.logger.error(error_msg, exc_info=True)
-            raise DataLoadError(
-                file_path=str(self.file_path),
-                message=error_msg
-            )
-    def get_by_live_id(self, live_id: int) -> List[TimestampInfo]:
+        return self.song_list_repo.load_as_dataframe()
+    def merge_data(
+        self, 
+        lives_df: pd.DataFrame, 
+        songs_df: pd.DataFrame
+    ) -> pd.DataFrame:
         """
-        配信IDでタイムスタンプ情報を取得
+        配信データと楽曲データを結合する
+        配信情報（lives_df）と楽曲情報（songs_df）をLIVE_IDをキーとして左結合します。
+        楽曲データを基準として配信情報を紐付けることで、
+        各楽曲がどの配信で歌われたかを特定できます。
         Args:
-            live_id: 配信ID
+            lives_df: 配信データ（M_YT_LIVE.TSV）
+            songs_df: 楽曲データ（M_YT_LIVE_TIMESTAMP.TSV）
         Returns:
-            タイムスタンプ情報のリスト
+            結合されたDataFrame
+        Note:
+            - 左結合（left join）により、楽曲データを基準とする
+            - 結合後、不要な列（ID_live）は削除される
+            - 列名は日本語名に変更される
+        Examples:
+            >>> lives_df = service.load_lives_data()
+            >>> songs_df = service.load_songs_data()
+            >>> merged_df = service.merge_data(lives_df, songs_df)
         """
-        # キャッシュがない場合は読み込む
-        if self._cache is None:
-            self.load_all()
-        # 配信IDで検索
-        return [ts for ts in self._cache if ts.live_id == live_id]
-    def _detect_encoding(self) -> str:
-        """
-        ファイルのエンコーディングを検出
-        Returns:
-            検出されたエンコーディング名
-        """
+        logger.info("配信データと楽曲データを結合中")
         try:
-            with open(self.file_path, 'rb') as f:
-                raw_data = f.read()
-            result = chardet.detect(raw_data)
-            encoding = result['encoding']
-            # UTF-8の場合はそのまま返す
-            if encoding and encoding.lower().startswith('utf'):
-                return 'utf-8'
-            # その他のエンコーディングの場合
-            return encoding if encoding else 'utf-8'
+            # LIVE_IDをキーとして左結合
+            df_merged = pd.merge(
+                songs_df,
+                lives_df[["ID", "配信日", "タイトル", "URL"]],
+                left_on="LIVE_ID",
+                right_on="ID",
+                how="left",
+                suffixes=("_song", "_live"),
+            )
+            # 不要な列を削除
+            df_merged = df_merged.drop(columns=["ID_live"])
+            # 列名を日本語名に変更
+            df_merged = df_merged.rename(
+                columns={
+                    "ID_song": "楽曲ID",
+                    "配信日": "ライブ配信日_original",
+                    "タイトル": "ライブタイトル",
+                    "URL": "元ライブURL",
+                }
+            )
+            logger.info(f"データ結合が完了しました: {len(df_merged)}件")
+            return df_merged
         except Exception as e:
-            self.logger.warning(
-                f"エンコーディングの検出に失敗しました。UTF-8を使用します: {e}"
-            )
-            return 'utf-8'
-    def _parse_row(self, row: dict, line_num: int) -> TimestampInfo:
-        """
-        TSVの1行をTimestampInfoオブジェクトに変換
-        Args:
-            row: TSVの行データ（辞書形式）
-            line_num: 行番号（エラーメッセージ用）
-        Returns:
-            TimestampInfoオブジェクト
-        Raises:
-            ValueError: データの解析に失敗した場合
-        """
-        try:
-            # IDとLIVE_IDを整数に変換
-            timestamp_id = int(row['ID'])
-            live_id = int(row['LIVE_ID'])
-            # タイムスタンプ、曲名、アーティストを取得
-            timestamp = row['タイムスタンプ'].strip()
-            song_name = row['曲名'].strip()
-            artist = row['アーティスト'].strip()
-            return TimestampInfo(
-                id=timestamp_id,
-                live_id=live_id,
-                timestamp=timestamp,
-                song_name=song_name,
-                artist=artist
-            )
-        except KeyError as e:
-            raise ValueError(f"必須フィールドが見つかりません: {e}")
-        except ValueError as e:
-            raise ValueError(f"データ形式が不正です: {e}")
+            error_msg = f"データ結合中にエラーが発生しました: {e}"
+            logger.error(error_msg, exc_info=True)
+            raise DataLoadError("merge_data", error_msg)
 </file>
 
 <file path="src/ui/components/footer.py">
@@ -23200,218 +22598,6 @@ if __name__ == "__main__":
     st.title("フッターテストページ")
     st.write("このページはフッターモジュールのテスト用です。")
     display_footer()
-</file>
-
-<file path="src/ui/pages/home_page.py">
-"""
-ホーム画面ページ
-アプリケーションのメインページ（ホーム画面）の表示ロジックを担当します。
-"""
-import logging
-import streamlit as st
-import pandas as pd
-from typing import Optional
-from src.config.settings import Config
-from src.services.data_service import DataService
-from src.core.data_pipeline import DataPipeline
-from src.services.search_service import SearchService
-from src.ui.components.footer import display_footer
-from src.ui.components import (
-    render_search_form,
-    render_results_table,
-    render_pagination,
-)
-# ロガーの設定
-logger = logging.getLogger(__name__)
-@st.cache_data(ttl=3600, show_spinner="データを読み込み中...")
-def load_and_process_data(
-    lives_path: str,
-    songs_path: str,
-    enable_cache: bool
-) -> Optional[pd.DataFrame]:
-    """
-    データを読み込み、処理する
-    DataPipelineを使用してデータの読み込み、結合、変換、ソートを実行します。
-    Streamlitのキャッシュ機能により、同じパラメータでの再実行を防ぎます。
-    Args:
-        lives_path: 配信データファイルのパス
-        songs_path: 楽曲データファイルのパス
-        enable_cache: キャッシュを有効にするかどうか
-    Returns:
-        処理済みDataFrame。エラー時はNone
-    Note:
-        - TTL（Time To Live）は3600秒（1時間）
-        - データファイルのパスが変更された場合、自動的に再読み込みされる
-        - キャッシュにより初期表示時間を3秒以内に保つ
-    要件: 12.1, 12.2, 12.6
-    """
-    # キャッシュされた関数内でConfigを再作成するのは避けたいため、
-    # パスなどのプリミティブな引数を受け取る設計を維持する
-    # しかし、内部でDataService/Pipelineを初期化するためにConfigが必要
-    # ここでは都度Configを作成するか、引数で必要な情報だけ渡すが、
-    # Config.from_env()は軽量なので許容する
-    config = Config.from_env()
-    data_service = DataService(config)
-    pipeline = DataPipeline(data_service, config)
-    return pipeline.execute()
-class HomePage:
-    """
-    ホーム画面クラス
-    ホーム画面の描画とインタラクションを管理します。
-    """
-    def __init__(self):
-        """初期化"""
-        self.config = Config.from_env()
-        self.search_service = SearchService()
-        logger.info("HomePage initialized")
-    def run(self):
-        """
-        ホーム画面を実行・表示する
-        """
-        self._load_css()
-        self._render_header()
-        # データ読み込み
-        df_full = load_and_process_data(
-            self.config.lives_file_path,
-            self.config.songs_file_path,
-            self.config.enable_cache
-        )
-        if df_full is not None:
-            self._handle_search_and_display(df_full)
-        else:
-            self._handle_error()
-        display_footer()
-    def _load_css(self):
-        """カスタムCSSの適用"""
-        try:
-            with open(self.config.css_file_path, encoding="utf-8") as f:
-                st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-        except FileNotFoundError:
-            st.error(f"エラー: {self.config.css_file_path} が見つかりません。")
-        except Exception as e:
-            st.error(f"エラー: {self.config.css_file_path} の読み込み中に問題が発生しました: {e}")
-    def _render_header(self):
-        """ヘッダー領域の描画"""
-        st.title("しのうたタイム👻🫧")
-        st.info("左のサイドバーから「Song List beta」を選択して、楽曲リストをご覧ください。")
-        st.markdown(
-            """
-            こちらはVTuber「[幽音しの](https://www.774.ai/talent/shino-kasukane)」さんの配信で歌われた楽曲をまとめた非公式データベースです。
-            曲名、アーティスト、ライブ配信タイトルで検索できます。YouTubeリンクから該当の歌唱箇所に直接飛べます。
-            """
-        )
-        st.markdown("---")
-    def _handle_search_and_display(self, df_full: pd.DataFrame):
-        """
-        検索処理と結果表示の制御
-        Args:
-            df_full: 全データ
-        """
-        # セッション状態の初期化
-        if "search_query" not in st.session_state:
-            st.session_state.search_query = ""
-        if "filtered_df" not in st.session_state:
-            st.session_state.filtered_df = df_full.copy()
-        if "include_live_title" not in st.session_state:
-            st.session_state.include_live_title = True
-        if "display_limit" not in st.session_state:
-            st.session_state.display_limit = self.config.initial_display_limit
-        # 検索フォームの表示
-        current_input, current_checkbox_value, search_button = render_search_form(
-            default_query=st.session_state.search_query,
-            include_live_title=st.session_state.include_live_title
-        )
-        # 検索ロジック
-        if search_button:
-            self._perform_search(df_full, current_input, current_checkbox_value)
-        elif st.session_state.search_query:
-            # 既に検索済みの状態の表示更新（リロード時など）
-            st.write(
-                f"「{st.session_state.search_query}」で検索した結果: "
-                f"{len(st.session_state.filtered_df)}件"
-            )
-        else:
-            # 未検索（全件）
-            st.session_state.filtered_df = df_full.copy()
-            st.write("検索キーワードが入力されていません。全件表示します。")
-        # 結果テーブル表示
-        self._render_results(st.session_state.filtered_df)
-    def _perform_search(self, df_full: pd.DataFrame, query: str, include_title: bool):
-        """
-        検索を実行し、セッション状態を更新する
-        """
-        st.session_state.search_query = query
-        st.session_state.include_live_title = include_title
-        st.session_state.display_limit = self.config.initial_display_limit
-        if query:
-            search_fields = ["曲名", "アーティスト"]
-            if include_title:
-                search_fields.append("ライブタイトル")
-            st.session_state.filtered_df = self.search_service.search(
-                df_full,
-                query,
-                search_fields,
-                case_sensitive=False
-            )
-            st.write(
-                f"「{query}」で検索した結果: "
-                f"{len(st.session_state.filtered_df)}件"
-            )
-        else:
-            st.session_state.filtered_df = df_full.copy()
-            st.write("検索キーワードが入力されていません。全件表示します。")
-    def _render_results(self, df: pd.DataFrame):
-        """結果テーブルとページネーションの表示"""
-        # 表示用データの準備
-        df_to_show = df.copy()
-        # YouTubeリンクをHTML形式に変換
-        df_to_show["YouTubeリンク"] = df_to_show.apply(
-            lambda row: f'<a href="{row["YouTubeタイムスタンプ付きURL"]}" target="_blank">YouTubeへ👻</a>',
-            axis=1,
-        )
-        # アーティスト列にカスタムCSSクラスを適用
-        df_to_show["アーティスト"] = (
-            df_to_show["アーティスト"]
-            .astype(str)
-            .apply(lambda x: f'<div class="artist-cell">{x}</div>')
-        )
-        # 表示件数を制限
-        df_limited_display = df_to_show.head(st.session_state.display_limit)
-        # 表示する列とヘッダーの定義
-        display_columns = [
-            "ライブ配信日",
-            "曲目",
-            "曲名",
-            "アーティスト",
-            "YouTubeリンク",
-        ]
-        column_headers = {
-            "ライブ配信日": "配信日",
-            "曲目": "No.",
-            "曲名": "曲名",
-            "アーティスト": "アーティスト",
-            "YouTubeリンク": "リンク",
-        }
-        # 結果テーブルの表示
-        render_results_table(df_limited_display, display_columns, column_headers)
-        # ページネーションの表示
-        new_limit = render_pagination(
-            total_count=len(df),
-            current_limit=st.session_state.display_limit,
-            increment=self.config.display_increment
-        )
-        if new_limit:
-            st.session_state.display_limit = new_limit
-            st.rerun()
-    def _handle_error(self):
-        """エラー時の表示"""
-        st.warning(
-            "必要なTSVファイルがすべて読み込めなかったため、結合データは表示できません。"
-        )
-        # エラー情報を表示するためにDataServiceのインスタンスを作成
-        data_service = DataService(self.config)
-        if data_service.get_last_error():
-            st.error(data_service.get_last_error())
 </file>
 
 <file path="src/ui/styles/style.css">
@@ -27100,591 +26286,6 @@ class TestConfigIntegration:
         assert config.page_title == "新しいタイトル"
 </file>
 
-<file path="tests/unit/test_data_pipeline.py">
-"""
-Data Pipelineのユニットテスト
-DataPipelineクラスの各メソッドが正しく動作することを検証します。
-"""
-import pytest
-from unittest.mock import Mock, patch, MagicMock
-import pandas as pd
-from src.core.data_pipeline import DataPipeline
-from src.services.data_service import DataService
-from src.config.settings import Config
-from src.exceptions.errors import DataProcessingError
-from tests.fixtures.sample_data import (
-    SAMPLE_LIVES_DATA,
-    SAMPLE_SONGS_DATA,
-    create_sample_dataframe
-)
-def create_merged_dataframe(lives_df, songs_df):
-    """DataServiceのmerge_dataメソッドと同じ処理を行うヘルパー関数"""
-    merged_df = pd.merge(
-        songs_df,
-        lives_df[["ID", "配信日", "タイトル", "URL"]],
-        left_on="LIVE_ID",
-        right_on="ID",
-        how="left",
-        suffixes=("_song", "_live"),
-    )
-    merged_df = merged_df.drop(columns=["ID_live"])
-    merged_df = merged_df.rename(
-        columns={
-            "ID_song": "楽曲ID",
-            "配信日": "ライブ配信日_original",
-            "タイトル": "ライブタイトル",
-            "URL": "元ライブURL",
-        }
-    )
-    return merged_df
-class TestDataPipelineExecution:
-    """パイプライン実行機能のテスト"""
-    def test_execute_all_steps_success(self):
-        """全ステップの正常な実行をテスト"""
-        # モックの設定
-        config = Mock(spec=Config)
-        config.enable_cache = False
-        data_service = Mock(spec=DataService)
-        # サンプルデータを作成
-        lives_df = create_sample_dataframe(SAMPLE_LIVES_DATA)
-        songs_df = create_sample_dataframe(SAMPLE_SONGS_DATA)
-        # DataServiceのモックメソッドを設定
-        data_service.load_lives_data.return_value = lives_df
-        data_service.load_songs_data.return_value = songs_df
-        # merge_dataの戻り値を設定
-        merged_df = create_merged_dataframe(lives_df, songs_df)
-        data_service.merge_data.return_value = merged_df
-        # DataPipelineを初期化して実行
-        pipeline = DataPipeline(data_service, config)
-        result = pipeline.execute()
-        # 検証
-        assert result is not None
-        assert isinstance(result, pd.DataFrame)
-        assert len(result) > 0
-        # 各ステップが呼ばれたことを確認
-        data_service.load_lives_data.assert_called_once()
-        data_service.load_songs_data.assert_called_once()
-        data_service.merge_data.assert_called_once()
-    def test_execute_data_transformation_accuracy(self):
-        """データ変換の正確性をテスト"""
-        # モックの設定
-        config = Mock(spec=Config)
-        config.enable_cache = False
-        data_service = Mock(spec=DataService)
-        # サンプルデータを作成
-        lives_df = create_sample_dataframe(SAMPLE_LIVES_DATA)
-        songs_df = create_sample_dataframe(SAMPLE_SONGS_DATA)
-        # DataServiceのモックメソッドを設定
-        data_service.load_lives_data.return_value = lives_df
-        data_service.load_songs_data.return_value = songs_df
-        # merge_dataの戻り値を設定
-        merged_df = create_merged_dataframe(lives_df, songs_df)
-        data_service.merge_data.return_value = merged_df
-        # DataPipelineを初期化して実行
-        pipeline = DataPipeline(data_service, config)
-        result = pipeline.execute()
-        # 検証：変換後のカラムが存在する
-        assert "タイムスタンプ_秒" in result.columns
-        assert "YouTubeタイムスタンプ付きURL" in result.columns
-        assert "ライブ配信日_sortable" in result.columns
-        # タイムスタンプが秒数に変換されている
-        assert result["タイムスタンプ_秒"].dtype in [int, float]
-    def test_execute_sort_processing(self):
-        """ソート処理が正しく行われることをテスト"""
-        # モックの設定
-        config = Mock(spec=Config)
-        config.enable_cache = False
-        data_service = Mock(spec=DataService)
-        # サンプルデータを作成（複数の配信日を含む）
-        lives_data = {
-            "ID": [1, 2, 3],
-            "配信日": ["2024/01/01", "2024/01/03", "2024/01/02"],
-            "タイトル": ["配信1", "配信3", "配信2"],
-            "URL": ["https://youtube.com/watch?v=abc", "https://youtube.com/watch?v=ghi", "https://youtube.com/watch?v=def"]
-        }
-        songs_data = {
-            "ID": [1, 2, 3],
-            "LIVE_ID": [1, 2, 3],
-            "曲名": ["曲A", "曲B", "曲C"],
-            "アーティスト": ["アーティストA", "アーティストB", "アーティストC"],
-            "タイムスタンプ": ["00:10", "05:30", "02:15"]
-        }
-        lives_df = create_sample_dataframe(lives_data)
-        songs_df = create_sample_dataframe(songs_data)
-        # DataServiceのモックメソッドを設定
-        data_service.load_lives_data.return_value = lives_df
-        data_service.load_songs_data.return_value = songs_df
-        # merge_dataの戻り値を設定
-        merged_df = create_merged_dataframe(lives_df, songs_df)
-        data_service.merge_data.return_value = merged_df
-        # DataPipelineを初期化して実行
-        pipeline = DataPipeline(data_service, config)
-        result = pipeline.execute()
-        # 検証：ソートされている（配信日降順）
-        assert result is not None
-        assert len(result) == 3
-        # 曲目番号が生成されている
-        assert "曲目" in result.columns
-class TestDataPipelineCaching:
-    """キャッシュ機能のテスト"""
-    def test_cache_usage(self):
-        """キャッシュの使用をテスト"""
-        # モックの設定
-        config = Mock(spec=Config)
-        config.enable_cache = True
-        data_service = Mock(spec=DataService)
-        # サンプルデータを作成
-        lives_df = create_sample_dataframe(SAMPLE_LIVES_DATA)
-        songs_df = create_sample_dataframe(SAMPLE_SONGS_DATA)
-        # DataServiceのモックメソッドを設定
-        data_service.load_lives_data.return_value = lives_df
-        data_service.load_songs_data.return_value = songs_df
-        # merge_dataの戻り値を設定
-        merged_df = create_merged_dataframe(lives_df, songs_df)
-        data_service.merge_data.return_value = merged_df
-        # DataPipelineを初期化
-        pipeline = DataPipeline(data_service, config)
-        # 1回目の実行
-        result1 = pipeline.execute()
-        assert result1 is not None
-        # キャッシュが保存されていることを確認
-        assert "final_data" in pipeline._cache
-        # 2回目の実行（キャッシュから取得）
-        result2 = pipeline.execute()
-        assert result2 is not None
-        # DataServiceのメソッドが1回しか呼ばれていないことを確認
-        assert data_service.load_lives_data.call_count == 1
-        assert data_service.load_songs_data.call_count == 1
-        assert data_service.merge_data.call_count == 1
-        # 結果が同じであることを確認（同じオブジェクトが返される）
-        assert result1 is result2
-        pd.testing.assert_frame_equal(result1, result2)
-    def test_cache_clear(self):
-        """キャッシュのクリアをテスト"""
-        # モックの設定
-        config = Mock(spec=Config)
-        config.enable_cache = True
-        data_service = Mock(spec=DataService)
-        # サンプルデータを作成
-        lives_df = create_sample_dataframe(SAMPLE_LIVES_DATA)
-        songs_df = create_sample_dataframe(SAMPLE_SONGS_DATA)
-        # DataServiceのモックメソッドを設定
-        data_service.load_lives_data.return_value = lives_df
-        data_service.load_songs_data.return_value = songs_df
-        # merge_dataの戻り値を設定
-        merged_df = create_merged_dataframe(lives_df, songs_df)
-        data_service.merge_data.return_value = merged_df
-        # DataPipelineを初期化
-        pipeline = DataPipeline(data_service, config)
-        # 1回目の実行
-        result1 = pipeline.execute()
-        assert result1 is not None
-        # キャッシュをクリア
-        pipeline.clear_cache()
-        # 2回目の実行（キャッシュがクリアされているので再実行）
-        result2 = pipeline.execute()
-        assert result2 is not None
-        # DataServiceのメソッドが2回呼ばれていることを確認
-        assert data_service.load_lives_data.call_count == 2
-        assert data_service.load_songs_data.call_count == 2
-        assert data_service.merge_data.call_count == 2
-class TestDataPipelineErrorHandling:
-    """エラー処理機能のテスト"""
-    def test_transform_data_date_conversion_fallback(self):
-        """_transform_dataの日付変換フォールバック処理をテスト"""
-        # モックの設定
-        config = Mock(spec=Config)
-        config.enable_cache = False
-        data_service = Mock(spec=DataService)
-        # YYYY/MM/DD形式の日付を含むサンプルデータを作成
-        lives_data = {
-            "ID": [1, 2],
-            "配信日": ["2024/01/01", "2024/01/02"],
-            "タイトル": ["配信1", "配信2"],
-            "URL": ["https://youtube.com/watch?v=abc", "https://youtube.com/watch?v=def"]
-        }
-        songs_data = {
-            "ID": [1, 2],
-            "LIVE_ID": [1, 2],
-            "曲名": ["曲A", "曲B"],
-            "アーティスト": ["アーティストA", "アーティストB"],
-            "タイムスタンプ": ["00:10", "05:30"]
-        }
-        lives_df = create_sample_dataframe(lives_data)
-        songs_df = create_sample_dataframe(songs_data)
-        # DataServiceのモックメソッドを設定
-        data_service.load_lives_data.return_value = lives_df
-        data_service.load_songs_data.return_value = songs_df
-        # merge_dataの戻り値を設定
-        merged_df = create_merged_dataframe(lives_df, songs_df)
-        data_service.merge_data.return_value = merged_df
-        # DataPipelineを初期化
-        pipeline = DataPipeline(data_service, config)
-        # ログをキャプチャするためにロガーをモック
-        with patch('src.core.data_pipeline.logger') as mock_logger:
-            # パイプラインを実行
-            result = pipeline.execute()
-            # 検証：結果が返される
-            assert result is not None
-            assert "ライブ配信日_sortable" in result.columns
-            # 日付が正しく変換されていることを確認
-            assert not result["ライブ配信日_sortable"].isna().all()
-            # 警告ログが記録される可能性がある（UNIXミリ秒として解釈できない場合）
-            # ただし、YYYY/MM/DD形式は最初の変換で失敗し、フォールバック処理で成功する
-    def test_data_load_failure(self):
-        """データ読み込み失敗時の処理をテスト"""
-        # モックの設定
-        config = Mock(spec=Config)
-        config.enable_cache = False
-        data_service = Mock(spec=DataService)
-        # DataServiceのモックメソッドを設定（読み込み失敗）
-        data_service.load_lives_data.return_value = None
-        data_service.load_songs_data.return_value = None
-        data_service.get_last_error.return_value = "ファイルが見つかりません"
-        # DataPipelineを初期化して実行
-        pipeline = DataPipeline(data_service, config)
-        result = pipeline.execute()
-        # 検証：Noneが返される
-        assert result is None
-    def test_data_transformation_error(self):
-        """データ変換エラー時の処理をテスト"""
-        # モックの設定
-        config = Mock(spec=Config)
-        config.enable_cache = False
-        data_service = Mock(spec=DataService)
-        # サンプルデータを作成（不正なタイムスタンプを含む）
-        lives_df = create_sample_dataframe(SAMPLE_LIVES_DATA)
-        songs_data = {
-            "ID": [1, 2],
-            "LIVE_ID": [1, 1],
-            "曲名": ["曲A", "曲B"],
-            "アーティスト": ["アーティストA", "アーティストB"],
-            "タイムスタンプ": ["invalid", "also_invalid"]  # 不正なタイムスタンプ
-        }
-        songs_df = create_sample_dataframe(songs_data)
-        # DataServiceのモックメソッドを設定
-        data_service.load_lives_data.return_value = lives_df
-        data_service.load_songs_data.return_value = songs_df
-        # merge_dataの戻り値を設定
-        merged_df = create_merged_dataframe(lives_df, songs_df)
-        data_service.merge_data.return_value = merged_df
-        # DataPipelineを初期化して実行
-        pipeline = DataPipeline(data_service, config)
-        # 不正なタイムスタンプでもエラーにならず、デフォルト値（0）が設定される
-        result = pipeline.execute()
-        # 検証：結果が返される（エラーハンドリングされている）
-        assert result is not None
-        assert "タイムスタンプ_秒" in result.columns
-    def test_empty_data_processing(self):
-        """空のデータ処理をテスト"""
-        # モックの設定
-        config = Mock(spec=Config)
-        config.enable_cache = False
-        data_service = Mock(spec=DataService)
-        # 空のDataFrameを作成
-        lives_df = pd.DataFrame(columns=["ID", "配信日", "タイトル", "URL"])
-        songs_df = pd.DataFrame(columns=["ID", "LIVE_ID", "曲名", "アーティスト", "タイムスタンプ"])
-        # DataServiceのモックメソッドを設定
-        data_service.load_lives_data.return_value = lives_df
-        data_service.load_songs_data.return_value = songs_df
-        # merge_dataの戻り値を設定（空のDataFrame）
-        merged_df = create_merged_dataframe(lives_df, songs_df)
-        data_service.merge_data.return_value = merged_df
-        # DataPipelineを初期化して実行
-        pipeline = DataPipeline(data_service, config)
-        result = pipeline.execute()
-        # 検証：空のDataFrameの場合、generate_song_numbersでエラーが発生してNoneが返される
-        # これは期待される動作
-        assert result is None
-    def test_validate_step_result_empty_dataframe(self):
-        """_validate_step_resultが空のDataFrameを処理することをテスト"""
-        # モックの設定
-        config = Mock(spec=Config)
-        config.enable_cache = False
-        data_service = Mock(spec=DataService)
-        # DataPipelineを初期化
-        pipeline = DataPipeline(data_service, config)
-        # 空のDataFrameを作成
-        empty_df = pd.DataFrame()
-        # ログをキャプチャするためにロガーをモック
-        with patch('src.core.data_pipeline.logger') as mock_logger:
-            # _validate_step_resultを呼び出し
-            result = pipeline._validate_step_result(empty_df, "test_step")
-            # 検証：Trueが返される（警告のみで処理は継続）
-            assert result is True
-            # 警告ログが記録されたことを確認
-            mock_logger.warning.assert_called_once()
-            warning_call = mock_logger.warning.call_args[0][0]
-            assert "test_step" in warning_call
-            assert "空のDataFrame" in warning_call
-</file>
-
-<file path="tests/unit/test_data_service.py">
-"""
-Data Serviceのユニットテスト
-DataServiceクラスの各メソッドが正しく動作することを検証します。
-"""
-import pytest
-import tempfile
-import os
-from pathlib import Path
-from unittest.mock import Mock, patch
-import pandas as pd
-from src.services.data_service import DataService
-from src.config.settings import Config
-from tests.fixtures.sample_data import (
-    SAMPLE_LIVES_DATA,
-    SAMPLE_SONGS_DATA,
-    SAMPLE_SONG_LIST_DATA,
-    create_sample_tsv_file,
-    create_sample_dataframe
-)
-class TestDataServiceDataLoading:
-    """データ読み込み機能のテスト"""
-    def test_load_lives_data_success(self, tmp_path):
-        """配信データの正常な読み込みをテスト"""
-        # 一時TSVファイルを作成
-        lives_file = tmp_path / "M_YT_LIVE.TSV"
-        df = pd.DataFrame(SAMPLE_LIVES_DATA)
-        df.to_csv(lives_file, sep='\t', index=False, encoding='utf-8')
-        # Configをモック
-        config = Mock(spec=Config)
-        config.lives_file_path = str(lives_file)
-        # DataServiceを初期化してデータを読み込む
-        service = DataService(config)
-        result = service.load_lives_data()
-        # 検証
-        assert result is not None
-        assert len(result) == 3
-        assert list(result.columns) == ["ID", "配信日", "タイトル", "URL"]
-        assert service.get_last_error() is None
-    def test_load_lives_data_file_not_found(self):
-        """存在しないファイルの読み込みをテスト"""
-        # Configをモック（存在しないファイルパス）
-        config = Mock(spec=Config)
-        config.lives_file_path = "/nonexistent/path/M_YT_LIVE.TSV"
-        # DataServiceを初期化してデータを読み込む
-        service = DataService(config)
-        result = service.load_lives_data()
-        # 検証
-        assert result is None
-        assert service.get_last_error() is not None
-        assert "見つかりません" in service.get_last_error()
-    def test_load_songs_data_success(self, tmp_path):
-        """楽曲データの正常な読み込みをテスト"""
-        # 一時TSVファイルを作成
-        songs_file = tmp_path / "M_YT_LIVE_TIMESTAMP.TSV"
-        df = pd.DataFrame(SAMPLE_SONGS_DATA)
-        df.to_csv(songs_file, sep='\t', index=False, encoding='utf-8')
-        # Configをモック
-        config = Mock(spec=Config)
-        config.songs_file_path = str(songs_file)
-        # DataServiceを初期化してデータを読み込む
-        service = DataService(config)
-        result = service.load_songs_data()
-        # 検証
-        assert result is not None
-        assert len(result) == 5
-        assert "曲名" in result.columns
-        assert "タイムスタンプ" in result.columns
-        assert service.get_last_error() is None
-    def test_load_songs_data_file_not_found(self):
-        """存在しない楽曲ファイルの読み込みをテスト"""
-        # Configをモック（存在しないファイルパス）
-        config = Mock(spec=Config)
-        config.songs_file_path = "/nonexistent/path/M_YT_LIVE_TIMESTAMP.TSV"
-        # DataServiceを初期化してデータを読み込む
-        service = DataService(config)
-        result = service.load_songs_data()
-        # 検証
-        assert result is None
-        assert service.get_last_error() is not None
-        assert "見つかりません" in service.get_last_error()
-    def test_load_song_list_data_success(self, tmp_path):
-        """楽曲リストデータの正常な読み込みをテスト"""
-        # 一時TSVファイルを作成
-        song_list_file = tmp_path / "V_SONG_LIST.TSV"
-        df = pd.DataFrame(SAMPLE_SONG_LIST_DATA)
-        df.to_csv(song_list_file, sep='\t', index=False, encoding='utf-8')
-        # Configをモック
-        config = Mock(spec=Config)
-        config.song_list_file_path = str(song_list_file)
-        # DataServiceを初期化してデータを読み込む
-        service = DataService(config)
-        result = service.load_song_list_data()
-        # 検証
-        assert result is not None
-        assert len(result) == 5
-        assert "曲名" in result.columns
-        assert "アーティスト" in result.columns
-        assert service.get_last_error() is None
-    def test_load_song_list_data_file_not_found(self):
-        """存在しない楽曲リストファイルの読み込みをテスト"""
-        # Configをモック（存在しないファイルパス）
-        config = Mock(spec=Config)
-        config.song_list_file_path = "/nonexistent/path/V_SONG_LIST.TSV"
-        # DataServiceを初期化してデータを読み込む
-        service = DataService(config)
-        result = service.load_song_list_data()
-        # 検証
-        assert result is None
-        assert service.get_last_error() is not None
-        assert "見つかりません" in service.get_last_error()
-    def test_load_lives_data_general_exception(self, tmp_path):
-        """load_lives_dataで一般的な例外が発生した場合の処理をテスト"""
-        # 一時TSVファイルを作成（不正なフォーマット）
-        lives_file = tmp_path / "M_YT_LIVE.TSV"
-        lives_file.write_text("Invalid\tTSV\tFormat\nWith\tInconsistent\tColumns\nAnd\tMore", encoding='utf-8')
-        # Configをモック
-        config = Mock(spec=Config)
-        config.lives_file_path = str(lives_file)
-        # pd.read_csvがParserErrorを発生させるようにモック
-        with patch('pandas.read_csv') as mock_read_csv:
-            mock_read_csv.side_effect = ValueError("Invalid data format")
-            # DataServiceを初期化してデータを読み込む
-            service = DataService(config)
-            result = service.load_lives_data()
-            # 検証
-            assert result is None
-            assert service.get_last_error() is not None
-            assert "読み込み中にエラーが発生しました" in service.get_last_error()
-            assert "Invalid data format" in service.get_last_error()
-    def test_load_songs_data_general_exception(self, tmp_path):
-        """load_songs_dataで一般的な例外が発生した場合の処理をテスト"""
-        # 一時TSVファイルを作成
-        songs_file = tmp_path / "M_YT_LIVE_TIMESTAMP.TSV"
-        songs_file.write_text("Invalid\tData", encoding='utf-8')
-        # Configをモック
-        config = Mock(spec=Config)
-        config.songs_file_path = str(songs_file)
-        # pd.read_csvがValueErrorを発生させるようにモック
-        with patch('pandas.read_csv') as mock_read_csv:
-            mock_read_csv.side_effect = ValueError("Parsing error")
-            # DataServiceを初期化してデータを読み込む
-            service = DataService(config)
-            result = service.load_songs_data()
-            # 検証
-            assert result is None
-            assert service.get_last_error() is not None
-            assert "読み込み中にエラーが発生しました" in service.get_last_error()
-            assert "Parsing error" in service.get_last_error()
-    def test_load_song_list_data_general_exception(self, tmp_path):
-        """load_song_list_dataで一般的な例外が発生した場合の処理をテスト"""
-        # 一時TSVファイルを作成
-        song_list_file = tmp_path / "V_SONG_LIST.TSV"
-        song_list_file.write_text("Bad\tFormat", encoding='utf-8')
-        # Configをモック
-        config = Mock(spec=Config)
-        config.song_list_file_path = str(song_list_file)
-        # pd.read_csvがRuntimeErrorを発生させるようにモック
-        with patch('pandas.read_csv') as mock_read_csv:
-            mock_read_csv.side_effect = RuntimeError("Unexpected error")
-            # DataServiceを初期化してデータを読み込む
-            service = DataService(config)
-            result = service.load_song_list_data()
-            # 検証
-            assert result is None
-            assert service.get_last_error() is not None
-            assert "読み込み中にエラーが発生しました" in service.get_last_error()
-            assert "Unexpected error" in service.get_last_error()
-class TestDataServiceDataMerging:
-    """データ結合機能のテスト"""
-    def test_merge_data_success(self):
-        """正常なデータ結合をテスト"""
-        # サンプルデータを作成
-        lives_df = create_sample_dataframe(SAMPLE_LIVES_DATA)
-        songs_df = create_sample_dataframe(SAMPLE_SONGS_DATA)
-        # Configをモック
-        config = Mock(spec=Config)
-        # DataServiceを初期化してデータを結合
-        service = DataService(config)
-        result = service.merge_data(lives_df, songs_df)
-        # 検証
-        assert result is not None
-        assert len(result) == 5  # 楽曲データの件数と一致
-        assert "楽曲ID" in result.columns
-        assert "ライブタイトル" in result.columns
-        assert "元ライブURL" in result.columns
-        assert "ID_live" not in result.columns  # 削除されているはず
-        assert service.get_last_error() is None
-    def test_merge_data_column_renaming(self):
-        """列名の変更が正しく行われることをテスト"""
-        # サンプルデータを作成
-        lives_df = create_sample_dataframe(SAMPLE_LIVES_DATA)
-        songs_df = create_sample_dataframe(SAMPLE_SONGS_DATA)
-        # Configをモック
-        config = Mock(spec=Config)
-        # DataServiceを初期化してデータを結合
-        service = DataService(config)
-        result = service.merge_data(lives_df, songs_df)
-        # 検証：列名が正しく変更されている
-        assert "楽曲ID" in result.columns
-        assert "ライブ配信日_original" in result.columns
-        assert "ライブタイトル" in result.columns
-        assert "元ライブURL" in result.columns
-    def test_merge_data_removes_unnecessary_columns(self):
-        """不要な列が削除されることをテスト"""
-        # サンプルデータを作成
-        lives_df = create_sample_dataframe(SAMPLE_LIVES_DATA)
-        songs_df = create_sample_dataframe(SAMPLE_SONGS_DATA)
-        # Configをモック
-        config = Mock(spec=Config)
-        # DataServiceを初期化してデータを結合
-        service = DataService(config)
-        result = service.merge_data(lives_df, songs_df)
-        # 検証：ID_liveが削除されている
-        assert "ID_live" not in result.columns
-class TestDataServiceErrorHandling:
-    """エラーハンドリング機能のテスト"""
-    def test_get_last_error_after_success(self, tmp_path):
-        """成功後のエラーメッセージがNoneであることをテスト"""
-        # 一時TSVファイルを作成
-        lives_file = tmp_path / "M_YT_LIVE.TSV"
-        df = pd.DataFrame(SAMPLE_LIVES_DATA)
-        df.to_csv(lives_file, sep='\t', index=False, encoding='utf-8')
-        # Configをモック
-        config = Mock(spec=Config)
-        config.lives_file_path = str(lives_file)
-        # DataServiceを初期化してデータを読み込む
-        service = DataService(config)
-        service.load_lives_data()
-        # 検証
-        assert service.get_last_error() is None
-    def test_get_last_error_after_failure(self):
-        """失敗後のエラーメッセージが設定されることをテスト"""
-        # Configをモック（存在しないファイルパス）
-        config = Mock(spec=Config)
-        config.lives_file_path = "/nonexistent/path/M_YT_LIVE.TSV"
-        # DataServiceを初期化してデータを読み込む
-        service = DataService(config)
-        service.load_lives_data()
-        # 検証
-        error_message = service.get_last_error()
-        assert error_message is not None
-        assert isinstance(error_message, str)
-        assert len(error_message) > 0
-    def test_error_message_cleared_on_success(self):
-        """成功時にエラーメッセージがクリアされることをテスト"""
-        # Configをモック
-        config = Mock(spec=Config)
-        config.lives_file_path = "/nonexistent/path/M_YT_LIVE.TSV"
-        # DataServiceを初期化
-        service = DataService(config)
-        # 最初は失敗させる
-        service.load_lives_data()
-        assert service.get_last_error() is not None
-        # 次は成功させる（一時ファイルを作成）
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.tsv', delete=False, encoding='utf-8') as f:
-            df = pd.DataFrame(SAMPLE_LIVES_DATA)
-            df.to_csv(f.name, sep='\t', index=False)
-            config.lives_file_path = f.name
-            service.load_lives_data()
-            # 検証：エラーメッセージがクリアされている
-            assert service.get_last_error() is None
-            # クリーンアップ
-            os.unlink(f.name)
-</file>
-
 <file path="tests/unit/test_edge_cases.py">
 """
 エッジケースと境界値のテスト
@@ -29256,113 +27857,6 @@ class TestTwitterEmbedHTMLParser:
         parser = TwitterEmbedHTMLParser()
         parser.feed('<blockquote class="twitter-tweet"><p>Test')
         assert len(parser.tags) > 0
-</file>
-
-<file path="tests/unit/test_live_repository.py">
-import pytest
-from datetime import datetime
-from unittest.mock import patch, MagicMock
-from src.repositories.live_repository import LiveRepository
-from src.models.song_list_models import LiveInfo
-from src.exceptions.errors import DataLoadError
-class TestLiveRepository:
-    @pytest.fixture
-    def repository(self, tmp_path):
-        """テスト用のリポジトリインスタンスを作成"""
-        file_path = tmp_path / "test_live.tsv"
-        return LiveRepository(str(file_path))
-    def test_load_all_success(self, repository, tmp_path):
-        """正常系: TSVファイルを正しく読み込めること"""
-        # Setup
-        file_path = tmp_path / "test_live.tsv"
-        content = (
-            "ID\t配信日\tタイトル\tURL\n"
-            "1\t2023/1/1\tTitle1\thttps://example.com/1\n"
-            "2\t2023/12/31\tTitle2\thttps://example.com/2"
-        )
-        file_path.write_text(content, encoding='utf-8')
-        # Execute
-        result = repository.load_all()
-        # Verify
-        assert len(result) == 2
-        assert result[0].id == 1
-        assert result[0].date == datetime(2023, 1, 1)
-        assert result[0].title == "Title1"
-        assert result[0].url == "https://example.com/1"
-        assert result[1].id == 2
-        assert result[1].date == datetime(2023, 12, 31)
-        assert result[1].title == "Title2"
-        assert result[1].url == "https://example.com/2"
-    def test_load_all_file_not_found(self, repository):
-        """異常系: ファイルが存在しない場合はエラーになること"""
-        # Note: LiveRepository raises DataLoadError intentionally unlike SongListRepository which returned empty list
-        with pytest.raises(DataLoadError) as excinfo:
-            repository.load_all()
-        assert "ファイルが存在しません" in str(excinfo.value)
-    def test_load_all_invalid_header(self, repository, tmp_path):
-        """異常系: ヘッダーが不正な場合はエラーになること"""
-        file_path = tmp_path / "test_live.tsv"
-        content = "Invalid\tHeader\n1\t2023/1/1"
-        file_path.write_text(content, encoding='utf-8')
-        with pytest.raises(DataLoadError) as excinfo:
-            repository.load_all()
-        assert "ファイル形式が不正です" in str(excinfo.value)
-    def test_load_all_parsing_error(self, repository, tmp_path):
-        """異常系: 行の解析に失敗した場合はエラーになること"""
-        file_path = tmp_path / "test_live.tsv"
-        # 不正な日付形式
-        content = (
-            "ID\t配信日\tタイトル\tURL\n"
-            "1\tINVALID_DATE\tTitle1\tURL1"
-        )
-        file_path.write_text(content, encoding='utf-8')
-        with pytest.raises(DataLoadError) as excinfo:
-            repository.load_all()
-        assert "解析に失敗しました" in str(excinfo.value)
-    def test_get_by_id_success(self, repository, tmp_path):
-        """正常系: IDで配信情報を取得できること"""
-        # Setup
-        file_path = tmp_path / "test_live.tsv"
-        content = (
-            "ID\t配信日\tタイトル\tURL\n"
-            "10\t2023/1/1\tTitle1\tURL1\n"
-            "20\t2023/1/2\tTitle2\tURL2"
-        )
-        file_path.write_text(content, encoding='utf-8')
-        # Execute
-        result = repository.get_by_id(20)
-        # Verify
-        assert result is not None
-        assert result.id == 20
-        assert result.title == "Title2"
-    def test_get_by_id_not_found(self, repository, tmp_path):
-        """正常系: 存在しないIDの場合はNoneを返すこと"""
-        # Setup
-        file_path = tmp_path / "test_live.tsv"
-        content = (
-            "ID\t配信日\tタイトル\tURL\n"
-            "1\t2023/1/1\tTitle1\tURL1"
-        )
-        file_path.write_text(content, encoding='utf-8')
-        # Execute
-        result = repository.get_by_id(999)
-        # Verify
-        assert result is None
-    def test_detect_encoding_utf8(self, repository, tmp_path):
-        """正常系: UTF-8エンコーディングを正しく検出できること"""
-        file_path = tmp_path / "test_live.tsv"
-        file_path.write_text("テスト", encoding='utf-8')
-        assert repository._detect_encoding() == 'utf-8'
-    def test_parse_date_invalid_format(self, repository):
-        """異常系: 不正な日付形式の場合"""
-        with pytest.raises(ValueError) as excinfo:
-            repository._parse_date("2023-01-01")  # Splitting by slash will fail
-        assert "日付形式が不正です" in str(excinfo.value)
-    def test_parse_date_invalid_values(self, repository):
-        """異常系: 存在しない日付の場合"""
-        with pytest.raises(ValueError) as excinfo:
-            repository._parse_date("2023/2/30")  # invalid date
-        assert "日付の解析に失敗しました" in str(excinfo.value)
 </file>
 
 <file path="tests/unit/test_logging_config.py">
@@ -35348,6 +33842,632 @@ class FileRepository:
             return default
 </file>
 
+<file path="src/repositories/live_repository.py">
+"""
+配信情報リポジトリモジュール
+M_YT_LIVE.TSVファイルの読み込みを管理します。
+"""
+import csv
+import logging
+from datetime import datetime
+from pathlib import Path
+from typing import List, Optional
+import chardet
+import pandas as pd
+from src.models.song_list_models import LiveInfo
+from src.exceptions.errors import DataLoadError
+class LiveRepository:
+    """
+    配信情報リポジトリ
+    M_YT_LIVE.TSVファイルから配信情報を読み込みます。
+    """
+    def __init__(self, file_path: str):
+        """
+        リポジトリを初期化
+        Args:
+            file_path: M_YT_LIVE.TSVファイルのパス
+        """
+        self.file_path = Path(file_path)
+        self.logger = logging.getLogger(__name__)
+        self._cache: Optional[List[LiveInfo]] = None
+    def load_all(self) -> List[LiveInfo]:
+        """
+        すべての配信情報を読み込む
+        Returns:
+            配信情報のリスト
+        Raises:
+            DataLoadError: ファイルの読み込みに失敗した場合
+        """
+        # ファイルの存在確認
+        if not self.file_path.exists():
+            error_msg = f"ファイルが存在しません: {self.file_path}"
+            self.logger.error(error_msg)
+            raise DataLoadError(
+                file_path=str(self.file_path),
+                message=error_msg
+            )
+        try:
+            # エンコーディングを検出
+            encoding = self._detect_encoding()
+            self.logger.debug(f"検出されたエンコーディング: {encoding}")
+            # TSVファイルを読み込む
+            live_infos = []
+            with open(self.file_path, 'r', encoding=encoding) as f:
+                reader = csv.DictReader(f, delimiter='\t')
+                # ヘッダーの検証
+                expected_headers = ['ID', '配信日', 'タイトル', 'URL']
+                if reader.fieldnames != expected_headers:
+                    error_msg = (
+                        f"ファイル形式が不正です。"
+                        f"期待されるヘッダー: {expected_headers}, "
+                        f"実際のヘッダー: {reader.fieldnames}"
+                    )
+                    self.logger.error(error_msg)
+                    raise DataLoadError(
+                        file_path=str(self.file_path),
+                        message=error_msg
+                    )
+                # データ行を読み込む
+                for line_num, row in enumerate(reader, start=2):  # ヘッダーが1行目なので2から開始
+                    try:
+                        live_info = self._parse_row(row, line_num)
+                        live_infos.append(live_info)
+                    except Exception as e:
+                        error_msg = f"行 {line_num} の解析に失敗しました: {e}"
+                        self.logger.error(error_msg)
+                        raise DataLoadError(
+                            file_path=str(self.file_path),
+                            message=error_msg
+                        )
+            self.logger.info(
+                f"配信情報を読み込みました: {len(live_infos)}件 ({self.file_path})"
+            )
+            self._cache = live_infos
+            return live_infos
+        except DataLoadError:
+            raise
+        except Exception as e:
+            error_msg = f"ファイルの読み込みに失敗しました: {e}"
+            self.logger.error(error_msg, exc_info=True)
+            raise DataLoadError(
+                file_path=str(self.file_path),
+                message=error_msg
+            )
+    def get_by_id(self, live_id: int) -> Optional[LiveInfo]:
+        """
+        IDで配信情報を取得
+        Args:
+            live_id: 配信ID
+        Returns:
+            配信情報（見つからない場合はNone）
+        """
+        # キャッシュがない場合は読み込む
+        if self._cache is None:
+            self.load_all()
+        # IDで検索
+        for live_info in self._cache:
+            if live_info.id == live_id:
+                return live_info
+        return None
+    def _detect_encoding(self) -> str:
+        """
+        ファイルのエンコーディングを検出
+        Returns:
+            検出されたエンコーディング名
+        """
+        try:
+            with open(self.file_path, 'rb') as f:
+                raw_data = f.read()
+            result = chardet.detect(raw_data)
+            encoding = result['encoding']
+            # UTF-8の場合はそのまま返す
+            if encoding and encoding.lower().startswith('utf'):
+                return 'utf-8'
+            # その他のエンコーディングの場合
+            return encoding if encoding else 'utf-8'
+        except Exception as e:
+            self.logger.warning(
+                f"エンコーディングの検出に失敗しました。UTF-8を使用します: {e}"
+            )
+            return 'utf-8'
+    def _parse_row(self, row: dict, line_num: int) -> LiveInfo:
+        """
+        TSVの1行をLiveInfoオブジェクトに変換
+        Args:
+            row: TSVの行データ（辞書形式）
+            line_num: 行番号（エラーメッセージ用）
+        Returns:
+            LiveInfoオブジェクト
+        Raises:
+            ValueError: データの解析に失敗した場合
+        """
+        try:
+            # IDを整数に変換
+            live_id = int(row['ID'])
+            # 配信日をパース（YYYY/M/D形式）
+            date_str = row['配信日'].strip()
+            date = self._parse_date(date_str)
+            # タイトルとURLを取得
+            title = row['タイトル'].strip()
+            url = row['URL'].strip()
+            return LiveInfo(
+                id=live_id,
+                date=date,
+                title=title,
+                url=url
+            )
+        except KeyError as e:
+            raise ValueError(f"必須フィールドが見つかりません: {e}")
+        except ValueError as e:
+            raise ValueError(f"データ形式が不正です: {e}")
+    def _parse_date(self, date_str: str) -> datetime:
+        """
+        配信日文字列をdatetimeオブジェクトに変換
+        Args:
+            date_str: 配信日文字列（YYYY/M/D形式）
+        Returns:
+            datetimeオブジェクト
+        Raises:
+            ValueError: 日付の解析に失敗した場合
+        """
+        try:
+            # YYYY/M/D形式をパース
+            parts = date_str.split('/')
+            if len(parts) != 3:
+                raise ValueError(f"日付形式が不正です: {date_str}")
+            year = int(parts[0])
+            month = int(parts[1])
+            day = int(parts[2])
+            return datetime(year, month, day)
+        except (ValueError, IndexError) as e:
+            raise ValueError(f"日付の解析に失敗しました: {date_str} ({e})")
+    def load_as_dataframe(self) -> pd.DataFrame:
+        """
+        すべての配信情報をDataFrameとして読み込む
+        Returns:
+            配信情報のDataFrame
+        Raises:
+            DataLoadError: ファイルの読み込みに失敗した場合
+        """
+        if not self.file_path.exists():
+            error_msg = f"ファイルが存在しません: {self.file_path}"
+            self.logger.error(error_msg)
+            raise DataLoadError(file_path=str(self.file_path), message=error_msg)
+        try:
+            # エンコーディングを検出
+            encoding = self._detect_encoding()
+            # DataFrameとして読み込み
+            df = pd.read_csv(self.file_path, delimiter="\t", encoding=encoding)
+            # ヘッダーの検証
+            expected_headers = ['ID', '配信日', 'タイトル', 'URL']
+            if not all(col in df.columns for col in expected_headers):
+                error_msg = (
+                    f"ファイル形式が不正です。"
+                    f"期待されるヘッダー: {expected_headers}, "
+                    f"実際のヘッダー: {list(df.columns)}"
+                )
+                self.logger.error(error_msg)
+                raise DataLoadError(file_path=str(self.file_path), message=error_msg)
+            self.logger.info(f"配信情報を読み込みました: {len(df)}件 ({self.file_path})")
+            return df
+        except DataLoadError:
+            raise
+        except Exception as e:
+            error_msg = f"ファイルの読み込みに失敗しました: {e}"
+            self.logger.error(error_msg, exc_info=True)
+            raise DataLoadError(file_path=str(self.file_path), message=error_msg)
+</file>
+
+<file path="src/repositories/song_list_repository.py">
+"""
+曲リストリポジトリモジュール
+V_SONG_LIST.TSVファイルの読み書きを管理します。
+"""
+import csv
+import logging
+from pathlib import Path
+from typing import List, Optional
+import chardet
+import pandas as pd
+from src.models.song_list_models import SongInfo
+from src.exceptions.errors import DataLoadError, FileWriteError
+class SongListRepository:
+    """
+    曲リストリポジトリ
+    V_SONG_LIST.TSVファイルの読み込みと書き込みを管理します。
+    """
+    def __init__(self, file_path: str):
+        """
+        リポジトリを初期化
+        Args:
+            file_path: V_SONG_LIST.TSVファイルのパス
+        """
+        self.file_path = Path(file_path)
+        self.logger = logging.getLogger(__name__)
+    def load_all(self) -> List[SongInfo]:
+        """
+        既存の曲リストを読み込む
+        Returns:
+            曲情報のリスト（ファイルが存在しない場合は空リスト）
+        Raises:
+            DataLoadError: ファイルの読み込みに失敗した場合
+        """
+        # ファイルが存在しない場合は空リストを返す
+        if not self.file_path.exists():
+            self.logger.info(
+                f"ファイルが存在しないため、空リストを返します: {self.file_path}"
+            )
+            return []
+        try:
+            # エンコーディングを検出
+            encoding = self._detect_encoding()
+            self.logger.debug(f"検出されたエンコーディング: {encoding}")
+            # TSVファイルを読み込む
+            song_infos = []
+            with open(self.file_path, 'r', encoding=encoding) as f:
+                reader = csv.DictReader(f, delimiter='\t')
+                # ヘッダーの検証
+                expected_headers = ['アーティスト', 'アーティスト(ソート用)', '曲名', '最近の歌唱']
+                if reader.fieldnames != expected_headers:
+                    error_msg = (
+                        f"ファイル形式が不正です。"
+                        f"期待されるヘッダー: {expected_headers}, "
+                        f"実際のヘッダー: {reader.fieldnames}"
+                    )
+                    self.logger.error(error_msg)
+                    raise DataLoadError(
+                        file_path=str(self.file_path),
+                        message=error_msg
+                    )
+                # データ行を読み込む
+                for line_num, row in enumerate(reader, start=2):  # ヘッダーが1行目なので2から開始
+                    try:
+                        song_info = self._parse_row(row, line_num)
+                        song_infos.append(song_info)
+                    except Exception as e:
+                        error_msg = f"行 {line_num} の解析に失敗しました: {e}"
+                        self.logger.error(error_msg)
+                        raise DataLoadError(
+                            file_path=str(self.file_path),
+                            message=error_msg
+                        )
+            self.logger.info(
+                f"曲リストを読み込みました: {len(song_infos)}件 ({self.file_path})"
+            )
+            return song_infos
+        except DataLoadError:
+            raise
+        except Exception as e:
+            error_msg = f"ファイルの読み込みに失敗しました: {e}"
+            self.logger.error(error_msg, exc_info=True)
+            raise DataLoadError(
+                file_path=str(self.file_path),
+                message=error_msg
+            )
+    def save_all(self, songs: List[SongInfo]) -> None:
+        """
+        曲リストを保存
+        Args:
+            songs: 保存する曲情報のリスト
+        Raises:
+            FileWriteError: ファイルの書き込みに失敗した場合
+        """
+        try:
+            # 親ディレクトリが存在しない場合は作成
+            self.file_path.parent.mkdir(parents=True, exist_ok=True)
+            # UTF-8エンコーディングでTSVファイルに書き込む
+            with open(self.file_path, 'w', encoding='utf-8', newline='') as f:
+                writer = csv.writer(f, delimiter='\t')
+                # ヘッダーを書き込む
+                writer.writerow(['アーティスト', 'アーティスト(ソート用)', '曲名', '最近の歌唱'])
+                # データ行を書き込む
+                for song in songs:
+                    writer.writerow([
+                        song.artist,
+                        song.artist_sort,
+                        song.song_name,
+                        song.latest_url
+                    ])
+            self.logger.info(
+                f"曲リストを保存しました: {len(songs)}件 ({self.file_path})"
+            )
+        except PermissionError as e:
+            error_msg = "ファイルへの書き込み権限がありません"
+            self.logger.error(f"{error_msg}: {self.file_path}", exc_info=True)
+            raise FileWriteError(
+                file_path=str(self.file_path),
+                message=error_msg,
+                original_error=e
+            ) from e
+        except OSError as e:
+            error_msg = "ファイルの書き込みに失敗しました"
+            self.logger.error(f"{error_msg}: {e}", exc_info=True)
+            raise FileWriteError(
+                file_path=str(self.file_path),
+                message=error_msg,
+                original_error=e
+            ) from e
+        except Exception as e:
+            error_msg = "予期しないエラーが発生しました"
+            self.logger.error(f"{error_msg}: {e}", exc_info=True)
+            raise FileWriteError(
+                file_path=str(self.file_path),
+                message=error_msg,
+                original_error=e
+            ) from e
+    def _detect_encoding(self) -> str:
+        """
+        ファイルのエンコーディングを検出
+        Returns:
+            検出されたエンコーディング名
+        """
+        try:
+            with open(self.file_path, 'rb') as f:
+                raw_data = f.read()
+            result = chardet.detect(raw_data)
+            encoding = result['encoding']
+            # UTF-8の場合はそのまま返す
+            if encoding and encoding.lower().startswith('utf'):
+                return 'utf-8'
+            # その他のエンコーディングの場合
+            return encoding if encoding else 'utf-8'
+        except Exception as e:
+            self.logger.warning(
+                f"エンコーディングの検出に失敗しました。UTF-8を使用します: {e}"
+            )
+            return 'utf-8'
+    def _parse_row(self, row: dict, line_num: int) -> SongInfo:
+        """
+        TSVの1行をSongInfoオブジェクトに変換
+        Args:
+            row: TSVの行データ（辞書形式）
+            line_num: 行番号（エラーメッセージ用）
+        Returns:
+            SongInfoオブジェクト
+        Raises:
+            ValueError: データの解析に失敗した場合
+        """
+        try:
+            # 各フィールドを取得
+            artist = row['アーティスト'].strip()
+            artist_sort = row['アーティスト(ソート用)'].strip()
+            song_name = row['曲名'].strip()
+            latest_url = row['最近の歌唱'].strip()
+            return SongInfo(
+                artist=artist,
+                artist_sort=artist_sort,
+                song_name=song_name,
+                latest_url=latest_url
+            )
+        except KeyError as e:
+            raise ValueError(f"必須フィールドが見つかりません: {e}")
+    def load_as_dataframe(self) -> pd.DataFrame:
+        """
+        すべての曲リスト情報をDataFrameとして読み込む
+        Returns:
+            曲リスト情報のDataFrame（ファイルが存在しない場合は空のDataFrame）
+        Raises:
+            DataLoadError: ファイルの読み込みに失敗した場合
+        """
+        if not self.file_path.exists():
+            self.logger.info(f"ファイルが存在しないため、空のDataFrameを返します: {self.file_path}")
+            return pd.DataFrame(columns=['アーティスト', 'アーティスト(ソート用)', '曲名', '最近の歌唱'])
+        try:
+            # エンコーディングを検出
+            encoding = self._detect_encoding()
+            # DataFrameとして読み込み
+            df = pd.read_csv(self.file_path, delimiter="\t", encoding=encoding)
+            # ヘッダーの検証
+            expected_headers = ['アーティスト', 'アーティスト(ソート用)', '曲名', '最近の歌唱']
+            if not all(col in df.columns for col in expected_headers):
+                error_msg = (
+                    f"ファイル形式が不正です。"
+                    f"期待されるヘッダー: {expected_headers}, "
+                    f"実際のヘッダー: {list(df.columns)}"
+                )
+                self.logger.error(error_msg)
+                raise DataLoadError(file_path=str(self.file_path), message=error_msg)
+            self.logger.info(f"曲リストを読み込みました: {len(df)}件 ({self.file_path})")
+            return df
+        except DataLoadError:
+            raise
+        except Exception as e:
+            error_msg = f"ファイルの読み込みに失敗しました: {e}"
+            self.logger.error(error_msg, exc_info=True)
+            raise DataLoadError(file_path=str(self.file_path), message=error_msg)
+</file>
+
+<file path="src/repositories/timestamp_repository.py">
+"""
+タイムスタンプ情報リポジトリモジュール
+M_YT_LIVE_TIMESTAMP.TSVファイルの読み込みを管理します。
+"""
+import csv
+import logging
+from pathlib import Path
+from typing import List, Optional
+import chardet
+import pandas as pd
+from src.models.song_list_models import TimestampInfo
+from src.exceptions.errors import DataLoadError
+class TimestampRepository:
+    """
+    タイムスタンプ情報リポジトリ
+    M_YT_LIVE_TIMESTAMP.TSVファイルからタイムスタンプ情報を読み込みます。
+    """
+    def __init__(self, file_path: str):
+        """
+        リポジトリを初期化
+        Args:
+            file_path: M_YT_LIVE_TIMESTAMP.TSVファイルのパス
+        """
+        self.file_path = Path(file_path)
+        self.logger = logging.getLogger(__name__)
+        self._cache: Optional[List[TimestampInfo]] = None
+    def load_all(self) -> List[TimestampInfo]:
+        """
+        すべてのタイムスタンプ情報を読み込む
+        Returns:
+            タイムスタンプ情報のリスト
+        Raises:
+            DataLoadError: ファイルの読み込みに失敗した場合
+        """
+        # ファイルの存在確認
+        if not self.file_path.exists():
+            error_msg = f"ファイルが存在しません: {self.file_path}"
+            self.logger.error(error_msg)
+            raise DataLoadError(
+                file_path=str(self.file_path),
+                message=error_msg
+            )
+        try:
+            # エンコーディングを検出
+            encoding = self._detect_encoding()
+            self.logger.debug(f"検出されたエンコーディング: {encoding}")
+            # TSVファイルを読み込む
+            timestamp_infos = []
+            with open(self.file_path, 'r', encoding=encoding) as f:
+                reader = csv.DictReader(f, delimiter='\t')
+                # ヘッダーの検証
+                expected_headers = ['ID', 'LIVE_ID', 'タイムスタンプ', '曲名', 'アーティスト']
+                if reader.fieldnames != expected_headers:
+                    error_msg = (
+                        f"ファイル形式が不正です。"
+                        f"期待されるヘッダー: {expected_headers}, "
+                        f"実際のヘッダー: {reader.fieldnames}"
+                    )
+                    self.logger.error(error_msg)
+                    raise DataLoadError(
+                        file_path=str(self.file_path),
+                        message=error_msg
+                    )
+                # データ行を読み込む
+                for line_num, row in enumerate(reader, start=2):  # ヘッダーが1行目なので2から開始
+                    try:
+                        timestamp_info = self._parse_row(row, line_num)
+                        timestamp_infos.append(timestamp_info)
+                    except Exception as e:
+                        error_msg = f"行 {line_num} の解析に失敗しました: {e}"
+                        self.logger.error(error_msg)
+                        raise DataLoadError(
+                            file_path=str(self.file_path),
+                            message=error_msg
+                        )
+            self.logger.info(
+                f"タイムスタンプ情報を読み込みました: {len(timestamp_infos)}件 ({self.file_path})"
+            )
+            self._cache = timestamp_infos
+            return timestamp_infos
+        except DataLoadError:
+            raise
+        except Exception as e:
+            error_msg = f"ファイルの読み込みに失敗しました: {e}"
+            self.logger.error(error_msg, exc_info=True)
+            raise DataLoadError(
+                file_path=str(self.file_path),
+                message=error_msg
+            )
+    def get_by_live_id(self, live_id: int) -> List[TimestampInfo]:
+        """
+        配信IDでタイムスタンプ情報を取得
+        Args:
+            live_id: 配信ID
+        Returns:
+            タイムスタンプ情報のリスト
+        """
+        # キャッシュがない場合は読み込む
+        if self._cache is None:
+            self.load_all()
+        # 配信IDで検索
+        return [ts for ts in self._cache if ts.live_id == live_id]
+    def _detect_encoding(self) -> str:
+        """
+        ファイルのエンコーディングを検出
+        Returns:
+            検出されたエンコーディング名
+        """
+        try:
+            with open(self.file_path, 'rb') as f:
+                raw_data = f.read()
+            result = chardet.detect(raw_data)
+            encoding = result['encoding']
+            # UTF-8の場合はそのまま返す
+            if encoding and encoding.lower().startswith('utf'):
+                return 'utf-8'
+            # その他のエンコーディングの場合
+            return encoding if encoding else 'utf-8'
+        except Exception as e:
+            self.logger.warning(
+                f"エンコーディングの検出に失敗しました。UTF-8を使用します: {e}"
+            )
+            return 'utf-8'
+    def _parse_row(self, row: dict, line_num: int) -> TimestampInfo:
+        """
+        TSVの1行をTimestampInfoオブジェクトに変換
+        Args:
+            row: TSVの行データ（辞書形式）
+            line_num: 行番号（エラーメッセージ用）
+        Returns:
+            TimestampInfoオブジェクト
+        Raises:
+            ValueError: データの解析に失敗した場合
+        """
+        try:
+            # IDとLIVE_IDを整数に変換
+            timestamp_id = int(row['ID'])
+            live_id = int(row['LIVE_ID'])
+            # タイムスタンプ、曲名、アーティストを取得
+            timestamp = row['タイムスタンプ'].strip()
+            song_name = row['曲名'].strip()
+            artist = row['アーティスト'].strip()
+            return TimestampInfo(
+                id=timestamp_id,
+                live_id=live_id,
+                timestamp=timestamp,
+                song_name=song_name,
+                artist=artist
+            )
+        except KeyError as e:
+            raise ValueError(f"必須フィールドが見つかりません: {e}")
+        except ValueError as e:
+            raise ValueError(f"データ形式が不正です: {e}")
+    def load_as_dataframe(self) -> pd.DataFrame:
+        """
+        すべてのタイムスタンプ情報をDataFrameとして読み込む
+        Returns:
+            タイムスタンプ情報のDataFrame
+        Raises:
+            DataLoadError: ファイルの読み込みに失敗した場合
+        """
+        if not self.file_path.exists():
+            error_msg = f"ファイルが存在しません: {self.file_path}"
+            self.logger.error(error_msg)
+            raise DataLoadError(file_path=str(self.file_path), message=error_msg)
+        try:
+            # エンコーディングを検出
+            encoding = self._detect_encoding()
+            # DataFrameとして読み込み
+            df = pd.read_csv(self.file_path, delimiter="\t", encoding=encoding)
+            # ヘッダーの検証
+            expected_headers = ['ID', 'LIVE_ID', 'タイムスタンプ', '曲名', 'アーティスト']
+            if not all(col in df.columns for col in expected_headers):
+                error_msg = (
+                    f"ファイル形式が不正です。"
+                    f"期待されるヘッダー: {expected_headers}, "
+                    f"実際のヘッダー: {list(df.columns)}"
+                )
+                self.logger.error(error_msg)
+                raise DataLoadError(file_path=str(self.file_path), message=error_msg)
+            self.logger.info(f"タイムスタンプ情報を読み込みました: {len(df)}件 ({self.file_path})")
+            return df
+        except DataLoadError:
+            raise
+        except Exception as e:
+            error_msg = f"ファイルの読み込みに失敗しました: {e}"
+            self.logger.error(error_msg, exc_info=True)
+            raise DataLoadError(file_path=str(self.file_path), message=error_msg)
+</file>
+
 <file path="src/repositories/tsv_repository.py">
 """TSVファイルの書き込みを管理するリポジトリ"""
 import os
@@ -36114,6 +35234,213 @@ def render_twitter_embed(
             # 埋め込みコードが空だった場合の情報メッセージ
             logger.warning("埋め込みコードが空です")
             st.info("Twitterの埋め込み情報が読み込まれませんでした。")
+</file>
+
+<file path="src/ui/pages/home_page.py">
+"""
+ホーム画面ページ
+アプリケーションのメインページ（ホーム画面）の表示ロジックを担当します。
+"""
+import logging
+import streamlit as st
+import pandas as pd
+from typing import Optional
+from src.config.settings import Config
+from src.repositories.live_repository import LiveRepository
+from src.repositories.timestamp_repository import TimestampRepository
+from src.repositories.song_list_repository import SongListRepository
+from src.services.data_service import DataService
+from src.core.data_pipeline import DataPipeline
+from src.services.search_service import SearchService
+from src.ui.components.footer import display_footer
+from src.ui.components import (
+    render_search_form,
+    render_results_table,
+    render_pagination,
+)
+# ロガーの設定
+logger = logging.getLogger(__name__)
+@st.cache_data(ttl=3600, show_spinner="データを読み込み中...")
+def load_and_process_data() -> pd.DataFrame:
+    """
+    データを読み込み、処理する
+    DataPipelineを使用してデータの読み込み、結合、変換、ソートを実行します。
+    Streamlitのキャッシュ機能により、同じパラメータでの再実行を防ぎます。
+    Returns:
+        処理済みDataFrame
+    Raises:
+        Exception: データ処理中にエラーが発生した場合
+    """
+    config = Config.from_env()
+    # リポジトリの初期化
+    live_repo = LiveRepository(config.lives_file_path)
+    timestamp_repo = TimestampRepository(config.songs_file_path)
+    song_list_repo = SongListRepository(config.song_list_file_path)
+    # サービスの初期化
+    data_service = DataService(
+        config, 
+        live_repo, 
+        timestamp_repo, 
+        song_list_repo
+    )
+    # パイプラインの実行
+    pipeline = DataPipeline(data_service, config)
+    return pipeline.execute()
+class HomePage:
+    """
+    ホーム画面クラス
+    ホーム画面の描画とインタラクションを管理します。
+    """
+    def __init__(self):
+        """初期化"""
+        self.config = Config.from_env()
+        self.search_service = SearchService()
+        logger.info("HomePage initialized")
+    def run(self):
+        """
+        ホーム画面を実行・表示する
+        """
+        self._load_css()
+        self._render_header()
+        # データ読み込み
+        try:
+            df_full = load_and_process_data()
+            self._handle_search_and_display(df_full)
+        except Exception as e:
+            logger.error(f"データの読み込みまたは処理中にエラーが発生しました: {e}", exc_info=True)
+            self._handle_error(str(e))
+        display_footer()
+    def _load_css(self):
+        """カスタムCSSの適用"""
+        try:
+            with open(self.config.css_file_path, encoding="utf-8") as f:
+                st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+        except FileNotFoundError:
+            st.error(f"エラー: {self.config.css_file_path} が見つかりません。")
+        except Exception as e:
+            st.error(f"エラー: {self.config.css_file_path} の読み込み中に問題が発生しました: {e}")
+    def _render_header(self):
+        """ヘッダー領域の描画"""
+        st.title("しのうたタイム👻🫧")
+        st.info("左のサイドバーから「Song List beta」を選択して、楽曲リストをご覧ください。")
+        st.markdown(
+            """
+            こちらはVTuber「[幽音しの](https://www.774.ai/talent/shino-kasukane)」さんの配信で歌われた楽曲をまとめた非公式データベースです。
+            曲名、アーティスト、ライブ配信タイトルで検索できます。YouTubeリンクから該当の歌唱箇所に直接飛べます。
+            """
+        )
+        st.markdown("---")
+    def _handle_search_and_display(self, df_full: pd.DataFrame):
+        """
+        検索処理と結果表示の制御
+        Args:
+            df_full: 全データ
+        """
+        # セッション状態の初期化
+        if "search_query" not in st.session_state:
+            st.session_state.search_query = ""
+        if "filtered_df" not in st.session_state:
+            st.session_state.filtered_df = df_full.copy()
+        if "include_live_title" not in st.session_state:
+            st.session_state.include_live_title = True
+        if "display_limit" not in st.session_state:
+            st.session_state.display_limit = self.config.initial_display_limit
+        # 検索フォームの表示
+        current_input, current_checkbox_value, search_button = render_search_form(
+            default_query=st.session_state.search_query,
+            include_live_title=st.session_state.include_live_title
+        )
+        # 検索ロジック
+        if search_button:
+            self._perform_search(df_full, current_input, current_checkbox_value)
+        elif st.session_state.search_query:
+            # 既に検索済みの状態の表示更新（リロード時など）
+            st.write(
+                f"「{st.session_state.search_query}」で検索した結果: "
+                f"{len(st.session_state.filtered_df)}件"
+            )
+        else:
+            # 未検索（全件）
+            st.session_state.filtered_df = df_full.copy()
+            st.write("検索キーワードが入力されていません。全件表示します。")
+        # 結果テーブル表示
+        self._render_results(st.session_state.filtered_df)
+    def _perform_search(self, df_full: pd.DataFrame, query: str, include_title: bool):
+        """
+        検索を実行し、セッション状態を更新する
+        """
+        st.session_state.search_query = query
+        st.session_state.include_live_title = include_title
+        st.session_state.display_limit = self.config.initial_display_limit
+        if query:
+            search_fields = ["曲名", "アーティスト"]
+            if include_title:
+                search_fields.append("ライブタイトル")
+            st.session_state.filtered_df = self.search_service.search(
+                df_full,
+                query,
+                search_fields,
+                case_sensitive=False
+            )
+            st.write(
+                f"「{query}」で検索した結果: "
+                f"{len(st.session_state.filtered_df)}件"
+            )
+        else:
+            st.session_state.filtered_df = df_full.copy()
+            st.write("検索キーワードが入力されていません。全件表示します。")
+    def _render_results(self, df: pd.DataFrame):
+        """結果テーブルとページネーションの表示"""
+        # 表示用データの準備
+        df_to_show = df.copy()
+        # YouTubeリンクをHTML形式に変換
+        df_to_show["YouTubeリンク"] = df_to_show.apply(
+            lambda row: f'<a href="{row["YouTubeタイムスタンプ付きURL"]}" target="_blank">YouTubeへ👻</a>',
+            axis=1,
+        )
+        # アーティスト列にカスタムCSSクラスを適用
+        df_to_show["アーティスト"] = (
+            df_to_show["アーティスト"]
+            .astype(str)
+            .apply(lambda x: f'<div class="artist-cell">{x}</div>')
+        )
+        # 表示件数を制限
+        df_limited_display = df_to_show.head(st.session_state.display_limit)
+        # 表示する列とヘッダーの定義
+        display_columns = [
+            "ライブ配信日",
+            "曲目",
+            "曲名",
+            "アーティスト",
+            "YouTubeリンク",
+        ]
+        column_headers = {
+            "ライブ配信日": "配信日",
+            "曲目": "No.",
+            "曲名": "曲名",
+            "アーティスト": "アーティスト",
+            "YouTubeリンク": "リンク",
+        }
+        # 結果テーブルの表示
+        render_results_table(df_limited_display, display_columns, column_headers)
+        # ページネーションの表示
+        new_limit = render_pagination(
+            total_count=len(df),
+            current_limit=st.session_state.display_limit,
+            increment=self.config.display_increment
+        )
+        if new_limit:
+            st.session_state.display_limit = new_limit
+            st.rerun()
+    def _handle_error(self, error_msg: str):
+        """
+        エラー時の表示
+        Args:
+            error_msg: 表示するエラーメッセージ
+        """
+        st.error("データの読み込みまたは処理中にエラーが発生しました。")
+        st.warning(error_msg)
+        st.info("データファイル（TSV）の形式や存在を確認してください。")
 </file>
 
 <file path="src/utils/artist_sort_generator.py">
@@ -38856,6 +38183,468 @@ class TestBackupRepositoryErrors:
                  assert "バックアップディレクトリの作成に失敗しました" in str(exc_info.value)
 </file>
 
+<file path="tests/unit/test_data_pipeline.py">
+"""
+Data Pipelineのユニットテスト
+DataPipelineクラスの各メソッドが正しく動作することを検証します。
+"""
+import pytest
+from unittest.mock import Mock, patch, MagicMock
+import pandas as pd
+from src.core.data_pipeline import DataPipeline
+from src.services.data_service import DataService
+from src.config.settings import Config
+from src.exceptions.errors import DataProcessingError
+from tests.fixtures.sample_data import (
+    SAMPLE_LIVES_DATA,
+    SAMPLE_SONGS_DATA,
+    create_sample_dataframe
+)
+def create_merged_dataframe(lives_df, songs_df):
+    """DataServiceのmerge_dataメソッドと同じ処理を行うヘルパー関数"""
+    merged_df = pd.merge(
+        songs_df,
+        lives_df[["ID", "配信日", "タイトル", "URL"]],
+        left_on="LIVE_ID",
+        right_on="ID",
+        how="left",
+        suffixes=("_song", "_live"),
+    )
+    merged_df = merged_df.drop(columns=["ID_live"])
+    merged_df = merged_df.rename(
+        columns={
+            "ID_song": "楽曲ID",
+            "配信日": "ライブ配信日_original",
+            "タイトル": "ライブタイトル",
+            "URL": "元ライブURL",
+        }
+    )
+    return merged_df
+class TestDataPipelineExecution:
+    """パイプライン実行機能のテスト"""
+    def test_execute_all_steps_success(self):
+        """全ステップの正常な実行をテスト"""
+        # モックの設定
+        config = Mock(spec=Config)
+        config.enable_cache = False
+        data_service = Mock(spec=DataService)
+        # サンプルデータを作成
+        lives_df = create_sample_dataframe(SAMPLE_LIVES_DATA)
+        songs_df = create_sample_dataframe(SAMPLE_SONGS_DATA)
+        # DataServiceのモックメソッドを設定
+        data_service.load_lives_data.return_value = lives_df
+        data_service.load_songs_data.return_value = songs_df
+        # merge_dataの戻り値を設定
+        merged_df = create_merged_dataframe(lives_df, songs_df)
+        data_service.merge_data.return_value = merged_df
+        # DataPipelineを初期化して実行
+        pipeline = DataPipeline(data_service, config)
+        result = pipeline.execute()
+        # 検証
+        assert result is not None
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) > 0
+        # 各ステップが呼ばれたことを確認
+        data_service.load_lives_data.assert_called_once()
+        data_service.load_songs_data.assert_called_once()
+        data_service.merge_data.assert_called_once()
+    def test_execute_data_transformation_accuracy(self):
+        """データ変換の正確性をテスト"""
+        # モックの設定
+        config = Mock(spec=Config)
+        config.enable_cache = False
+        data_service = Mock(spec=DataService)
+        # サンプルデータを作成
+        lives_df = create_sample_dataframe(SAMPLE_LIVES_DATA)
+        songs_df = create_sample_dataframe(SAMPLE_SONGS_DATA)
+        # DataServiceのモックメソッドを設定
+        data_service.load_lives_data.return_value = lives_df
+        data_service.load_songs_data.return_value = songs_df
+        # merge_dataの戻り値を設定
+        merged_df = create_merged_dataframe(lives_df, songs_df)
+        data_service.merge_data.return_value = merged_df
+        # DataPipelineを初期化して実行
+        pipeline = DataPipeline(data_service, config)
+        result = pipeline.execute()
+        # 検証：変換後のカラムが存在する
+        assert "タイムスタンプ_秒" in result.columns
+        assert "YouTubeタイムスタンプ付きURL" in result.columns
+        assert "ライブ配信日_sortable" in result.columns
+        # タイムスタンプが秒数に変換されている
+        assert result["タイムスタンプ_秒"].dtype in [int, float]
+    def test_execute_sort_processing(self):
+        """ソート処理が正しく行われることをテスト"""
+        # モックの設定
+        config = Mock(spec=Config)
+        config.enable_cache = False
+        data_service = Mock(spec=DataService)
+        # サンプルデータを作成（複数の配信日を含む）
+        lives_data = {
+            "ID": [1, 2, 3],
+            "配信日": ["2024/01/01", "2024/01/03", "2024/01/02"],
+            "タイトル": ["配信1", "配信3", "配信2"],
+            "URL": ["https://youtube.com/watch?v=abc", "https://youtube.com/watch?v=ghi", "https://youtube.com/watch?v=def"]
+        }
+        songs_data = {
+            "ID": [1, 2, 3],
+            "LIVE_ID": [1, 2, 3],
+            "曲名": ["曲A", "曲B", "曲C"],
+            "アーティスト": ["アーティストA", "アーティストB", "アーティストC"],
+            "タイムスタンプ": ["00:10", "05:30", "02:15"]
+        }
+        lives_df = create_sample_dataframe(lives_data)
+        songs_df = create_sample_dataframe(songs_data)
+        # DataServiceのモックメソッドを設定
+        data_service.load_lives_data.return_value = lives_df
+        data_service.load_songs_data.return_value = songs_df
+        # merge_dataの戻り値を設定
+        merged_df = create_merged_dataframe(lives_df, songs_df)
+        data_service.merge_data.return_value = merged_df
+        # DataPipelineを初期化して実行
+        pipeline = DataPipeline(data_service, config)
+        result = pipeline.execute()
+        # 検証：ソートされている（配信日降順）
+        assert result is not None
+        assert len(result) == 3
+        # 曲目番号が生成されている
+        assert "曲目" in result.columns
+    def test_cache_is_not_used(self):
+        """キャッシュが使用されないこと（ステートレス性）をテスト"""
+        # モックの設定
+        config = Mock(spec=Config)
+        config.enable_cache = True  # 有効でも使用されないはず
+        data_service = Mock(spec=DataService)
+        # サンプルデータを作成
+        lives_df = create_sample_dataframe(SAMPLE_LIVES_DATA)
+        songs_df = create_sample_dataframe(SAMPLE_SONGS_DATA)
+        # DataServiceのモックメソッドを設定
+        data_service.load_lives_data.return_value = lives_df
+        data_service.load_songs_data.return_value = songs_df
+        # merge_dataの戻り値を設定
+        merged_df = create_merged_dataframe(lives_df, songs_df)
+        data_service.merge_data.return_value = merged_df
+        # DataPipelineを初期化
+        pipeline = DataPipeline(data_service, config)
+        # 1回目の実行
+        result1 = pipeline.execute()
+        assert result1 is not None
+        # 2回目の実行
+        result2 = pipeline.execute()
+        assert result2 is not None
+        # DataServiceのメソッドが2回呼ばれていることを確認（キャッシュされていない）
+        assert data_service.load_lives_data.call_count == 2
+        assert data_service.load_songs_data.call_count == 2
+        assert data_service.merge_data.call_count == 2
+class TestDataPipelineErrorHandling:
+    """エラー処理機能のテスト"""
+    def test_transform_data_date_conversion_fallback(self):
+        """_transform_dataの日付変換フォールバック処理をテスト"""
+        # モックの設定
+        config = Mock(spec=Config)
+        config.enable_cache = False
+        data_service = Mock(spec=DataService)
+        # YYYY/MM/DD形式の日付を含むサンプルデータを作成
+        lives_data = {
+            "ID": [1, 2],
+            "配信日": ["2024/01/01", "2024/01/02"],
+            "タイトル": ["配信1", "配信2"],
+            "URL": ["https://youtube.com/watch?v=abc", "https://youtube.com/watch?v=def"]
+        }
+        songs_data = {
+            "ID": [1, 2],
+            "LIVE_ID": [1, 2],
+            "曲名": ["曲A", "曲B"],
+            "アーティスト": ["アーティストA", "アーティストB"],
+            "タイムスタンプ": ["00:10", "05:30"]
+        }
+        lives_df = create_sample_dataframe(lives_data)
+        songs_df = create_sample_dataframe(songs_data)
+        # DataServiceのモックメソッドを設定
+        data_service.load_lives_data.return_value = lives_df
+        data_service.load_songs_data.return_value = songs_df
+        # merge_dataの戻り値を設定
+        merged_df = create_merged_dataframe(lives_df, songs_df)
+        data_service.merge_data.return_value = merged_df
+        # DataPipelineを初期化
+        pipeline = DataPipeline(data_service, config)
+        # ログをキャプチャするためにロガーをモック
+        with patch('src.core.data_pipeline.logger') as mock_logger:
+            # パイプラインを実行
+            result = pipeline.execute()
+            # 検証：結果が返される
+            assert result is not None
+            assert "ライブ配信日_sortable" in result.columns
+            # 日付が正しく変換されていることを確認
+            assert not result["ライブ配信日_sortable"].isna().all()
+            # 警告ログが記録される可能性がある（UNIXミリ秒として解釈できない場合）
+            # ただし、YYYY/MM/DD形式は最初の変換で失敗し、フォールバック処理で成功する
+    def test_data_load_failure(self):
+        """データ読み込み失敗時の処理をテスト"""
+        # モックの設定
+        config = Mock(spec=Config)
+        config.enable_cache = False
+        data_service = Mock(spec=DataService)
+        # DataServiceのモックメソッドを設定（例外を送出）
+        from src.exceptions.errors import DataLoadError
+        data_service.load_lives_data.side_effect = DataLoadError("lives.tsv", "ファイルが見つかりません")
+        # DataPipelineを初期化して実行
+        pipeline = DataPipeline(data_service, config)
+        # 検証：例外が発生すること
+        with pytest.raises(DataLoadError):
+            pipeline.execute()
+    def test_data_transformation_error(self):
+        """データ変換エラー時の処理をテスト"""
+        # モックの設定
+        config = Mock(spec=Config)
+        config.enable_cache = False
+        data_service = Mock(spec=DataService)
+        # サンプルデータを作成（不正なタイムスタンプを含む）
+        lives_df = create_sample_dataframe(SAMPLE_LIVES_DATA)
+        songs_data = {
+            "ID": [1, 2],
+            "LIVE_ID": [1, 1],
+            "曲名": ["曲A", "曲B"],
+            "アーティスト": ["アーティストA", "アーティストB"],
+            "タイムスタンプ": ["invalid", "also_invalid"]  # 不正なタイムスタンプ
+        }
+        songs_df = create_sample_dataframe(songs_data)
+        # DataServiceのモックメソッドを設定
+        data_service.load_lives_data.return_value = lives_df
+        data_service.load_songs_data.return_value = songs_df
+        # merge_dataの戻り値を設定
+        merged_df = create_merged_dataframe(lives_df, songs_df)
+        data_service.merge_data.return_value = merged_df
+        # DataPipelineを初期化して実行
+        pipeline = DataPipeline(data_service, config)
+        # 不正なタイムスタンプでもエラーにならず、デフォルト値（0）が設定される
+        result = pipeline.execute()
+        # 検証：結果が返される（エラーハンドリングされている）
+        assert result is not None
+        assert "タイムスタンプ_秒" in result.columns
+    def test_empty_data_processing(self):
+        """空のデータ処理をテスト"""
+        # モックの設定
+        config = Mock(spec=Config)
+        config.enable_cache = False
+        data_service = Mock(spec=DataService)
+        # 空のDataFrameを作成
+        lives_df = pd.DataFrame(columns=["ID", "配信日", "タイトル", "URL"])
+        songs_df = pd.DataFrame(columns=["ID", "LIVE_ID", "曲名", "アーティスト", "タイムスタンプ"])
+        # DataServiceのモックメソッドを設定
+        data_service.load_lives_data.return_value = lives_df
+        data_service.load_songs_data.return_value = songs_df
+        # merge_dataの戻り値を設定（空のDataFrame）
+        merged_df = create_merged_dataframe(lives_df, songs_df)
+        data_service.merge_data.return_value = merged_df
+        # DataPipelineを初期化して実行
+        pipeline = DataPipeline(data_service, config)
+        # 空のDataFrameの場合、generate_song_numbersでエラーが発生して例外が投げられる
+        # これは期待される動作
+        with pytest.raises(DataProcessingError):
+            pipeline.execute()
+    def test_validate_step_result_empty_dataframe(self):
+        """_validate_step_resultが空のDataFrameを処理することをテスト"""
+        # モックの設定
+        config = Mock(spec=Config)
+        config.enable_cache = False
+        data_service = Mock(spec=DataService)
+        # DataPipelineを初期化
+        pipeline = DataPipeline(data_service, config)
+        # 空のDataFrameを作成
+        empty_df = pd.DataFrame()
+        # ログをキャプチャするためにロガーをモック
+        with patch('src.core.data_pipeline.logger') as mock_logger:
+            # _validate_step_resultを呼び出し
+            pipeline._validate_step_result(empty_df, "test_step")
+            # 検証：正常終了（警告のみで処理は継続）
+            # 警告ログが記録されたことを確認
+            mock_logger.warning.assert_called_once()
+            warning_call = mock_logger.warning.call_args[0][0]
+            assert "test_step" in warning_call
+            assert "空のDataFrame" in warning_call
+</file>
+
+<file path="tests/unit/test_data_service.py">
+"""
+Data Serviceのユニットテスト
+DataServiceクラスの各メソッドが正しく動作することを検証します。
+"""
+import pytest
+import tempfile
+import os
+from pathlib import Path
+from unittest.mock import Mock, patch
+import pandas as pd
+from src.services.data_service import DataService
+from src.config.settings import Config
+from src.repositories.live_repository import LiveRepository
+from src.repositories.timestamp_repository import TimestampRepository
+from src.repositories.song_list_repository import SongListRepository
+from src.exceptions.errors import DataLoadError
+from tests.fixtures.sample_data import (
+    SAMPLE_LIVES_DATA,
+    SAMPLE_SONGS_DATA,
+    SAMPLE_SONG_LIST_DATA,
+    create_sample_tsv_file,
+    create_sample_dataframe
+)
+class TestDataServiceDataLoading:
+    """データ読み込み機能のテスト"""
+    def test_load_lives_data_success(self):
+        """配信データの正常な読み込みをテスト"""
+        # サンプルデータ
+        df = pd.DataFrame(SAMPLE_LIVES_DATA)
+        # モックの作成
+        config = Mock(spec=Config)
+        live_repo = Mock(spec=LiveRepository)
+        live_repo.load_as_dataframe.return_value = df
+        timestamp_repo = Mock(spec=TimestampRepository)
+        song_list_repo = Mock(spec=SongListRepository)
+        # DataServiceを初期化してデータを読み込む
+        service = DataService(config, live_repo, timestamp_repo, song_list_repo)
+        result = service.load_lives_data()
+        # 検証
+        assert result is not None
+        assert len(result) == 3
+        assert list(result.columns) == ["ID", "配信日", "タイトル", "URL"]
+        live_repo.load_as_dataframe.assert_called_once()
+    def test_load_lives_data_error(self):
+        """配信データの読み込みエラーをテスト"""
+        # モックの作成
+        config = Mock(spec=Config)
+        live_repo = Mock(spec=LiveRepository)
+        live_repo.load_as_dataframe.side_effect = DataLoadError("M_YT_LIVE.TSV", "ファイルが見つかりません")
+        timestamp_repo = Mock(spec=TimestampRepository)
+        song_list_repo = Mock(spec=SongListRepository)
+        # DataServiceを初期化
+        service = DataService(config, live_repo, timestamp_repo, song_list_repo)
+        # 検証
+        with pytest.raises(DataLoadError) as excinfo:
+            service.load_lives_data()
+        assert "ファイルが見つかりません" in str(excinfo.value)
+    def test_load_songs_data_success(self):
+        """楽曲データの正常な読み込みをテスト"""
+        # サンプルデータ
+        df = pd.DataFrame(SAMPLE_SONGS_DATA)
+        # モックの作成
+        config = Mock(spec=Config)
+        live_repo = Mock(spec=LiveRepository)
+        timestamp_repo = Mock(spec=TimestampRepository)
+        timestamp_repo.load_as_dataframe.return_value = df
+        song_list_repo = Mock(spec=SongListRepository)
+        # DataServiceを初期化してデータを読み込む
+        service = DataService(config, live_repo, timestamp_repo, song_list_repo)
+        result = service.load_songs_data()
+        # 検証
+        assert result is not None
+        assert len(result) == 5
+        assert "曲名" in result.columns
+        assert "タイムスタンプ" in result.columns
+        timestamp_repo.load_as_dataframe.assert_called_once()
+    def test_load_songs_data_error(self):
+        """楽曲データの読み込みエラーをテスト"""
+        # モックの作成
+        config = Mock(spec=Config)
+        live_repo = Mock(spec=LiveRepository)
+        timestamp_repo = Mock(spec=TimestampRepository)
+        timestamp_repo.load_as_dataframe.side_effect = DataLoadError("songs.tsv", "読み込みエラー")
+        song_list_repo = Mock(spec=SongListRepository)
+        # DataServiceを初期化
+        service = DataService(config, live_repo, timestamp_repo, song_list_repo)
+        # 検証
+        with pytest.raises(DataLoadError) as excinfo:
+            service.load_songs_data()
+        assert "読み込みエラー" in str(excinfo.value)
+    def test_load_song_list_data_success(self):
+        """楽曲リストデータの正常な読み込みをテスト"""
+        # サンプルデータ
+        df = pd.DataFrame(SAMPLE_SONG_LIST_DATA)
+        # モックの作成
+        config = Mock(spec=Config)
+        live_repo = Mock(spec=LiveRepository)
+        timestamp_repo = Mock(spec=TimestampRepository)
+        song_list_repo = Mock(spec=SongListRepository)
+        song_list_repo.load_as_dataframe.return_value = df
+        # DataServiceを初期化してデータを読み込む
+        service = DataService(config, live_repo, timestamp_repo, song_list_repo)
+        result = service.load_song_list_data()
+        # 検証
+        assert result is not None
+        assert len(result) == 5
+        assert "曲名" in result.columns
+        assert "アーティスト" in result.columns
+        song_list_repo.load_as_dataframe.assert_called_once()
+    def test_load_song_list_data_error(self):
+        """楽曲リストデータの読み込みエラーをテスト"""
+        # モックの作成
+        config = Mock(spec=Config)
+        live_repo = Mock(spec=LiveRepository)
+        timestamp_repo = Mock(spec=TimestampRepository)
+        song_list_repo = Mock(spec=SongListRepository)
+        song_list_repo.load_as_dataframe.side_effect = DataLoadError("song_list.tsv", "エラー")
+        # DataServiceを初期化
+        service = DataService(config, live_repo, timestamp_repo, song_list_repo)
+        # 検証
+        with pytest.raises(DataLoadError) as excinfo:
+            service.load_song_list_data()
+        assert "エラー" in str(excinfo.value)
+class TestDataServiceDataMerging:
+    """データ結合機能のテスト"""
+    def test_merge_data_success(self):
+        """正常なデータ結合をテスト"""
+        # サンプルデータを作成
+        lives_df = create_sample_dataframe(SAMPLE_LIVES_DATA)
+        songs_df = create_sample_dataframe(SAMPLE_SONGS_DATA)
+        # モックの作成
+        config = Mock(spec=Config)
+        live_repo = Mock(spec=LiveRepository)
+        timestamp_repo = Mock(spec=TimestampRepository)
+        song_list_repo = Mock(spec=SongListRepository)
+        # DataServiceを初期化してデータを結合
+        service = DataService(config, live_repo, timestamp_repo, song_list_repo)
+        result = service.merge_data(lives_df, songs_df)
+        # 検証
+        assert result is not None
+        assert len(result) == 5  # 楽曲データの件数と一致
+        assert "楽曲ID" in result.columns
+        assert "ライブタイトル" in result.columns
+        assert "元ライブURL" in result.columns
+        assert "ID_live" not in result.columns  # 削除されているはず
+    def test_merge_data_column_renaming(self):
+        """列名の変更が正しく行われることをテスト"""
+        # サンプルデータを作成
+        lives_df = create_sample_dataframe(SAMPLE_LIVES_DATA)
+        songs_df = create_sample_dataframe(SAMPLE_SONGS_DATA)
+        # モックの作成
+        config = Mock(spec=Config)
+        live_repo = Mock(spec=LiveRepository)
+        timestamp_repo = Mock(spec=TimestampRepository)
+        song_list_repo = Mock(spec=SongListRepository)
+        # DataServiceを初期化してデータを結合
+        service = DataService(config, live_repo, timestamp_repo, song_list_repo)
+        result = service.merge_data(lives_df, songs_df)
+        # 検証：列名が正しく変更されている
+        assert "楽曲ID" in result.columns
+        assert "ライブ配信日_original" in result.columns
+        assert "ライブタイトル" in result.columns
+        assert "元ライブURL" in result.columns
+    def test_merge_data_removes_unnecessary_columns(self):
+        """不要な列が削除されることをテスト"""
+        # サンプルデータを作成
+        lives_df = create_sample_dataframe(SAMPLE_LIVES_DATA)
+        songs_df = create_sample_dataframe(SAMPLE_SONGS_DATA)
+        # モック
+        config = Mock(spec=Config)
+        live_repo = Mock(spec=LiveRepository)
+        timestamp_repo = Mock(spec=TimestampRepository)
+        song_list_repo = Mock(spec=SongListRepository)
+        # DataServiceを初期化してデータを結合
+        service = DataService(config, live_repo, timestamp_repo, song_list_repo)
+        result = service.merge_data(lives_df, songs_df)
+        # 検証：ID_liveが削除されている
+        assert "ID_live" not in result.columns
+</file>
+
 <file path="tests/unit/test_excel_to_tsv_service.py">
 """
 Excel to TSV Serviceのユニットテスト
@@ -39222,6 +39011,132 @@ class TestExcelToTsvServiceSongListGenerator:
             )
             # 結果を検証（失敗するがエラーは発生しない）
             assert result is False
+</file>
+
+<file path="tests/unit/test_live_repository.py">
+import pytest
+from datetime import datetime
+from unittest.mock import patch, MagicMock
+from src.repositories.live_repository import LiveRepository
+from src.models.song_list_models import LiveInfo
+from src.exceptions.errors import DataLoadError
+class TestLiveRepository:
+    @pytest.fixture
+    def repository(self, tmp_path):
+        """テスト用のリポジトリインスタンスを作成"""
+        file_path = tmp_path / "test_live.tsv"
+        return LiveRepository(str(file_path))
+    def test_load_all_success(self, repository, tmp_path):
+        """正常系: TSVファイルを正しく読み込めること"""
+        # Setup
+        file_path = tmp_path / "test_live.tsv"
+        content = (
+            "ID\t配信日\tタイトル\tURL\n"
+            "1\t2023/1/1\tTitle1\thttps://example.com/1\n"
+            "2\t2023/12/31\tTitle2\thttps://example.com/2"
+        )
+        file_path.write_text(content, encoding='utf-8')
+        # Execute
+        result = repository.load_all()
+        # Verify
+        assert len(result) == 2
+        assert result[0].id == 1
+        assert result[0].date == datetime(2023, 1, 1)
+        assert result[0].title == "Title1"
+        assert result[0].url == "https://example.com/1"
+        assert result[1].id == 2
+        assert result[1].date == datetime(2023, 12, 31)
+        assert result[1].title == "Title2"
+        assert result[1].url == "https://example.com/2"
+    def test_load_all_file_not_found(self, repository):
+        """異常系: ファイルが存在しない場合はエラーになること"""
+        # Note: LiveRepository raises DataLoadError intentionally unlike SongListRepository which returned empty list
+        with pytest.raises(DataLoadError) as excinfo:
+            repository.load_all()
+        assert "ファイルが存在しません" in str(excinfo.value)
+    def test_load_all_invalid_header(self, repository, tmp_path):
+        """異常系: ヘッダーが不正な場合はエラーになること"""
+        file_path = tmp_path / "test_live.tsv"
+        content = "Invalid\tHeader\n1\t2023/1/1"
+        file_path.write_text(content, encoding='utf-8')
+        with pytest.raises(DataLoadError) as excinfo:
+            repository.load_all()
+        assert "ファイル形式が不正です" in str(excinfo.value)
+    def test_load_all_parsing_error(self, repository, tmp_path):
+        """異常系: 行の解析に失敗した場合はエラーになること"""
+        file_path = tmp_path / "test_live.tsv"
+        # 不正な日付形式
+        content = (
+            "ID\t配信日\tタイトル\tURL\n"
+            "1\tINVALID_DATE\tTitle1\tURL1"
+        )
+        file_path.write_text(content, encoding='utf-8')
+        with pytest.raises(DataLoadError) as excinfo:
+            repository.load_all()
+        assert "解析に失敗しました" in str(excinfo.value)
+    def test_get_by_id_success(self, repository, tmp_path):
+        """正常系: IDで配信情報を取得できること"""
+        # Setup
+        file_path = tmp_path / "test_live.tsv"
+        content = (
+            "ID\t配信日\tタイトル\tURL\n"
+            "10\t2023/1/1\tTitle1\tURL1\n"
+            "20\t2023/1/2\tTitle2\tURL2"
+        )
+        file_path.write_text(content, encoding='utf-8')
+        # Execute
+        result = repository.get_by_id(20)
+        # Verify
+        assert result is not None
+        assert result.id == 20
+        assert result.title == "Title2"
+    def test_get_by_id_not_found(self, repository, tmp_path):
+        """正常系: 存在しないIDの場合はNoneを返すこと"""
+        # Setup
+        file_path = tmp_path / "test_live.tsv"
+        content = (
+            "ID\t配信日\tタイトル\tURL\n"
+            "1\t2023/1/1\tTitle1\tURL1"
+        )
+        file_path.write_text(content, encoding='utf-8')
+        # Execute
+        result = repository.get_by_id(999)
+        # Verify
+        assert result is None
+    def test_detect_encoding_utf8(self, repository, tmp_path):
+        """正常系: UTF-8エンコーディングを正しく検出できること"""
+        file_path = tmp_path / "test_live.tsv"
+        file_path.write_text("テスト", encoding='utf-8')
+        assert repository._detect_encoding() == 'utf-8'
+    def test_parse_date_invalid_format(self, repository):
+        """異常系: 不正な日付形式の場合"""
+        with pytest.raises(ValueError) as excinfo:
+            repository._parse_date("2023-01-01")  # Splitting by slash will fail
+        assert "日付形式が不正です" in str(excinfo.value)
+    def test_parse_date_invalid_values(self, repository):
+        """異常系: 存在しない日付の場合"""
+        with pytest.raises(ValueError) as excinfo:
+            repository._parse_date("2023/2/30")  # invalid date
+        assert "日付の解析に失敗しました" in str(excinfo.value)
+    def test_load_as_dataframe_success(self, repository, tmp_path):
+        """正常系: DataFrameとして正しく読み込めること"""
+        # Setup
+        file_path = tmp_path / "test_live.tsv"
+        content = (
+            "ID\t配信日\tタイトル\tURL\n"
+            "1\t2023/1/1\tTitle1\thttps://example.com/1\n"
+            "2\t2023/12/31\tTitle2\thttps://example.com/2"
+        )
+        file_path.write_text(content, encoding='utf-8')
+        # Execute
+        df = repository.load_as_dataframe()
+        # Verify
+        import pandas as pd
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == 2
+        assert list(df.columns) == ["ID", "配信日", "タイトル", "URL"]
+        assert df.iloc[0]["ID"] == 1
+        assert df.iloc[1]["タイトル"] == "Title2"
 </file>
 
 <file path="tests/unit/test_settings.py">
