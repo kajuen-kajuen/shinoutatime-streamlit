@@ -363,7 +363,7 @@ class TestBoundaryConditions:
             
             # Configを作成
             config = Config(lives_file_path=str(empty_tsv))
-            service = DataService(config)
+            service = DataService(config, MagicMock(), MagicMock(), MagicMock())
             result = service.load_lives_data()
             
             # 空のファイルはエラーまたは空のDataFrameを返す
@@ -378,7 +378,7 @@ class TestBoundaryConditions:
             
             # Configを作成
             config = Config(lives_file_path=str(single_row_tsv))
-            service = DataService(config)
+            service = DataService(config, MagicMock(), MagicMock(), MagicMock())
             result = service.load_lives_data()
             
             # ヘッダーのみの場合は空のDataFrameを返す

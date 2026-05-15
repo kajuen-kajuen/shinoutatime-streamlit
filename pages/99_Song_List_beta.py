@@ -26,6 +26,9 @@ import pandas as pd
 from src.ui.components.footer import display_footer
 from src.config.settings import Config
 from src.services.data_service import DataService
+from src.repositories.live_repository import LiveRepository
+from src.repositories.timestamp_repository import TimestampRepository
+from src.repositories.song_list_repository import SongListRepository
 
 # --- 設定の初期化 ---
 config = Config()
@@ -144,8 +147,13 @@ with st.expander("β版の制約について"):
     )
 st.markdown("---")
 
+# --- リポジトリの初期化 ---
+live_repo = LiveRepository(config.lives_file_path)
+timestamp_repo = TimestampRepository(config.songs_file_path)
+song_list_repo = SongListRepository(config.song_list_file_path)
+
 # --- データサービスの初期化 ---
-data_service = DataService(config)
+data_service = DataService(config, live_repo, timestamp_repo, song_list_repo)
 
 # --- データの読み込み ---
 @st.cache_data

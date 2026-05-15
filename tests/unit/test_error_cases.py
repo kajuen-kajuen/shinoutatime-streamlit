@@ -23,7 +23,7 @@ class TestErrorCases:
         config = Config()
         config.lives_file_path = "nonexistent_file.tsv"  # 存在しないファイルを指定
 
-        data_service = DataService(config)
+        data_service = DataService(config, MagicMock(), MagicMock(), MagicMock())
 
         # 存在しないファイルの読み込みをテスト
         result = data_service.load_lives_data()

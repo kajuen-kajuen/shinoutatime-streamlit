@@ -50,7 +50,7 @@ class TestHomeIntegration:
             mock_data_service.load_songs_data.return_value = sample_data
             mock_data_service.merge_data.return_value = sample_data
 
-            data_service = DataService(config)
+            data_service = DataService(config, MagicMock(), MagicMock(), MagicMock())
             pipeline = DataPipeline(data_service, config)
 
             # 初回実行

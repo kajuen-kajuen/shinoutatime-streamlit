@@ -97,7 +97,7 @@ class TestDataServiceProperties:
             config.lives_file_path = temp_file
             
             # DataServiceを初期化してデータを読み込む
-            service = DataService(config)
+            service = DataService(config, MagicMock(), MagicMock(), MagicMock())
             result = service.load_lives_data()
             
             # プロパティ検証：読み込みが成功した場合、DataFrameが返され、エラーメッセージがNone
@@ -125,7 +125,7 @@ class TestDataServiceProperties:
         config = Mock(spec=Config)
         
         # DataServiceを初期化してデータを結合
-        service = DataService(config)
+        service = DataService(config, MagicMock(), MagicMock(), MagicMock())
         result = service.merge_data(lives_df, songs_df)
         
         # プロパティ検証：結合後のデータ件数は楽曲データの件数と一致
@@ -155,7 +155,7 @@ class TestDataServiceProperties:
         config.lives_file_path = f"/nonexistent/{invalid_path}/M_YT_LIVE.TSV"
         
         # DataServiceを初期化してデータを読み込む
-        service = DataService(config)
+        service = DataService(config, MagicMock(), MagicMock(), MagicMock())
         result = service.load_lives_data()
         
         # プロパティ検証：エラー時はNoneが返され、エラーメッセージが設定される
@@ -199,7 +199,7 @@ class TestDataServiceProperties:
             config.lives_file_path = temp_file
             
             # DataServiceを初期化してデータを読み込む
-            service = DataService(config)
+            service = DataService(config, MagicMock(), MagicMock(), MagicMock())
             result = service.load_lives_data()
             
             # プロパティ検証：欠損値があっても読み込みが成功する

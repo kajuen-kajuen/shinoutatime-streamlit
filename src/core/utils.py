@@ -116,15 +116,15 @@ def generate_song_numbers(df: pd.DataFrame) -> pd.DataFrame:
             追加されるカラム:
             - 曲順: 各配信内での曲順（1から始まる連番）
             - ライブ番号: 同一日内の配信番号（1から始まる連番）
-            - 曲目: 表示用の曲目番号（例: "1-3曲目" または "3曲目"）
+            - 曲目: 表示用の曲目番号（例: "1-3" または "3"）
     
     Examples:
         同一日に複数配信がある場合:
-        - 1番目の配信の3曲目 → "1-3曲目"
-        - 2番目の配信の1曲目 → "2-1曲目"
+        - 1番目の配信の3曲目 → "1-3"
+        - 2番目の配信の1曲目 → "2-1"
         
         同一日に単一配信の場合:
-        - 3曲目 → "3曲目"
+        - 3曲目 → "3"
     
     Notes:
         - 入力DataFrameは変更されず、コピーが返されます
@@ -132,72 +132,65 @@ def generate_song_numbers(df: pd.DataFrame) -> pd.DataFrame:
     """
     df_result = df.copy()
     
+    # 必須カラムの確認
+    required_cols = ["LIVE_ID", "ライブ配信日_sortable", "タイムスタンプ_秒"]
+    for col in required_cols:
+        if col not in df_result.columns:
+            # タイムスタンプ_秒がない場合は、ソート順が不安定になる可能性があるが、処理は継続可能
+            logger.warning(f"Required column '{col}' not found in DataFrame for generate_song_numbers")
+    
+    # ソート用に日付のみを抽出した列を作成
+    df_result["_temp_date"] = df_result["ライブ配信日_sortable"].dt.date
+    
+    # 全体を正しい順序（古い順）にソート
+    sort_cols = ["ライブ配信日_sortable", "LIVE_ID"]
+    if "タイムスタンプ_秒" in df_result.columns:
+        sort_cols.append("タイムスタンプ_秒")
+        
+    df_result = df_result.sort_values(by=sort_cols).reset_index(drop=True)
+    
     # ステップ1: 各配信内での曲順を計算
     # groupby("LIVE_ID").cumcount()により、各配信内で0から始まる連番を生成し、+1で1始まりにする
     df_result["曲順"] = df_result.groupby("LIVE_ID").cumcount() + 1
 
     # ステップ2: 同一日内の配信に番号を振る（ライブ番号）
-    def assign_live_number_per_date(group_df):
-        """
-        同一日付内の各配信に連番（ライブ番号）を振る
-        
-        Args:
-            group_df: 同一日付でグループ化されたDataFrame
-        
-        Returns:
-            DataFrame: LIVE_IDとライブ番号を含むDataFrame
-        """
-        # factorizeにより、LIVE_IDの出現順に0から始まる番号を振り、+1で1始まりにする
-        factor_codes, _ = pd.factorize(group_df["LIVE_ID"])
-        group_df["ライブ番号"] = factor_codes + 1
-        return group_df[["LIVE_ID", "ライブ番号"]]
-
-    # ライブ番号の計算: 日付とLIVE_IDのユニークな組み合わせを抽出
-    temp_live_numbers = (
-        df_result[["ライブ配信日_sortable", "LIVE_ID"]].drop_duplicates().copy()
-    )
-
-    # ソートして、factorizeの順序を安定させる（LIVE_IDの昇順）
-    temp_live_numbers = temp_live_numbers.sort_values(
-        by=["ライブ配信日_sortable", "LIVE_ID"]
-    )
-
-    # 日付ごとにグループ化し、各配信にライブ番号を振る
-    temp_live_numbers = temp_live_numbers.groupby(
-        "ライブ配信日_sortable", group_keys=False
-    ).apply(assign_live_number_per_date, include_groups=False)
-
-    # ステップ3: 元のDataFrameにライブ番号をマージ
+    # 日付とLIVE_IDの組み合わせを抽出し、その日の何番目の配信かを取得
+    df_live_order = df_result[["_temp_date", "LIVE_ID", "ライブ配信日_sortable"]].drop_duplicates()
+    df_live_order = df_live_order.sort_values(["_temp_date", "ライブ配信日_sortable", "LIVE_ID"])
+    df_live_order["ライブ番号"] = df_live_order.groupby("_temp_date").cumcount() + 1
+    
+    # 元のDFにマージ（ライブ番号を付与）
     df_result = pd.merge(
-        df_result,
-        temp_live_numbers[["LIVE_ID", "ライブ番号"]],
-        on=["LIVE_ID"],
-        how="left",
-        suffixes=("", "_new"),
+        df_result, 
+        df_live_order[["_temp_date", "LIVE_ID", "ライブ番号"]], 
+        on=["_temp_date", "LIVE_ID"], 
+        how="left"
     )
 
-    # マージで重複した列がある場合は新しい方を使用
-    if "ライブ番号_new" in df_result.columns:
-        df_result["ライブ番号"] = df_result["ライブ番号_new"]
-        df_result = df_result.drop(columns=["ライブ番号_new"])
-
-    # ステップ4: 各日付の配信数をカウント
+    # ステップ3: 各日付の配信数をカウント
     # 同一日に複数配信があるかどうかを判定するため
-    live_counts_per_date = df_result.groupby("ライブ配信日_sortable")[
-        "LIVE_ID"
-    ].transform("nunique")
+    live_counts_per_date = df_result.groupby("_temp_date")["LIVE_ID"].transform("nunique")
 
-    # ステップ5: 曲目番号の表示形式を決定
-    # 同一日に複数配信がある場合: "1-3曲目"（1番目の配信の3曲目）
-    # 同一日に単一配信の場合: "3曲目"
+    # ステップ4: 曲目番号の表示形式を決定
+    # 同一日に複数配信がある場合: "1-3"（1番目の配信の3曲目）
+    # 同一日に単一配信の場合: "3"
     df_result["曲目"] = df_result.apply(
         lambda row: (
-            f"{row['ライブ番号']}-{row['曲順']}曲目"
+            f"{row['ライブ番号']}-{row['曲順']}"
             if live_counts_per_date.loc[row.name] > 1
-            else f"{row['曲順']}曲目"
+            else str(row['曲順'])
         ),
         axis=1,
     )
+    
+    # 不要な一時列を削除
+    df_result = df_result.drop(columns=["_temp_date"])
+    
+    # 元の順序（DataPipelineでのソート順：配信日降順）に戻す
+    df_result = df_result.sort_values(
+        by=["ライブ配信日_sortable", "LIVE_ID"] + (["タイムスタンプ_秒"] if "タイムスタンプ_秒" in df_result.columns else []),
+        ascending=[False, True] + ([True] if "タイムスタンプ_秒" in df_result.columns else [])
+    ).reset_index(drop=True)
     
     return df_result
 

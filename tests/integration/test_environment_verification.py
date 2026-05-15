@@ -55,7 +55,7 @@ class TestEnvironmentVerification:
     @pytest.fixture
     def data_service(self, config):
         """データサービスを提供するフィクスチャ"""
-        return DataService(config)
+        return DataService(config, MagicMock(), MagicMock(), MagicMock())
     
     @pytest.fixture
     def data_pipeline(self, data_service, config):

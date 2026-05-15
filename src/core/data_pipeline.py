@@ -222,6 +222,15 @@ class DataPipeline:
                 axis=1,
             )
             
+            # 表示用に配信日をフォーマット（時刻を省く）
+            logger.debug("表示用に配信日をフォーマット中")
+            # ライブ配信日_sortableを使用して、有効な日付のみフォーマット
+            df_result["ライブ配信日"] = df_result["ライブ配信日_sortable"].dt.strftime('%Y/%m/%d')
+            # 変換に失敗した（NaT）場合は元の値を保持（念のため）
+            mask_nat = df_result["ライブ配信日"].isna()
+            if mask_nat.any():
+                df_result.loc[mask_nat, "ライブ配信日"] = df_result.loc[mask_nat, "ライブ配信日_original"]
+            
             logger.info("データ変換完了")
             return df_result
             
