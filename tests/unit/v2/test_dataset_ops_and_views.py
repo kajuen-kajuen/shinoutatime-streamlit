@@ -53,11 +53,13 @@ class TestMerge:
 
 
 class TestPerformanceView:
-    def test_order_newest_first_then_seq(self, sample_dataset):
+    def test_order_newest_day_first_then_earlier_content_then_seq(self, sample_dataset):
+        """日付は新しい順。同じ日(2025-05-01)は早い時間(20:00 の AAAA)が上。今の Home と同じ"""
         view = build_performance_view(sample_dataset)
         assert list(view["content_id"]) == [
             "yt:CCCCCCCCCCC", "x:1234567890", "zan:10001", "zan:10001",
-            "yt:BBBBBBBBBBB", "yt:AAAAAAAAAAA", "yt:AAAAAAAAAAA"]
+            "yt:AAAAAAAAAAA", "yt:AAAAAAAAAAA", "yt:BBBBBBBBBBB"]
+        assert list(view["no"].tail(3)) == ["1-1", "1-2", "2-1"]
 
     def test_no_with_branch_for_same_day(self, sample_dataset):
         view = build_performance_view(sample_dataset).set_index(["content_id", "title"])
@@ -82,6 +84,15 @@ class TestPerformanceView:
         assert view["search"].str.contains(normalize_for_match("ＢＬＵＥ ＳＫＹ"), regex=False).any()
         # 曲名の終わりとアーティスト名の始まりをまたいで一致しない
         assert not view["search"].str.contains(normalize_for_match("skyalpha"), regex=False).any()
+
+    def test_search_by_reading(self, sample_dataset):
+        """漢字の曲名・アーティストも、読み(かな・カタカナ)で見つかる"""
+        from src.core.text import normalize_for_match
+        view = build_performance_view(sample_dataset)
+        hits = view[view["search"].str.contains(normalize_for_match("ハジマリ"), regex=False)]
+        assert set(hits["title"]) == {"はじまりの歌"}
+        stats = build_song_stats(sample_dataset)
+        assert stats["search"].str.contains(normalize_for_match("てすとばんど"), regex=False).sum() == 1
 
 
 class TestSongStats:

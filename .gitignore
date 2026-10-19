@@ -9,6 +9,7 @@ data/backups/
 
 # Local-only admin pages (not for production/staging)
 pages/*_Admin.py
+pages/*_Preview.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

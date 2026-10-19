@@ -12,7 +12,7 @@
 - データ: `data/` の TSV は UTF-8・タブ区切り。配信日の形式は `YYYY/M/D`(時刻付き `YYYY/M/D HH:MM` が混ざることがある【要確認】)。`V_SONG_LIST.TSV` は `song_list_generator` の生成物なので手で直さない。アーティストの読みは `ARTIST_SORT_MAPPING.TSV`(`artist_sort_cli`)で補正する
 - デプロイ: Streamlit Community Cloud がブランチを見て自動デプロイする(`main` → 本番、`develop` → stg)。`requirements.txt` がそのまま本番に入る
 - 実行環境: Docker(`docker-compose.yml` のサービス名 `shinouta-time`、作業ディレクトリ `/app` にリポジトリをマウント)。コンテナには git が無いので、git と `tools/check-rules.sh` はホストの Git Bash で打つ
-- 表示: 利用者の多くはスマホ。表は横に長くしすぎない。Streamlit の内部クラス名(`st-emotion-cache-*`)に依存した CSS は版を上げると壊れる
+- 表示: **見た目は現行と同じにする**(2026-10-19 決定。HTML の表、style.css、「YouTubeへ👻」、「さらに25件表示」。`st.dataframe` には切り替えない)。利用者の多くはスマホ。表は横に長くしすぎない。Streamlit の内部クラス名(`st-emotion-cache-*`)に依存した CSS は版を上げると壊れる
 
 ## 絶対制約
 
