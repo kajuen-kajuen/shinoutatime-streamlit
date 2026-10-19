@@ -106,8 +106,20 @@ Thumbs.db
    - **Repository**: デプロイするGitHubリポジトリを選択
    - **Branch**: デプロイするブランチ（通常は`main`または`master`）
    - **Main file path**: `Home.py`
-3. 「Advanced settings」をクリック（必要に応じて環境変数を設定）
+3. 「Advanced settings」をクリックし、**Python version を 3.14** にする（必要に応じて環境変数も設定）
 4. 「Deploy!」ボタンをクリック
+
+> **Python のバージョンについて**: Streamlit Cloud は、デプロイしたあとで Python のバージョンを変えられません。変えるときは、次の「Python のバージョンを上げる」の手順でアプリを作り直します。
+
+#### 2.4 Python のバージョンを上げる
+
+1. 今の設定を控える: カスタムサブドメイン（`shinoutatime` / `stg-shinoutatime`）、リポジトリ、ブランチ、`Home.py`、Secrets
+2. 先に `requirements.txt` の版が新しい Python で動くことを、コンテナ（`Dockerfile` の Python を同じ版にしたもの）で確かめる
+3. ダッシュボードでアプリを削除する（削除するとサブドメインはすぐに再利用できる）
+4. 2.2 の手順でデプロイし直す。同じリポジトリ・ブランチ・`Home.py` を選び、サブドメインを元と同じにし、「Advanced settings」で Python のバージョンを選び、Secrets を入れ直す
+5. 3.1 の確認をする。**stg（`develop`）で先に行い、問題がなければ本番（`main`）**
+
+依存は `requirements.txt` に `==` で固定しています。Streamlit Cloud はこのファイルだけを読み、`requirements-tools.txt`（データ生成の CLI）と `requirements-dev.txt`（テスト）は読みません。
 
 #### 2.3 デプロイの確認
 

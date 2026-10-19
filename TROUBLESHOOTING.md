@@ -261,7 +261,7 @@ UnicodeDecodeError: 'utf-8' codec can't decode byte
 Python 3.9.x
 ```
 
-**原因**: Python 3.11が必要ですが、古いバージョンがインストールされています。
+**原因**: Python 3.14が必要ですが、古いバージョンがインストールされています。
 
 **解決方法**:
 
@@ -271,26 +271,26 @@ Python 3.9.x
    docker-compose up
    ```
 
-2. Python 3.11をインストール
+2. Python 3.14をインストール
 
    - **Windows**:
-     - [Python公式サイト](https://www.python.org/downloads/)からPython 3.11をダウンロード
+     - [Python公式サイト](https://www.python.org/downloads/)からPython 3.14をダウンロード
      - インストール時に「Add Python to PATH」をチェック
 
    - **Mac** (Homebrewを使用):
      ```bash
-     brew install python@3.11
+     brew install python@3.14
      ```
 
    - **Linux** (Ubuntu/Debian):
      ```bash
      sudo apt-get update
-     sudo apt-get install python3.11 python3.11-venv
+     sudo apt-get install python3.14 python3.14-venv
      ```
 
 3. バージョン確認
    ```bash
-   python3.11 --version
+   python3.14 --version
    ```
 
 ### 問題10: 仮想環境のアクティベートに失敗
@@ -376,7 +376,7 @@ ERROR: Could not find a version that satisfies the requirement <package>
    ```bash
    python --version
    ```
-   - Python 3.11を使用していることを確認
+   - Python 3.14を使用していることを確認
 
 3. パッケージを個別にインストール
    ```bash
@@ -508,16 +508,16 @@ AssertionError: 配信データファイルが見つかりません: data/M_YT_L
 
 **症状**:
 ```
-AssertionError: Pythonマイナーバージョンが11ではありません（本番環境と一致しません）
+AssertionError: Pythonマイナーバージョンが14ではありません（本番環境と一致しません）
 ```
 
-**原因**: Python 3.11以外のバージョンが使用されています。
+**原因**: Python 3.14以外のバージョンが使用されています。
 
 **解決方法**:
 
 1. **Docker環境の場合**: Dockerfileを確認
    ```dockerfile
-   FROM python:3.11-slim
+   FROM python:3.14.8-slim-trixie
    ```
 
 2. コンテナを再ビルド
@@ -532,7 +532,7 @@ AssertionError: Pythonマイナーバージョンが11ではありません（�
    docker-compose exec shinouta-time python --version
    ```
 
-4. **ローカル環境の場合**: Python 3.11をインストール
+4. **ローカル環境の場合**: Python 3.14をインストール
    - [問題9: Pythonのバージョンが古い](#問題9-pythonのバージョンが古い)を参照
 
 ### 問題20: テストが失敗する - モジュールが見つからない
@@ -555,7 +555,7 @@ ModuleNotFoundError: No module named 'streamlit'
 
 2. **ローカル環境の場合**: パッケージをインストール
    ```bash
-   pip install -r requirements.txt
+   pip install -r requirements-dev.txt
    ```
 
 3. インストール確認

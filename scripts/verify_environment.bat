@@ -85,11 +85,11 @@ REM 5. Pythonバージョンの確認
 echo 5. Python バージョンの確認...
 for /f "tokens=*" %%i in ('docker-compose exec -T shinouta-time python --version') do set PYTHON_VERSION=%%i
 echo    %PYTHON_VERSION%
-echo %PYTHON_VERSION% | findstr "Python 3.11" >nul 2>&1
+echo %PYTHON_VERSION% | findstr "Python 3.14" >nul 2>&1
 if %errorlevel% equ 0 (
-    echo [OK] Python 3.11 が使用されています（本番環境と一致）
+    echo [OK] Python 3.14 が使用されています（本番環境と一致）
 ) else (
-    echo [WARNING] Python 3.11 ではありません（本番環境と異なる可能性があります）
+    echo [WARNING] Python 3.14 ではありません（本番環境と異なる可能性があります）
 )
 echo.
 

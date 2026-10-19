@@ -315,8 +315,9 @@
 | 項目 | 内容 |
 |------|------|
 | **実行コマンド** | `streamlit run Home.py` |
-| **依存関係管理** | `requirements.txt` |
-| **インストール** | `pip install -r requirements.txt` |
+| **Python** | 3.14 |
+| **依存関係管理** | `requirements.txt`（本番）、`requirements-tools.txt`（CLI）、`requirements-dev.txt`（テスト）。版は `==` で固定 |
+| **インストール** | 開発: `pip install -r requirements-dev.txt` / 本番: Streamlit Cloud が `requirements.txt` を読む |
 
 ## アーキテクチャの特徴
 

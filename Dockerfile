@@ -1,10 +1,10 @@
-FROM python:3.11-slim
+FROM python:3.14.8-slim-trixie
 
 WORKDIR /app
 
-# 依存パッケージのインストール
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# 依存パッケージのインストール(ローカルではテストと CLI も使うので開発用を入れる)
+COPY requirements.txt requirements-tools.txt requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements-dev.txt
 
 # アプリケーションファイルのコピー
 COPY . .

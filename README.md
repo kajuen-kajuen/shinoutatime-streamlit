@@ -100,8 +100,8 @@ docker exec shinoutatime-streamlit-shinouta-time-1 python -m src.cli.artist_sort
 
 | 方法 | メリット | デメリット |
 |-----|---------|-----------|
-| **Docker Compose（推奨）** | ・ローカル環境にPythonや依存パッケージをインストール不要<br>・本番環境（Python 3.11）と同じ環境を再現<br>・環境のクリーンアップが容易<br>・`docker-compose up`コマンド一つで起動 | ・Dockerのインストールが必要<br>・初回起動時にイメージのビルドが必要 |
-| **Python 仮想環境** | ・Dockerが不要<br>・軽量で高速 | ・ローカル環境にPython 3.11のインストールが必要<br>・依存パッケージの管理が必要<br>・環境の分離が不完全 |
+| **Docker Compose（推奨）** | ・ローカル環境にPythonや依存パッケージをインストール不要<br>・本番環境（Python 3.14）と同じ環境を再現<br>・環境のクリーンアップが容易<br>・`docker-compose up`コマンド一つで起動 | ・Dockerのインストールが必要<br>・初回起動時にイメージのビルドが必要 |
+| **Python 仮想環境** | ・Dockerが不要<br>・軽量で高速 | ・ローカル環境にPython 3.14のインストールが必要<br>・依存パッケージの管理が必要<br>・環境の分離が不完全 |
 
 **推奨**: ローカル環境を汚さず、本番環境と同じ構成で動作させるため、**Docker Compose を使用する方法**を推奨します。
 
@@ -183,7 +183,7 @@ Docker Compose使用時の問題については、[TROUBLESHOOTING.md](TROUBLESH
 ### 方法2: Python 仮想環境を使用する
 
 #### 必要な環境
-- **Python 3.11** (本番環境と同じバージョンを推奨)
+- **Python 3.14** (本番環境と同じバージョンを推奨)
 - **pip** (Pythonパッケージマネージャー)
 
 #### 1. リポジトリのクローン
@@ -197,7 +197,7 @@ cd <repository-directory>
 
 **Linux/Mac:**
 ```bash
-python3.11 -m venv venv
+python3.14 -m venv venv
 source venv/bin/activate
 ```
 
@@ -210,15 +210,13 @@ venv\Scripts\activate
 #### 3. 依存パッケージのインストール
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
-必要なパッケージ（主なもの）:
-- `streamlit` - Webアプリケーションフレームワーク
-- `pandas` - データ処理ライブラリ
-- `openpyxl` - Excel操作
-- `pykakasi`, `python-Levenshtein` - 日本語処理と検索
-- その他（詳細は `requirements.txt` を参照）
+依存は用途ごとに3つのファイルに分け、版を `==` で固定しています:
+- `requirements.txt` - 本番（Streamlit Community Cloud）で使うもの。`streamlit`、`pandas` など
+- `requirements-tools.txt` - データ生成の CLI で使うもの。`pykakasi`（読み）、`python-Levenshtein`（類似曲の検出）
+- `requirements-dev.txt` - テストで使うもの。`pytest`、`hypothesis` など（上の2つも含む）
 
 #### 4. アプリケーションの起動
 

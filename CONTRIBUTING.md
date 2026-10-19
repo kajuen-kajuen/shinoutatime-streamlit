@@ -74,7 +74,7 @@ cd shinouta-time
 ### 3. 依存パッケージのインストール
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 ### 4. 開発用ブランチの作成
@@ -128,7 +128,7 @@ streamlit run Home.py
 ## 環境情報
 - OS: [例: Windows 11, macOS 14.0, Ubuntu 22.04]
 - ブラウザ: [例: Chrome 120, Firefox 121, Safari 17]
-- Python バージョン: [例: Python 3.11.5]
+- Python バージョン: [例: Python 3.14.8]
 - Streamlit バージョン: [例: 1.29.0]
 
 ## 追加情報

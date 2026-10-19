@@ -1,0 +1,5 @@
+# 開発・テストで使う依存(ローカルのコンテナ・devcontainer)。本番には入れない
+-r requirements-tools.txt
+pytest==9.1.1
+pytest-cov==7.1.0
+hypothesis==6.170.2

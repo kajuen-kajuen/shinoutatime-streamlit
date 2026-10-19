@@ -368,13 +368,13 @@
 **A:** はい、可能です。以下の手順で動かすことができます：
 
 1. **必要な環境**
-   - Python 3.8以上
+   - Python 3.14
    - pip（Pythonパッケージマネージャー）
 
 2. **セットアップ手順**
    ```bash
    # 依存パッケージのインストール
-   pip install -r requirements.txt
+   pip install -r requirements-dev.txt
    
    # アプリケーションの起動
    streamlit run Home.py

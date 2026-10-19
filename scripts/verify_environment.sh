@@ -89,10 +89,10 @@ echo ""
 echo "5. Python バージョンの確認..."
 PYTHON_VERSION=$(docker-compose exec -T shinouta-time python --version)
 echo "   ${PYTHON_VERSION}"
-if echo "$PYTHON_VERSION" | grep -q "Python 3.11"; then
-    echo -e "${GREEN}✓${NC} Python 3.11 が使用されています（本番環境と一致）"
+if echo "$PYTHON_VERSION" | grep -q "Python 3.14"; then
+    echo -e "${GREEN}✓${NC} Python 3.14 が使用されています（本番環境と一致）"
 else
-    echo -e "${YELLOW}!${NC} Python 3.11 ではありません（本番環境と異なる可能性があります）"
+    echo -e "${YELLOW}!${NC} Python 3.14 ではありません（本番環境と異なる可能性があります）"
 fi
 echo ""
 

@@ -183,7 +183,7 @@ docker-compose exec shinouta-time pytest tests/integration/test_environment_veri
 
 **テスト内容:**
 - データファイルの存在確認
-- Pythonバージョンの確認（Python 3.11）
+- Pythonバージョンの確認（Python 3.14）
 - データ読み込み機能の確認
 - 検索機能の確認
 - データ処理の正確性確認

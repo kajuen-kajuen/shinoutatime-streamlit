@@ -91,12 +91,12 @@ class TestEnvironmentVerification:
     
     def test_python_version(self):
         """
-        Pythonバージョンが3.11であることを確認
-        
-        要件13.1, 14.1: 本番環境と同じPython 3.11を使用
+        Pythonバージョンが3.14であることを確認
+
+        要件13.1, 14.1: 本番環境と同じPython 3.14を使用
         """
         assert sys.version_info.major == 3, "Pythonメジャーバージョンが3ではありません"
-        assert sys.version_info.minor == 11, "Pythonマイナーバージョンが11ではありません（本番環境と一致しません）"
+        assert sys.version_info.minor == 14, "Pythonマイナーバージョンが14ではありません（本番環境と一致しません）"
     
     # ========================================
     # 要件10.2: データ読み込みが正常に動作すること

@@ -28,7 +28,8 @@ VTuber「幽音しの」さんの配信で歌われた楽曲を検索し、YouTu
 
 ## 技術スタック
 
-- Python 3.11(Docker イメージ `python:3.11-slim`)、Streamlit(マルチページ: `Home.py` と `pages/NN_Name.py`)、pandas
+- Python 3.14(Docker イメージ `python:3.14.8-slim-trixie`)、Streamlit(マルチページ: `Home.py` と `pages/NN_Name.py`)、pandas
+- 依存は `==` で固定し、3つに分ける: `requirements.txt`(本番。Streamlit Cloud はこれだけを読む)、`requirements-tools.txt`(データ生成の CLI)、`requirements-dev.txt`(テスト。コンテナはこれを入れる)
 - データ: `data/` の TSV(UTF-8)。DB・外部 API は使わない
 - テスト: pytest + hypothesis(`tests/unit`・`property`・`integration`・`e2e`。e2e は Streamlit の `AppTest`)
 - オフラインのツール(CLI): pykakasi(読み)、python-Levenshtein(類似曲の検出)、openpyxl(Excel)
