@@ -5,7 +5,7 @@
 1. この節と「やってはいけないこと」
 2. [`docs/prompts/_common-context.md`](docs/prompts/_common-context.md)(前提・絶対制約・決めてよいこと／聞くこと)
 3. [`docs/prompts/_commands.md`](docs/prompts/_commands.md)(そのまま打つコマンド。Docker・テスト・データ生成)
-4. 使うスキルの本体 `docs/prompts/<x>.md`(`/debug` `/feature` `/refactor` `/review` `/test`。入口は `.claude/skills/`)
+4. 使うスキルの本体 `docs/prompts/<x>.md`(`/debug` `/feature` `/refactor` `/review` `/test` `/update-data`。入口は `.claude/skills/`)
 5. 触る機能の `docs/specs/<機能>.md` だけ(全部は読まない。一覧は [`docs/README.md`](docs/README.md))
 
 ## やってはいけないこと

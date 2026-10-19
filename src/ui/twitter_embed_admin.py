@@ -53,8 +53,17 @@ def check_admin_auth() -> bool:
     
     # 認証フォームを表示
     st.subheader("🔒 管理者認証")
+
+    # 環境変数からパスワードを取得する。既定値は持たない(公開リポジトリなので、既定値は誰でも読める)。
+    # 未設定のときはログインさせない
+    admin_password = os.getenv("ADMIN_PASSWORD")
+    if not admin_password:
+        logger.warning("管理者認証: ADMIN_PASSWORD が未設定のためログインを受け付けない")
+        st.error("管理者パスワード(ADMIN_PASSWORD)が設定されていないため、ログインできません。")
+        return False
+
     st.info("この機能を使用するには管理者パスワードが必要です。")
-    
+
     # パスワード入力
     password = st.text_input(
         "パスワード",
@@ -64,9 +73,6 @@ def check_admin_auth() -> bool:
     
     # ログインボタン
     if st.button("ログイン", key="admin_login_button"):
-        # 環境変数からパスワードを取得
-        admin_password = os.getenv("ADMIN_PASSWORD", "admin")
-        
         if password == admin_password:
             st.session_state.authenticated = True
             logger.info("管理者認証成功")

@@ -15,6 +15,9 @@ from src.repositories.table_repository import Dataset
 # 既定の歌唱回数から外す種類(配信の切り抜きは、元の配信と二重に数えないため)
 EXCLUDED_FROM_COUNT_KINDS = ("切り抜き",)
 
+# 画面に出さないコンテンツの access(メンバー限定)。歌唱の一覧にも曲ごとの集計にも入れない
+HIDDEN_ACCESS = ("members",)
+
 # 画面の「種類」の列の表示(contents.type → 日本語)。知らない値はそのまま表示する
 CONTENT_TYPE_LABELS = {"live": "配信", "short": "ショート", "video": "動画", "post": "投稿"}
 
@@ -63,13 +66,17 @@ def build_performance_view(dataset: Dataset) -> pd.DataFrame:
     並び: 日付の新しい順 → 同じ日の中は時刻の早い順(枝番の順) → コンテンツの中は seq 昇順。
     No. はコンテンツの中での順位(1, 2, 3…)。同じ日に複数のコンテンツがあるときは「枝番-順位」。
     """
+    # メンバー限定のコンテンツは、データには持つが画面には出さない(2026-10-20 決定)。
+    # 同じ日の枝番も、出すコンテンツだけで数える
+    contents = dataset["contents"]
+    contents = contents[~contents["access"].isin(HIDDEN_ACCESS)]
     perf = dataset["performances"]
+    perf = perf[perf["content_id"].isin(contents["content_id"])]
     if perf.empty:
         return pd.DataFrame(columns=[
             "content_id", "date", "no", "title", "artist", "style", "part", "note",
             "link", "platform", "type", "type_label", "content_title", "song_id", "artist_id", "search", "search_song",
         ])
-    contents = dataset["contents"]
     songs = dataset["songs"].rename(columns={"kind": "song_kind"})
     artists = dataset["artists"].rename(columns={"name": "artist"})
 

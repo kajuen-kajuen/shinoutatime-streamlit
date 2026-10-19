@@ -10,8 +10,9 @@
 #     メールアドレス・トークンらしき文字列(Google API キーを含む)が無い。
 #     .env・secrets.toml・取り込みのキャッシュ(data/ingest/cache・staged)を追跡していない
 #   - コード(WARN): HTML の escape=False、Streamlit 内部クラス名(st-emotion-cache-*)、
-#     キャッシュ関数の中の st.* の表示、ADMIN_PASSWORD の既定値
+#     キャッシュ関数の中の st.* の表示
 #     → 今のコードに既知の違反があるため WARN に留める。直したら ng に上げる
+#   - コード(NG): ADMIN_PASSWORD の既定値(2026-10-20 に直したので ng)
 # 終了コード: 0 = 問題なし、1 = 問題あり(WARN は終了コードに影響しない)
 
 cd "$(dirname "$0")/.." || exit 1
@@ -78,7 +79,7 @@ if [ -n "$hits" ]; then warn "キャッシュ関数の中で st.* を表示し�
 $hits"; else ok "キャッシュ関数の中の表示なし"; fi
 
 hits=$(git grep -nE 'getenv\(["'\'']ADMIN_PASSWORD["'\''][[:space:]]*,' -- '*.py')
-if [ -n "$hits" ]; then warn "ADMIN_PASSWORD に既定値がある(公開リポジトリなので既定値は誰でも読める):
+if [ -n "$hits" ]; then ng "ADMIN_PASSWORD に既定値がある(公開リポジトリなので既定値は誰でも読める):
 $hits"; else ok "ADMIN_PASSWORD の既定値なし"; fi
 
 if [ $status -eq 0 ]; then

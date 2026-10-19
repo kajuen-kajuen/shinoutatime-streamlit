@@ -12,7 +12,7 @@ from src.ingest.parser import (build_content_row, build_rows_from_title, build_s
                                split_song_text, style_hint)
 from src.ingest.skips import add_skip, load_skips
 from src.ingest.staging import apply_staged, load_staged, save_staged
-from src.ingest.youtube_api import YouTubeApiClient, parse_duration
+from src.ingest.youtube_api import YouTubeApiClient, YouTubeApiError, parse_duration
 from tests.unit.v2.conftest import make_dataset
 
 TIMESTAMP_COMMENT = """配信おつかれさまでした!
@@ -292,6 +292,57 @@ class TestYouTubeApi:
         assert capture.type == "live"
         session.head.assert_not_called()  # ライブは問い合わせない
         assert capture.validate() == []
+
+    @staticmethod
+    def _error_response(status, reason):
+        response = MagicMock(ok=False, status_code=status)
+        response.json.return_value = {"error": {"errors": [{"reason": reason}]}}
+        return response
+
+    def test_error_message_does_not_contain_key(self):
+        """失敗のメッセージに API キー(URL)を入れない。ログや画面に出さないため"""
+        session = MagicMock()
+        session.get.return_value = self._error_response(403, "quotaExceeded")
+        with pytest.raises(YouTubeApiError) as e:
+            YouTubeApiClient(api_key="SECRET-KEY", session=session).fetch_comments("AAAAAAAAAAA")
+        assert e.value.reason == "quotaExceeded" and e.value.status == 403
+        assert "SECRET-KEY" not in str(e.value) and "http" not in str(e.value)
+
+    def test_network_error_does_not_contain_key(self):
+        import requests
+        session = MagicMock()
+        session.get.side_effect = requests.ConnectionError("https://x/?key=SECRET-KEY")
+        with pytest.raises(YouTubeApiError) as e:
+            YouTubeApiClient(api_key="SECRET-KEY", session=session).fetch_comments("AAAAAAAAAAA")
+        assert "SECRET-KEY" not in str(e.value)
+        assert e.value.__suppress_context__  # 元の例外(URL 入り)をトレースバックに連ねない
+
+    def test_search_other_channels_excludes_own_and_limits_month(self):
+        """本人以外のチャンネルの検索: 本人のチャンネルを除き、日本時間のその月で絞る"""
+        session = MagicMock()
+        responses = [
+            {"items": [{"id": "UC_OWN"}]},
+            {"items": [
+                {"id": {"videoId": "AAAAAAAAAAA"}, "snippet": {"channelId": "UC_OWN", "channelTitle": "本人",
+                                                               "title": "a", "publishedAt": "2025-05-02T10:00:00Z"}},
+                {"id": {"videoId": "BBBBBBBBBBB"}, "snippet": {"channelId": "UC_X", "channelTitle": "コラボ相手",
+                                                               "title": "b", "publishedAt": "2025-05-04T13:20:00Z",
+                                                               "liveBroadcastContent": "none"}},
+            ]},
+        ]
+        session.get.return_value.json.side_effect = responses
+        found = YouTubeApiClient(api_key="dummy", session=session).search_other_channels("2025-05")
+        assert [(v.video_id, ch) for v, ch in found] == [("BBBBBBBBBBB", "コラボ相手")]
+        assert found[0][0].published_jst.strftime("%Y-%m-%d %H:%M") == "2025-05-04 22:20"
+        params = session.get.call_args_list[1].kwargs["params"]
+        assert params["publishedAfter"] == "2025-05-01T00:00:00+09:00"
+        assert params["publishedBefore"] == "2025-06-01T00:00:00+09:00"
+
+    def test_comments_disabled_returns_empty(self):
+        """コメントを受け付けていない動画(予定表の枠など)は、コメント0件として扱う"""
+        session = MagicMock()
+        session.get.return_value = self._error_response(403, "commentsDisabled")
+        assert YouTubeApiClient(api_key="dummy", session=session).fetch_comments("AAAAAAAAAAA") == []
 
     @pytest.mark.parametrize("status, expected", [(200, "short"), (303, "video")])
     def test_detect_type_by_shorts_url(self, status, expected):

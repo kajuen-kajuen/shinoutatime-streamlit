@@ -68,19 +68,39 @@ def cmd_list(args) -> int:
     return 0
 
 
+def cmd_others(args) -> int:
+    from src.ingest.youtube_api import YouTubeApiClient
+    found = YouTubeApiClient().search_other_channels(args.month)
+    skips = load_skips()
+    for v, channel in found:
+        state = "曲なし" if v.content_id in skips else ("取得済み" if cache_path(v.content_id).exists() else "")
+        print(f"{v.published_jst:%Y-%m-%d %H:%M}\t{v.content_id}\t{channel[:20]}\t{state}\t{v.title[:50]}")
+    print(f"{len(found)} 本(ファンの切り抜きなども混じる。対象にするかは update-data.md の決まりで判断する)")
+    return 0
+
+
 def cmd_fetch(args) -> int:
+    from src.ingest.youtube_api import YouTubeApiError
     client, videos = _uploads(args.month)
-    fetched = skipped = 0
+    fetched = skipped = failed = 0
     for v in videos:
         if cache_path(v.content_id).exists() and not args.force:
             skipped += 1
             continue
-        capture = client.fetch_capture(v.video_id)
+        try:
+            capture = client.fetch_capture(v.video_id)
+        except YouTubeApiError as e:
+            # 1本の失敗で止めず、残りを取る。上限(quotaExceeded)のときは、続けても失敗するので止める
+            failed += 1
+            print(f"失敗: {v.content_id}\t{e}", file=sys.stderr)
+            if e.reason == "quotaExceeded":
+                break
+            continue
         save_capture(capture)
         fetched += 1
         print(f"取得: {v.content_id}\t{capture.type}\tコメント {len(capture.comments)} 件\t{v.title[:40]}")
-    print(f"取得 {fetched} 本 / 取得済みのため飛ばした {skipped} 本")
-    return 0
+    print(f"取得 {fetched} 本 / 取得済みのため飛ばした {skipped} 本 / 失敗 {failed} 本")
+    return 1 if failed else 0
 
 
 def cmd_check(args) -> int:
@@ -196,6 +216,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("list", help="チャンネルの投稿の一覧(読むだけ)")
     p.add_argument("--month", help="YYYY-MM(日本時間)")
     p.set_defaults(func=cmd_list)
+
+    p = sub.add_parser("others", help="その月の、本人以外のチャンネルの動画を検索する(読むだけ。100 ユニット/ページ)")
+    p.add_argument("--month", required=True, help="YYYY-MM")
+    p.set_defaults(func=cmd_others)
 
     p = sub.add_parser("fetch", help="その月の投稿をまとめて API で取得する")
     p.add_argument("--month", required=True, help="YYYY-MM(日本時間)")

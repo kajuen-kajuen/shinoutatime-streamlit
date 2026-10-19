@@ -129,6 +129,26 @@ class TestPerformanceView:
         )
         assert list(build_performance_view(dataset)["no"]) == ["1", "2", "3", ""]
 
+    def test_members_only_content_is_hidden(self):
+        """メンバー限定の配信は、歌唱の一覧にも曲ごとの集計にも出さない。同じ日の枝番にも数えない"""
+        from tests.unit.v2.conftest import content, make_dataset
+        members = content("yt:MMMMMMMMMMM", "2025-05-27", "【メン限】架空", start_time="20:00")
+        members["access"] = "members"
+        dataset = make_dataset(
+            contents=[members, content("yt:LLLLLLLLLLL", "2025-05-27", "【歌枠】架空", start_time="22:00")],
+            artists=[{"artist_id": "a0001", "name": "架空"}],
+            songs=[{"song_id": "s0001", "title": "歌1", "artist_id": "a0001"},
+                   {"song_id": "s0002", "title": "メン限だけの歌", "artist_id": "a0001"}],
+            performances=[{"content_id": "yt:MMMMMMMMMMM", "seq": "10", "start": "0:05:00", "song_id": "s0002"},
+                          {"content_id": "yt:MMMMMMMMMMM", "seq": "20", "start": "0:10:00", "song_id": "s0001"},
+                          {"content_id": "yt:LLLLLLLLLLL", "seq": "10", "start": "0:05:00", "song_id": "s0001"}],
+        )
+        view = build_performance_view(dataset)
+        assert list(view["content_id"]) == ["yt:LLLLLLLLLLL"]
+        assert list(view["no"]) == ["1"]  # 枝番(2-1)にならない
+        stats = build_song_stats(dataset).set_index("song_id")
+        assert list(stats.index) == ["s0001"] and stats.loc["s0001", "count"] == 1
+
     def test_cache_key_changes_with_data_and_code(self, tmp_path):
         """画面のキャッシュの鍵は、データファイルとコードの更新日時で変わる(古い集計を返さないため)"""
         import os

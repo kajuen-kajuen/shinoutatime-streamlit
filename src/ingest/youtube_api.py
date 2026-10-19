@@ -9,7 +9,7 @@ import os
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import requests
 
@@ -48,6 +48,19 @@ def parse_duration(value: str) -> Optional[int]:
     return h * 3600 + mi * 60 + s
 
 
+class YouTubeApiError(Exception):
+    """
+    API の失敗。メッセージに URL を入れない(URL には API キーが入るため。ログや画面に出さない)
+
+    reason は API のエラーの理由(例: commentsDisabled、quotaExceeded)。分からなければ空。
+    """
+
+    def __init__(self, path: str, status: Optional[int] = None, reason: str = ""):
+        self.path, self.status, self.reason = path, status, reason
+        detail = f"HTTP {status}" if status is not None else "通信の失敗"
+        super().__init__(f"YouTube API の {path} が失敗しました({detail}{'、' + reason if reason else ''})")
+
+
 class YouTubeApiClient:
     def __init__(self, api_key: Optional[str] = None, session: Optional[requests.Session] = None, timeout: int = 30):
         self.api_key = api_key or os.environ.get("YOUTUBE_API_KEY", "")
@@ -57,16 +70,30 @@ class YouTubeApiClient:
         self.timeout = timeout
 
     def _get(self, path: str, **params) -> dict:
-        response = self.session.get(f"{API_BASE}/{path}", params={**params, "key": self.api_key}, timeout=self.timeout)
-        response.raise_for_status()
+        try:
+            response = self.session.get(f"{API_BASE}/{path}", params={**params, "key": self.api_key}, timeout=self.timeout)
+        except requests.RequestException as e:
+            # requests の例外のメッセージには、キーの入った URL が含まれるので使わない
+            raise YouTubeApiError(path, reason=type(e).__name__) from None
+        if not response.ok:
+            try:
+                reason = response.json()["error"]["errors"][0]["reason"]
+            except (ValueError, KeyError, IndexError, TypeError):
+                reason = ""
+            raise YouTubeApiError(path, response.status_code, reason)
         return response.json()
 
     def fetch_comments(self, video_id: str, max_pages: int = 10) -> List[Comment]:
         """トップレベルのコメント(関連度順。職人さんのコメントは上位に来やすい)"""
         comments, token = [], None
         for _ in range(max_pages):
-            data = self._get("commentThreads", part="snippet", videoId=video_id, maxResults=100,
-                             order="relevance", textFormat="plainText", **({"pageToken": token} if token else {}))
+            try:
+                data = self._get("commentThreads", part="snippet", videoId=video_id, maxResults=100,
+                                 order="relevance", textFormat="plainText", **({"pageToken": token} if token else {}))
+            except YouTubeApiError as e:
+                if e.reason == "commentsDisabled":  # コメントを受け付けていない動画(予定表の枠など)
+                    return comments
+                raise
             for item in data.get("items", []):
                 top = item["snippet"]["topLevelComment"]["snippet"]
                 comments.append(Comment(text=top.get("textOriginal", ""), author=top.get("authorDisplayName", ""),
@@ -101,6 +128,38 @@ class YouTubeApiClient:
                     title=item["snippet"].get("title", ""),
                 ))
         return sorted(videos, key=lambda v: v.published_jst)
+
+    def search_other_channels(self, month: str, query: str = "幽音しの",
+                              handle: str = CHANNEL_HANDLE) -> List[Tuple[VideoSummary, str]]:
+        """
+        その月(YYYY-MM、日本時間)に公開された、本人以外のチャンネルの動画を検索する
+
+        コラボ相手・公式チャンネルの出演の候補を洗い出すため。search.list は 1回 100 ユニットと高い。
+        ファンの切り抜きなども混じるので、対象にするかは人(Claude)が判断する。戻り値は (動画, チャンネル名)。
+        """
+        own = self._get("channels", part="id", forHandle=handle)["items"][0]["id"]
+        start = datetime.strptime(month, "%Y-%m").replace(tzinfo=JST)
+        end = start.replace(year=start.year + 1, month=1) if start.month == 12 else start.replace(month=start.month + 1)
+        found, token = [], None
+        while True:
+            data = self._get("search", part="snippet", q=query, type="video", maxResults=50, order="date",
+                             publishedAfter=start.isoformat(), publishedBefore=end.isoformat(),
+                             **({"pageToken": token} if token else {}))
+            for item in data.get("items", []):
+                snippet = item["snippet"]
+                if snippet.get("channelId") == own:
+                    continue
+                found.append((VideoSummary(
+                    video_id=item["id"]["videoId"],
+                    published_jst=_to_jst(snippet["publishedAt"]),
+                    duration_seconds=None,
+                    is_live=snippet.get("liveBroadcastContent") not in (None, "none"),
+                    title=snippet.get("title", ""),
+                ), snippet.get("channelTitle", "")))
+            token = data.get("nextPageToken")
+            if not token:
+                break
+        return sorted(found, key=lambda pair: pair[0].published_jst)
 
     def detect_type(self, video_id: str, is_live: bool) -> str:
         """
