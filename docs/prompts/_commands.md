@@ -27,6 +27,6 @@
 |---|---|
 | `git push`(どのブランチも) | ユーザーの指示があるまで行わない。公開リポジトリなので push した時点で公開される(`settings.json` で deny) |
 | `git checkout main` / `git checkout develop` / `git merge` / `git rebase` | `main`・`develop` は本番・stg に直結する。統合はユーザーが行う(`settings.json` で deny) |
-| `git add .` / `git add -A` | 意図しないファイル(`repomix-output.xml` の作業中の変更、ログなど)が入る。ファイルを名指しで add する |
+| `git add .` / `git add -A` | 意図しないファイル(作業中の別の変更、ログなど)が入る。ファイルを名指しで add する |
 | ホストでの `pip install` / `pytest` / `streamlit run` | 環境が本番(コンテナ)とずれる。コンテナの中で打つ |
 | 生成ツールの `--dry-run` なしの実行 | `data/` の TSV を上書きする。件数を確かめ、ユーザーの承認を得てから |

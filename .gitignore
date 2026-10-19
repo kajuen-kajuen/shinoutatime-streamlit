@@ -177,3 +177,6 @@ cython_debug/
 .claude/settings.local.json
 CLAUDE.local.md
 docs/plans/
+
+# repomix の出力(必要なときに手元で生成する。リポジトリには入れない)
+repomix-output.xml
