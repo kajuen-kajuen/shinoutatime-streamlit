@@ -5,11 +5,14 @@
 ## プロジェクト前提
 
 - **公開リポジトリ**。コミットしたものは push した時点で誰でも読める。秘密の値・ローカルの絶対パス・個人情報は書かない
-- Streamlit のマルチページ構成。入口は `Home.py`(本体は `src/ui/pages/home_page.py` の `HomePage`)、ほかのページは `pages/NN_Name.py`(番号順にサイドバーへ並ぶ)。`pages/*_Admin.py` はローカル専用で Git 管理外
-- 層: `src/repositories/`(TSV 読み込み) → `src/services/`(DataService ほか) → `src/core/data_pipeline.py`(結合・変換・ソート) → `src/ui/`。DI フレームワークは使わず、コンストラクタで依存を渡す
+- Streamlit のマルチページ構成。入口は `Home.py`(本体は `src/ui/pages/home_page.py` の `HomePage`)、ほかのページは `pages/NN_Name.py`(番号順にサイドバーへ並ぶ)。`pages/*_Admin.py` と `pages/*_Preview.py`(v2 の確認用ページ)はローカル専用で Git 管理外
+- 層(v1。今の画面): `src/repositories/`(TSV 読み込み) → `src/services/`(DataService ほか) → `src/core/data_pipeline.py`(結合・変換・ソート) → `src/ui/`。DI フレームワークは使わず、コンストラクタで依存を渡す
+- 層(v2。今後の正本): `src/repositories/table_repository.py`(`data/v2/` の5テーブル。定義は `src/models/schema.py`) → `src/core/views.py`(歌唱の一覧・曲ごとの集計を、その場で計算する)→ ページ。ページは `views` を直接呼ぶ(services を通さない)。取り込みは `src/ingest/` と CLI(`src/cli/ingest.py`・`src/cli/data.py`)。仕様は `docs/specs/data-model.md`。本番の画面を v2 に切り替えるのはこれから(フェーズ2)
 - エラー: リポジトリとサービスは失敗時に例外(`src/exceptions/errors.py` の `DataLoadError`・`DataProcessingError` ほか)を投げる。`None` を返したり、エラーを状態として持ったりしない(2026-05 のリファクタ dd4b385 で統一)。例外はページ側で捕まえて `st.error` で表示する
 - キャッシュ: 読み込みは `@st.cache_data` の関数で行う。キャッシュ関数の中では `st.*` で表示しない(キャッシュが効いた実行では表示されなくなる)
-- データ: `data/` の TSV は UTF-8・タブ区切り。配信日の形式は `YYYY/M/D`(時刻付き `YYYY/M/D HH:MM` が混ざることがある【要確認】)。`V_SONG_LIST.TSV` は `song_list_generator` の生成物なので手で直さない。アーティストの読みは `ARTIST_SORT_MAPPING.TSV`(`artist_sort_cli`)で補正する
+- データ(v1): `data/` の TSV は UTF-8・タブ区切り。配信日の形式は `YYYY/M/D`(時刻付き `YYYY/M/D HH:MM` が混ざることがある【要確認】)。`V_SONG_LIST.TSV` は `song_list_generator` の生成物なので手で直さない。アーティストの読みは `ARTIST_SORT_MAPPING.TSV`(`artist_sort_cli`)で補正する
+- データ(v2): `data/v2/*.tsv` は UTF-8・LF・タブ区切り。日付は `YYYY-MM-DD`。手で編集せず、`ingest apply` か `data set` などの CLI を通す(保存のたびに並べ直して検査する)。曲の無いコンテンツは `data/ingest/skipped.tsv` に記録する。取得したコメントと下書き(`data/ingest/cache/`・`staged/`)は Git 管理外で、コメント本文・投稿者名はコミットに書かない
+- 環境変数: `YOUTUBE_API_KEY`(取り込みの YouTube Data API。`.env` から docker-compose で渡す)、`SHINOUTA_TRUSTED_COMMENTERS`(セットリストを書く職人さんの名前。カンマ区切り)、`ADMIN_PASSWORD`(管理ページ。既定値は無く、未設定ならログインできない)、ほかは `SHINOUTA_*`(`src/config/`)。値はリポジトリに書かない
 - デプロイ: Streamlit Community Cloud がブランチを見て自動デプロイする(`main` → 本番、`develop` → stg)。`requirements.txt` がそのまま本番に入る
 - 実行環境: Docker(`docker-compose.yml` のサービス名 `shinouta-time`、作業ディレクトリ `/app` にリポジトリをマウント)。コンテナには git が無いので、git と `tools/check-rules.sh` はホストの Git Bash で打つ
 - 表示: **見た目は現行と同じにする**(2026-10-19 決定。HTML の表、style.css、「YouTubeへ👻」、「さらに25件表示」。`st.dataframe` には切り替えない)。利用者の多くはスマホ。表は横に長くしすぎない。Streamlit の内部クラス名(`st-emotion-cache-*`)に依存した CSS は版を上げると壊れる
@@ -20,7 +23,7 @@
 
 1. `main`・`develop` にコミット・マージ・push しない。作業ブランチで行い、push はユーザーの指示があったときだけ(`check-rules.sh` がブランチを確かめる。`settings.json` で push・merge・rebase を deny)
 2. 秘密の値(`.env`・`secrets.toml`・トークン)、ローカルの絶対パス、メールアドレスをコミットしない(`check-rules.sh` が追跡中・未追跡のファイルを grep する)
-3. `data/` の TSV と `data.xlsx` を、確認なしで上書き・削除しない。生成ツールはまず `--dry-run` で件数を見る。配信・歌唱の件数が減るときは必ず止まって報告する
+3. `data/` の TSV と `data.xlsx` を、確認なしで上書き・削除しない。生成ツールはまず `--dry-run` で件数を見る。配信・歌唱の件数が減るときは必ず止まって報告する。`data/v2/*.tsv`・`data/ingest/skipped.tsv` も同じで、手で編集せず CLI を通し、`ingest apply` の前は判断の表を出して承認を待つ
 4. データ由来の文字列(曲名・アーティスト・配信タイトル・URL)をエスケープせずに HTML へ埋め込まない(`to_html(escape=False)`・`unsafe_allow_html=True` を新しく足さない)
 5. キャッシュ関数の中で `st.*` を表示しない。エラーは例外で上げてページ側で表示する
 
@@ -39,7 +42,7 @@
 
 ## テスト規約
 
-- 置き場所: 純粋なロジックは `tests/unit/`、性質(どんな入力でも成り立つこと)は `tests/property/`(hypothesis)、複数の層をまたぐものは `tests/integration/`、ページの起動・操作は `tests/e2e/`(`streamlit.testing.v1.AppTest`)
+- 置き場所: 純粋なロジックは `tests/unit/`(v2 は `tests/unit/v2/`)、性質(どんな入力でも成り立つこと)は `tests/property/`(hypothesis)、複数の層をまたぐものは `tests/integration/`、ページの起動・操作は `tests/e2e/`(`streamlit.testing.v1.AppTest`)、大量のデータでの速さは `tests/performance/`(`--runslow` を付けたときだけ動く)
 - テストの期待値は仕様(`_common-context.md`・`docs/specs/`)を根拠にする。今の実装の出力をそのまま期待値にしない
 - テストのデータは `tests/fixtures/` か、テストの中で作る小さな DataFrame で。e2e 以外は `data/` の本物の TSV に頼らない
 - ネットワークに出るテストを書かない(ツイート埋め込みなどはモックで)

@@ -1,14 +1,13 @@
 # Agent Behavior Guidelines
 
+## Read first
+- Read `CLAUDE.md` (repository root) before working. It lists the absolute rules (never commit/merge/push to `main`/`develop`, never commit secrets or personal data — this repository is public), the project structure, and the documents to read next (`docs/prompts/_common-context.md`, `docs/prompts/_commands.md`).
+
 ## Language
 - **Japanese (日本語)**: This is the primary language for this project.
-- All artifacts (including `task.md`, `implementation_plan.md`, `walkthrough.md`), comments, and explanations must be written in Japanese.
-- Code comments and documentation strings (docstrings) should also be in Japanese unless otherwise specified.
-
-## Artifacts
-- Ensure all created artifacts follow the Japanese language rule.
+- All explanations, documents, code comments and docstrings must be written in Japanese. Identifiers stay in English.
 
 ## Execution Environment
 - **Docker**: Always run commands (including tests, linting, and scripts) inside the Docker container.
-- Use `docker compose exec [service_name] [command]` or `docker compose run --rm [service_name] [command]`.
-- Do not run commands directly on the host machine unless explicitly instructed.
+- Use `docker compose exec shinouta-time <command>` or `docker compose run --rm shinouta-time <command>`.
+- Do not run commands directly on the host machine unless explicitly instructed. Exceptions: `git` and `sh tools/check-rules.sh` (the container has no git).

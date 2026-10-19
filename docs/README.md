@@ -8,7 +8,8 @@
 |---|---|---|
 | 仕様書(機能ごと) | [`specs/`](specs/) | [`specs/_template.md`](specs/_template.md) |
 | レビュー記録 | [`reviews/`](reviews/) | [`reviews/_template.md`](reviews/_template.md) |
-| 開発ワークフロー用プロンプト | [`prompts/`](prompts/)(本体、`_common-context.md`、`_commands.md`。絶対制約の確認は `../tools/check-rules.sh`) | — |
+| 開発ワークフロー用プロンプト | [`prompts/`](prompts/)(本体、`_common-context.md`、`_commands.md`。絶対制約の確認は `../tools/check-rules.sh`)。スキルの入口は `../.claude/skills/<名前>/SKILL.md`(本体の prompts を指すだけ) | — |
+| 作業の計画・調査のメモ | `plans/`(**手元だけ・Git 管理外**。ブラッシュアップの計画、参考サイト、X の調べ方など) | — |
 | アーキテクチャ | [`architecture/`](architecture/)(全体構成・データフロー・エラー処理) | — |
 | 開発の決まり | [`development/`](development/)(ブランチ戦略・ファイル構成) | — |
 | 利用者・運用向けガイド | [`guides/`](guides/)、[`data-management.md`](data-management.md)、[`deployment.md`](deployment.md)、[`faq.md`](faq.md) | — |
@@ -43,7 +44,7 @@
 
 | ファイル | 状態 | 概要 |
 |---|---|---|
-| [`specs/data-model.md`](specs/data-model.md) | 下書き | データモデル v2(`data/v2/` の5テーブル、並び順、集計、取り込みの流れ) |
+| [`specs/data-model.md`](specs/data-model.md) | 運用中(画面は確認用のみ) | データモデル v2(`data/v2/` の5テーブル、並び順、集計、取り込みの流れ)。2025年4〜6月のデータを登録済み |
 
 ### レビュー記録
 
