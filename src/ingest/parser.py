@@ -38,12 +38,15 @@ _TITLE_NOISE = re.compile(r"\s*(?:歌ってみた|弾いてみた|弾き語り�
 # タイトルの印 → 演奏の形
 _STYLE_TAGS = (("アカペラ", "アカペラ"), ("弾き語り", "弾き語り"), ("歌ってみた", "音源"))
 _YEAR = re.compile(r"^(?:19|20)\d{2}$")
-# 曲名の末尾の尺の注記
-_PART_PATTERNS: Sequence[Tuple[re.Pattern, str]] = (
-    (re.compile(r"\s*[\(（]\s*1\s*chorus\s*[\)）]\s*$", re.I), "1chorus"),
-    (re.compile(r"\s*[\(（]\s*1\s*phrase\s*[\)）]\s*$", re.I), "1phrase"),
-    (re.compile(r"\s*[\(（]\s*short(?:\s*ver\.?)?\s*[\)）]\s*$", re.I), "short"),
-    (re.compile(r"\s*[\(（]\s*1番のみ\s*[\)）]\s*$"), "1番のみ"),
+# 曲名の先頭・末尾の尺の注記(「(1chorus) 化けの花」「忘れじの言の葉(short ver)」の両方がある)
+_PART_LABELS = (
+    (r"1\s*chorus", "1chorus"),
+    (r"1\s*phrase", "1phrase"),
+    (r"short(?:\s*ver\.?)?", "short"),
+    (r"1番のみ", "1番のみ"),
+)
+_PART_PATTERNS: Sequence[Tuple[re.Pattern, str]] = tuple(
+    (re.compile(rf"^\s*[\(（]\s*{p}\s*[\)）]\s*|\s*[\(（]\s*{p}\s*[\)）]\s*$", re.I), v) for p, v in _PART_LABELS
 )
 # 曲名の先頭・末尾の、歌唱についての注記(note に移す)
 _NOTE_PATTERN = re.compile(r"^\s*[\(（【]\s*(リクエスト|アカペラ|弾き語り|音源|再)\s*[\)）】]\s*|\s*[\(（【]\s*(リクエスト|アカペラ|弾き語り|音源)\s*[\)）】]\s*$")
