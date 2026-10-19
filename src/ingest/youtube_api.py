@@ -8,8 +8,8 @@ API キーは環境変数 YOUTUBE_API_KEY で渡す(リポジトリには書か�
 import os
 import re
 from dataclasses import dataclass
-from datetime import datetime
-from typing import List, Optional, Tuple
+from datetime import datetime, timedelta
+from typing import List, Optional, Sequence, Tuple
 
 import requests
 
@@ -17,6 +17,9 @@ from src.ingest.capture import JST, Capture, Comment, now_jst_iso
 
 API_BASE = "https://www.googleapis.com/youtube/v3"
 CHANNEL_HANDLE = "@Shino_Kasukane"
+# 本人以外のチャンネルを探す検索語。タイトルに本人の名前が無いコラボ(同期3人の「うるぱんおばけ」など)もあるため複数
+OTHER_CHANNEL_QUERIES = ("幽音しの", "うるぱんおばけ")
+WINDOW_DAYS = 7  # 本人以外のチャンネルを検索するときの区間の長さ
 _DURATION = re.compile(r"^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$")
 
 
@@ -129,37 +132,49 @@ class YouTubeApiClient:
                 ))
         return sorted(videos, key=lambda v: v.published_jst)
 
-    def search_other_channels(self, month: str, query: str = "幽音しの",
+    def search_other_channels(self, month: str, queries: Sequence[str] = OTHER_CHANNEL_QUERIES,
                               handle: str = CHANNEL_HANDLE) -> List[Tuple[VideoSummary, str]]:
         """
         その月(YYYY-MM、日本時間)に公開された、本人以外のチャンネルの動画を検索する
 
-        コラボ相手・公式チャンネルの出演の候補を洗い出すため。search.list は 1回 100 ユニットと高い。
+        コラボ相手・公式チャンネルの出演の候補を洗い出すため。search.list は 1ページ 100 ユニットと高い。
+        検索語ごとに検索し、同じ動画は1つにまとめる。検索は関係の無い動画も返すので、
+        タイトルか概要欄(先頭)に検索語が入っているものだけを残す。
         ファンの切り抜きなども混じるので、対象にするかは人(Claude)が判断する。戻り値は (動画, チャンネル名)。
         """
         own = self._get("channels", part="id", forHandle=handle)["items"][0]["id"]
         start = datetime.strptime(month, "%Y-%m").replace(tzinfo=JST)
         end = start.replace(year=start.year + 1, month=1) if start.month == 12 else start.replace(month=start.month + 1)
-        found, token = [], None
-        while True:
-            data = self._get("search", part="snippet", q=query, type="video", maxResults=50, order="date",
-                             publishedAfter=start.isoformat(), publishedBefore=end.isoformat(),
-                             **({"pageToken": token} if token else {}))
-            for item in data.get("items", []):
-                snippet = item["snippet"]
-                if snippet.get("channelId") == own:
-                    continue
-                found.append((VideoSummary(
-                    video_id=item["id"]["videoId"],
-                    published_jst=_to_jst(snippet["publishedAt"]),
-                    duration_seconds=None,
-                    is_live=snippet.get("liveBroadcastContent") not in (None, "none"),
-                    title=snippet.get("title", ""),
-                ), snippet.get("channelTitle", "")))
-            token = data.get("nextPageToken")
-            if not token:
-                break
-        return sorted(found, key=lambda pair: pair[0].published_jst)
+        # 1か月まとめて検索すると、結果の一部しか返らず、打つたびに件数が変わる(2026-10-20 に確認)。
+        # 期間を区切って検索する(1か月で 検索語 × 5区間 × 100 ユニットほど)
+        windows, cursor = [], start
+        while cursor < end:
+            windows.append((cursor, min(cursor + timedelta(days=WINDOW_DAYS), end)))
+            cursor = windows[-1][1]
+        found = {}
+        for query, (after, before) in ((q, w) for q in queries for w in windows):
+            token = None
+            while True:
+                data = self._get("search", part="snippet", q=query, type="video", maxResults=50, order="date",
+                                 publishedAfter=after.isoformat(), publishedBefore=before.isoformat(),
+                                 **({"pageToken": token} if token else {}))
+                for item in data.get("items", []):
+                    snippet = item["snippet"]
+                    text = snippet.get("title", "") + "\n" + snippet.get("description", "")
+                    if snippet.get("channelId") == own or query not in text:
+                        continue
+                    video_id = item["id"]["videoId"]
+                    found.setdefault(video_id, (VideoSummary(
+                        video_id=video_id,
+                        published_jst=_to_jst(snippet["publishedAt"]),
+                        duration_seconds=None,
+                        is_live=snippet.get("liveBroadcastContent") not in (None, "none"),
+                        title=snippet.get("title", ""),
+                    ), snippet.get("channelTitle", "")))
+                token = data.get("nextPageToken")
+                if not token:
+                    break
+        return sorted(found.values(), key=lambda pair: pair[0].published_jst)
 
     def detect_type(self, video_id: str, is_live: bool) -> str:
         """

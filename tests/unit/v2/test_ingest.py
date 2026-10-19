@@ -320,26 +320,52 @@ class TestYouTubeApi:
         assert "SECRET-KEY" not in str(e.value)
         assert e.value.__suppress_context__  # 元の例外(URL 入り)をトレースバックに連ねない
 
-    def test_search_other_channels_excludes_own_and_limits_month(self):
-        """本人以外のチャンネルの検索: 本人のチャンネルを除き、日本時間のその月で絞る"""
+    @staticmethod
+    def _search_session(results):
+        """search.list の偽物。results: (検索語, publishedAfter) → items。channels.list は本人の ID を返す"""
+        def get(url, params, timeout):
+            if url.endswith("/channels"):
+                body = {"items": [{"id": "UC_OWN"}]}
+            else:
+                body = {"items": results.get((params["q"], params["publishedAfter"]), [])}
+            return MagicMock(ok=True, json=MagicMock(return_value=body))
         session = MagicMock()
-        responses = [
-            {"items": [{"id": "UC_OWN"}]},
-            {"items": [
-                {"id": {"videoId": "AAAAAAAAAAA"}, "snippet": {"channelId": "UC_OWN", "channelTitle": "本人",
-                                                               "title": "a", "publishedAt": "2025-05-02T10:00:00Z"}},
-                {"id": {"videoId": "BBBBBBBBBBB"}, "snippet": {"channelId": "UC_X", "channelTitle": "コラボ相手",
-                                                               "title": "b", "publishedAt": "2025-05-04T13:20:00Z",
-                                                               "liveBroadcastContent": "none"}},
-            ]},
-        ]
-        session.get.return_value.json.side_effect = responses
-        found = YouTubeApiClient(api_key="dummy", session=session).search_other_channels("2025-05")
+        session.get.side_effect = get
+        return session
+
+    def test_search_other_channels_excludes_own_and_limits_month(self):
+        """本人以外のチャンネルの検索: 本人のチャンネルを除き、日本時間のその月を区間に分けて検索する"""
+        own = {"id": {"videoId": "AAAAAAAAAAA"}, "snippet": {
+            "channelId": "UC_OWN", "channelTitle": "本人", "title": "幽音しの a", "publishedAt": "2025-05-02T10:00:00Z"}}
+        collab = {"id": {"videoId": "BBBBBBBBBBB"}, "snippet": {
+            "channelId": "UC_X", "channelTitle": "コラボ相手", "title": "コラボ w/ 幽音しの",
+            "publishedAt": "2025-05-04T13:20:00Z", "liveBroadcastContent": "none"}}
+        session = self._search_session({("幽音しの", "2025-05-01T00:00:00+09:00"): [own, collab]})
+        found = YouTubeApiClient(api_key="dummy", session=session).search_other_channels("2025-05", queries=("幽音しの",))
         assert [(v.video_id, ch) for v, ch in found] == [("BBBBBBBBBBB", "コラボ相手")]
         assert found[0][0].published_jst.strftime("%Y-%m-%d %H:%M") == "2025-05-04 22:20"
-        params = session.get.call_args_list[1].kwargs["params"]
-        assert params["publishedAfter"] == "2025-05-01T00:00:00+09:00"
-        assert params["publishedBefore"] == "2025-06-01T00:00:00+09:00"
+        windows = [(c.kwargs["params"]["publishedAfter"], c.kwargs["params"]["publishedBefore"])
+                   for c in session.get.call_args_list if c.args[0].endswith("/search")]
+        assert windows[0][0] == "2025-05-01T00:00:00+09:00"
+        assert windows[-1][1] == "2025-06-01T00:00:00+09:00"
+        assert all(a[1] == b[0] for a, b in zip(windows, windows[1:]))  # 区間に隙間が無い
+        assert len(windows) == 5  # 7日ずつ(31日 → 5区間)
+
+    def test_search_other_channels_merges_queries_and_drops_unrelated(self):
+        """検索語ごとの結果をまとめ(同じ動画は1つ)、タイトル・概要欄に検索語が無い動画は落とす"""
+        collab = {"id": {"videoId": "CCCCCCCCCCC"}, "snippet": {
+            "channelId": "UC_Y", "channelTitle": "同期", "title": "【#うるぱんおばけ】ジャンボリー",
+            "description": "幽音しの・天絆ささは", "publishedAt": "2025-05-17T12:02:00Z"}}
+        unrelated = {"id": {"videoId": "DDDDDDDDDDD"}, "snippet": {
+            "channelId": "UC_Z", "channelTitle": "無関係", "title": "ASMR", "description": "",
+            "publishedAt": "2025-05-18T12:00:00Z"}}
+        session = self._search_session({
+            ("幽音しの", "2025-05-15T00:00:00+09:00"): [collab],                  # 概要欄に名前がある
+            ("うるぱんおばけ", "2025-05-15T00:00:00+09:00"): [collab, unrelated],
+        })
+        found = YouTubeApiClient(api_key="dummy", session=session).search_other_channels(
+            "2025-05", queries=("幽音しの", "うるぱんおばけ"))
+        assert [v.video_id for v, _ in found] == ["CCCCCCCCCCC"]
 
     def test_comments_disabled_returns_empty(self):
         """コメントを受け付けていない動画(予定表の枠など)は、コメント0件として扱う"""

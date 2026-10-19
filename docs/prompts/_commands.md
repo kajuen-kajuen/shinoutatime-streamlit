@@ -23,7 +23,7 @@
 | データ v2 の表示 | `docker compose exec shinouta-time python -m src.cli.data show` | 歌唱の一覧と曲ごとの集計 |
 | データ v2 の値の修正 | `docker compose exec shinouta-time python -m src.cli.data set <テーブル> <主キー> <列> <値>` | 検査を通ったときだけ保存する。TSV を手で編集しない |
 | 投稿の一覧(読むだけ) | `docker compose exec shinouta-time python -m src.cli.ingest list --month 2025-04` | YouTube Data API(`.env` の `YOUTUBE_API_KEY`) |
-| 本人以外のチャンネルの検索 | `docker compose exec shinouta-time python -m src.cli.ingest others --month 2025-04` | 読むだけ。1ページ 100 ユニットと高い。ファンの切り抜きも混じるので、対象かどうかは `update-data.md` の決まりで判断する。対象は `ingest from-api <動画ID>` で取る |
+| 本人以外のチャンネルの検索 | `docker compose exec shinouta-time python -m src.cli.ingest others --month 2025-04` | 読むだけ。「幽音しの」「うるぱんおばけ」を7日ずつ検索する(1か月で約 1,000 ユニット)。ファンの切り抜きも混じるので、対象かどうかは `update-data.md` の決まりで判断する。対象は `ingest from-api <動画ID>` で取る |
 | 月ごとの取得 | `docker compose exec shinouta-time python -m src.cli.ingest fetch --month 2025-04` | 取得済みは飛ばす。`--force` で取り直す |
 | 曲なしの記録 | `docker compose exec shinouta-time python -m src.cli.ingest skip <content_id> "<理由>"` | `data/ingest/skipped.tsv` に記録する。ユーザーに確かめてから |
 | 取り込みの状況 | `docker compose exec shinouta-time python -m src.cli.ingest status --month 2025-04` | 登録済み / 曲なし / 下書きあり / 未処理 |
