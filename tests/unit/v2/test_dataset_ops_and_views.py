@@ -91,6 +91,63 @@ class TestPerformanceView:
         assert view.loc[("yt:BBBBBBBBBBB", "はじまりの歌"), "no"] == "2-1"
         assert view.loc[("zan:10001", "Blue Sky"), "no"] == "1"
 
+    def test_short_on_same_day_does_not_change_live_numbers(self):
+        """同じ日にショートとライブ配信が1本ずつなら、ライブの No. は枝番なし(今の Home と同じ)"""
+        from tests.unit.v2.conftest import content, make_dataset
+        dataset = make_dataset(
+            contents=[content("yt:SSSSSSSSSSS", "2025-04-29", "【アカペラ】架空", type_="short", start_time="19:00"),
+                      content("yt:LLLLLLLLLLL", "2025-04-29", "【歌枠】架空", start_time="21:00")],
+            artists=[{"artist_id": "a0001", "name": "架空"}],
+            songs=[{"song_id": "s0001", "title": "歌1", "artist_id": "a0001"},
+                   {"song_id": "s0002", "title": "歌2", "artist_id": "a0001"}],
+            performances=[{"content_id": "yt:SSSSSSSSSSS", "seq": "10", "start": "0:00:00", "song_id": "s0001"},
+                          {"content_id": "yt:LLLLLLLLLLL", "seq": "10", "start": "0:05:00", "song_id": "s0001"},
+                          {"content_id": "yt:LLLLLLLLLLL", "seq": "20", "start": "0:10:00", "song_id": "s0002"}],
+        )
+        view = build_performance_view(dataset)
+        assert list(view["content_id"]) == ["yt:SSSSSSSSSSS", "yt:LLLLLLLLLLL", "yt:LLLLLLLLLLL"]  # 時刻の早い順
+        assert list(view["no"]) == ["", "1", "2"]  # ショートは空欄
+
+    def test_no_is_blank_for_single_song_non_live(self, sample_dataset):
+        """1曲だけのショート・投稿は No. が空欄(Z-aN のライブは live なので付く)"""
+        no = build_performance_view(sample_dataset).drop_duplicates("content_id").set_index("content_id")["no"]
+        assert no["yt:CCCCCCCCCCC"] == "" and no["x:1234567890"] == ""
+        assert no["zan:10001"] == "1"
+
+    def test_no_for_multi_song_short(self):
+        """複数の曲が入ったショート(例: ボカロファンテスト)は、曲順を付ける(枝番は付けない)"""
+        from tests.unit.v2.conftest import content, make_dataset
+        dataset = make_dataset(
+            contents=[content("yt:SSSSSSSSSSS", "2025-04-26", "【ファンテスト】架空", type_="short", start_time="19:00"),
+                      content("yt:TTTTTTTTTTT", "2025-04-26", "【アカペラ】架空", type_="short", start_time="20:00")],
+            artists=[{"artist_id": "a0001", "name": "架空"}],
+            songs=[{"song_id": f"s000{i}", "title": f"歌{i}", "artist_id": "a0001"} for i in (1, 2, 3)],
+            performances=[{"content_id": "yt:SSSSSSSSSSS", "seq": "10", "song_id": "s0001"},
+                          {"content_id": "yt:SSSSSSSSSSS", "seq": "20", "song_id": "s0002"},
+                          {"content_id": "yt:SSSSSSSSSSS", "seq": "30", "song_id": "s0003"},
+                          {"content_id": "yt:TTTTTTTTTTT", "seq": "10", "start": "0:00:00", "song_id": "s0001"}],
+        )
+        assert list(build_performance_view(dataset)["no"]) == ["1", "2", "3", ""]
+
+    def test_cache_key_changes_with_data_and_code(self, tmp_path):
+        """画面のキャッシュの鍵は、データファイルとコードの更新日時で変わる(古い集計を返さないため)"""
+        import os
+        from src.core import views
+        from src.core.views import cache_key
+        (tmp_path / "songs.tsv").write_text("x", encoding="utf-8")
+        before = cache_key(str(tmp_path))
+        assert any(name == "views.py" for name, _ in before)  # コードも鍵に入っている
+        os.utime(tmp_path / "songs.tsv", (1, 1))
+        assert cache_key(str(tmp_path)) != before
+
+    def test_type_label(self, sample_dataset):
+        """画面の「種類」の列: contents.type を日本語で表示する"""
+        labels = build_performance_view(sample_dataset).drop_duplicates("content_id").set_index("content_id")["type_label"]
+        assert labels.to_dict() == {
+            "yt:CCCCCCCCCCC": "ショート", "x:1234567890": "投稿", "zan:10001": "配信",
+            "yt:AAAAAAAAAAA": "配信", "yt:BBBBBBBBBBB": "配信",
+        }
+
     def test_style_falls_back_to_content_default(self, sample_dataset):
         view = build_performance_view(sample_dataset).set_index(["content_id", "title"])
         assert view.loc[("yt:AAAAAAAAAAA", "はじまりの歌"), "style"] == "弾き語り"

@@ -15,11 +15,31 @@ from src.repositories.table_repository import Dataset
 # 既定の歌唱回数から外す種類(配信の切り抜きは、元の配信と二重に数えないため)
 EXCLUDED_FROM_COUNT_KINDS = ("切り抜き",)
 
+# 画面の「種類」の列の表示(contents.type → 日本語)。知らない値はそのまま表示する
+CONTENT_TYPE_LABELS = {"live": "配信", "short": "ショート", "video": "動画", "post": "投稿"}
+
 
 def _normalized(series: pd.Series) -> pd.Series:
     """normalize_for_match を、重複を除いた値にだけかける(同じ曲名・アーティストが多いため)"""
     series = series.fillna("")
     return series.map({v: normalize_for_match(v) for v in series.unique()})
+
+
+def cache_key(data_dir: str) -> tuple:
+    """
+    画面の @st.cache_data に渡す鍵: データファイルと、集計・読み込みのコードの更新日時
+
+    データだけを鍵にすると、コード(列の追加など)を変えても古い集計結果が返る。
+    起動したままのアプリでも、どちらかが変われば計算し直す。
+    """
+    from pathlib import Path
+    from src.models import schema
+    from src.repositories import table_repository
+    from src.core import links, text
+    code_files = [Path(__file__), Path(schema.__file__), Path(table_repository.__file__),
+                  Path(links.__file__), Path(text.__file__)]
+    data_files = [Path(data_dir) / s.filename for s in schema.ALL_SCHEMAS]
+    return tuple((p.name, p.stat().st_mtime if p.exists() else 0) for p in data_files + code_files)
 
 
 def display_artist(name: pd.Series, feat: pd.Series) -> pd.Series:
@@ -47,7 +67,7 @@ def build_performance_view(dataset: Dataset) -> pd.DataFrame:
     if perf.empty:
         return pd.DataFrame(columns=[
             "content_id", "date", "no", "title", "artist", "style", "part", "note",
-            "link", "platform", "type", "content_title", "song_id", "artist_id", "search", "search_song",
+            "link", "platform", "type", "type_label", "content_title", "song_id", "artist_id", "search", "search_song",
         ])
     contents = dataset["contents"]
     songs = dataset["songs"].rename(columns={"kind": "song_kind"})
@@ -62,33 +82,44 @@ def build_performance_view(dataset: Dataset) -> pd.DataFrame:
     view["seq_n"] = pd.to_numeric(view["seq"])
     view["no_in_content"] = view.groupby("content_id")["seq_n"].rank(method="first").astype(int)
 
-    # 同じ日のコンテンツに、時刻の早い順で枝番を振る
-    day_order = (
+    # 同じ日のライブ配信どうしに、時刻の早い順で枝番を振る(今の Home と同じ)。
+    # ショート・動画は枝番を付けない(同じ日にあっても、ライブ配信の No. を変えないため)
+    ordered = (
         contents.assign(_t=contents["start_time"].replace("", "99:99"))
         .sort_values(["date", "_t", "content_id"])
-        .assign(branch=lambda d: d.groupby("date").cumcount() + 1,
-                per_day=lambda d: d.groupby("date")["content_id"].transform("size"))
+    )
+    lives = ordered[ordered["type"] == "live"]
+    branches = lives.assign(
+        branch=lives.groupby("date").cumcount() + 1,
+        per_day=lives.groupby("date")["content_id"].transform("size"),
     )[["content_id", "branch", "per_day"]]
-    view = view.merge(day_order, on="content_id", how="left")
+    day_order = ordered[["content_id"]].assign(day_pos=ordered.groupby("date").cumcount())
+    view = view.merge(day_order, on="content_id", how="left").merge(branches, on="content_id", how="left")
     no_in_content = view["no_in_content"].astype(str)
-    view["no"] = no_in_content.where(view["per_day"] <= 1, view["branch"].astype(str) + "-" + no_in_content)
+    has_branch = view["per_day"].fillna(1) > 1
+    view["no"] = no_in_content.where(~has_branch, view["branch"].fillna(0).astype(int).astype(str) + "-" + no_in_content)
+    # No. は「コンテンツの中の曲順」。1曲だけのショート・動画・投稿は空欄にする(種類の列で分かる)。
+    # 複数の曲が入ったもの(例: ボカロファンテスト)は曲順を付ける。枝番はライブ配信だけ
+    songs_in_content = view.groupby("content_id")["seq_n"].transform("size")
+    view["no"] = view["no"].where((view["type"] == "live") | (songs_in_content > 1), "")
 
     view["style"] = view["style"].where(view["style"] != "", view["default_style"])
+    view["type_label"] = view["type"].map(lambda t: CONTENT_TYPE_LABELS.get(t, t))
     view["link"] = [build_link(p, u, s) for p, u, s in zip(view["platform"], view["url"], view["start"])]
     # 検索語も normalize_for_match してから照合する。項目をまたいで一致しないよう改行で区切る。
     # 読み(sort_title・sort_name)も入れて、「かいじゅう」で「怪獣の花唄」を見つけられるようにする
     view["search_song"] = search_text(view["title"], view["sort_title"], view["artist"], view["sort_name"])
     view["search"] = view["search_song"] + "\n" + search_text(view["content_title"])
 
-    # 日付は新しい順、同じ日の中は枝番(時刻の早い順)、コンテンツの中は曲順。今の Home と同じ並び
+    # 日付は新しい順、同じ日の中は時刻の早い順、コンテンツの中は曲順。今の Home と同じ並び
     view = view.sort_values(
-        ["date", "branch", "seq_n"],
+        ["date", "day_pos", "seq_n"],
         ascending=[False, True, True],
         kind="mergesort",
     ).reset_index(drop=True)
     return view[[
         "content_id", "date", "no", "title", "artist", "style", "part", "note",
-        "link", "platform", "type", "content_title", "song_id", "artist_id", "search", "search_song",
+        "link", "platform", "type", "type_label", "content_title", "song_id", "artist_id", "search", "search_song",
     ]]
 
 

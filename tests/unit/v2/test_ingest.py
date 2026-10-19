@@ -7,8 +7,10 @@ import pytest
 
 from src.core.validation import validate_dataset
 from src.ingest.capture import Capture, Comment, from_ytdlp_info, load_capture, save_capture
-from src.ingest.parser import (build_content_row, build_staged_rows, choose_comment,
-                               extract_timestamp_lines, match_song, split_feat, split_song_text)
+from src.ingest.parser import (build_content_row, build_rows_from_title, build_staged_rows, choose_comment,
+                               extract_timestamp_lines, match_song, song_from_title, split_feat,
+                               split_song_text, style_hint)
+from src.ingest.skips import add_skip, load_skips
 from src.ingest.staging import apply_staged, load_staged, save_staged
 from src.ingest.youtube_api import YouTubeApiClient, parse_duration
 from tests.unit.v2.conftest import make_dataset
@@ -203,6 +205,66 @@ class TestApply:
         assert len(loaded_rows) == 4
 
 
+class TestTitleDraft:
+    """セットリストのコメントが無い動画・ショートは、タイトルから下書きを作る(タイトルは架空)"""
+
+    @pytest.mark.parametrize("title, song, artist, style", [
+        ("【アカペラ】架空の歌/架空バンド【幽音しの / ななしいんく】#アカペラ　#shorts", "架空の歌", "架空バンド", "アカペラ"),
+        ("【アカペラ】夜の歌/架空シンガー　歌ってみた【幽音しの / ななしいんく】", "夜の歌", "架空シンガー", "アカペラ"),
+        ("【アカペラ】朝の歌/架空P 歌ってみた　#shorts", "朝の歌", "架空P", "アカペラ"),
+        ("【アカペラ】ずっと一緒!/架空シンガー歌ってみた　#shorts", "ずっと一緒!", "架空シンガー", "アカペラ"),
+        ("【歌ってみた】架空の歌/deco*00 　ひとこと【幽音しの】#架空", "架空の歌", "deco*00", "音源"),
+        ("【弾き語り】月の歌/架空シンガー　弾き語りで歌ってみたよ!【幽音しの】", "月の歌", "架空シンガー", "弾き語り"),
+        ("【アカペラ】　春の歌／架空バンド　春だから歌ってみたよ　#shorts", "春の歌", "架空バンド", "アカペラ"),
+    ])
+    def test_song_from_title(self, title, song, artist, style):
+        split = song_from_title(title)
+        assert (split.title, split.artist) == (song, artist)
+        assert style_hint(title) == style
+
+    def test_rows_and_content_for_short(self):
+        capture = make_capture(content_id="yt:SSSSSSSSSSS", type="short", url="https://www.youtube.com/shorts/SSSSSSSSSSS",
+                               title="【アカペラ】架空の歌/架空バンド【幽音しの】#shorts",
+                               published_at="2025-04-20T19:00:00+09:00", comments=[Comment("かわいい", "a", 1)])
+        rows = build_rows_from_title(make_dataset(), capture)
+        assert len(rows) == 1
+        assert (rows.loc[0, "start"], rows.loc[0, "title"], rows.loc[0, "artist"]) == ("0:00:00", "架空の歌", "架空バンド")
+        assert "タイトルから読み取った" in rows.loc[0, "flag"]
+        content = build_content_row(capture)
+        assert (content["type"], content["kind"], content["default_style"], content["start_time"]) == \
+            ("short", "歌ショート", "アカペラ", "19:00")
+
+    def test_short_ignores_impression_comment_with_time(self):
+        """ショートで「0:20 の歌い方が好き」のような感想は、セットリストとして選ばない"""
+        capture = make_capture(type="short", title="【歌ってみた】架空の歌/架空バンド #shorts",
+                               comments=[Comment("0:20 のところの歌い方が特に好き", "a", 5)])
+        assert choose_comment(capture) is None
+        setlist = make_capture(type="short", comments=[Comment("0:00 架空の歌/架空バンド\n0:20 別の歌/架空P", "b", 1)])
+        assert choose_comment(setlist) is not None
+
+    def test_title_without_song_is_flagged(self):
+        capture = make_capture(type="short", title="【ティザー】初配信を見に来てね!#shorts")
+        rows = build_rows_from_title(make_dataset(), capture)
+        assert "アーティストが無い" in rows.loc[0, "flag"]
+
+
+class TestSkips:
+    def test_add_and_load(self, tmp_path):
+        path = tmp_path / "skipped.tsv"
+        add_skip("yt:BBBBBBBBBBB", "ティザー(曲なし)", path)
+        add_skip("yt:AAAAAAAAAAA", "雑談(曲なし)", path)
+        add_skip("yt:BBBBBBBBBBB", "ティザー", path)  # 置き換え
+        assert load_skips(path) == {"yt:AAAAAAAAAAA": "雑談(曲なし)", "yt:BBBBBBBBBBB": "ティザー"}
+        assert path.read_text(encoding="utf-8").splitlines()[1].startswith("yt:AAAAAAAAAAA")
+
+    def test_reason_required(self, tmp_path):
+        with pytest.raises(ValueError):
+            add_skip("yt:AAAAAAAAAAA", " ", tmp_path / "skipped.tsv")
+
+    def test_missing_file_is_empty(self, tmp_path):
+        assert load_skips(tmp_path / "none.tsv") == {}
+
+
 class TestYouTubeApi:
     def test_parse_duration(self):
         assert parse_duration("PT1H2M3S") == 3723
@@ -227,4 +289,44 @@ class TestYouTubeApi:
         assert capture.published_at == "2025-04-27T20:29:00+09:00"
         assert capture.duration_seconds == 7200
         assert capture.comments[0].likes == 4
+        assert capture.type == "live"
+        session.head.assert_not_called()  # ライブは問い合わせない
         assert capture.validate() == []
+
+    @pytest.mark.parametrize("status, expected", [(200, "short"), (303, "video")])
+    def test_detect_type_by_shorts_url(self, status, expected):
+        session = MagicMock()
+        session.head.return_value.status_code = status
+        client = YouTubeApiClient(api_key="dummy", session=session)
+        assert client.detect_type("AAAAAAAAAAA", is_live=False) == expected
+        assert client.detect_type("AAAAAAAAAAA", is_live=True) == "live"
+
+    def test_short_capture_uses_shorts_url(self):
+        session = MagicMock()
+        video = {"items": [{"snippet": {"title": "t", "publishedAt": "2025-04-20T10:00:00Z"},
+                            "contentDetails": {"duration": "PT30S"}}]}
+        session.get.return_value.json.side_effect = [video, {"items": []}]
+        session.head.return_value.status_code = 200
+        capture = YouTubeApiClient(api_key="dummy", session=session).fetch_capture("SSSSSSSSSSS")
+        assert capture.type == "short"
+        assert capture.url == "https://www.youtube.com/shorts/SSSSSSSSSSS"
+        assert capture.published_at == "2025-04-20T19:00:00+09:00"
+
+    def test_list_uploads_pages_and_sorts(self):
+        session = MagicMock()
+        responses = [
+            {"items": [{"contentDetails": {"relatedPlaylists": {"uploads": "UU1"}}}]},
+            {"items": [{"contentDetails": {"videoId": "BBBBBBBBBBB"}}], "nextPageToken": "p2"},
+            {"items": [{"contentDetails": {"videoId": "AAAAAAAAAAA"}}]},
+            {"items": [
+                {"id": "BBBBBBBBBBB", "snippet": {"title": "b", "publishedAt": "2025-04-28T10:00:00Z"},
+                 "contentDetails": {"duration": "PT40S"}},
+                {"id": "AAAAAAAAAAA", "snippet": {"title": "a", "publishedAt": "2025-04-27T10:00:00Z"},
+                 "contentDetails": {"duration": "PT30M"}, "liveStreamingDetails": {"actualStartTime": "2025-04-27T11:29:44Z"}},
+            ]},
+        ]
+        session.get.return_value.json.side_effect = responses
+        videos = YouTubeApiClient(api_key="dummy", session=session).list_uploads()
+        assert [v.video_id for v in videos] == ["AAAAAAAAAAA", "BBBBBBBBBBB"]
+        assert videos[0].is_live and videos[0].published_jst.strftime("%Y-%m-%d %H:%M") == "2025-04-27 20:29"
+        assert videos[1].duration_seconds == 40 and videos[1].content_id == "yt:BBBBBBBBBBB"

@@ -6,6 +6,7 @@
 |---|---|---|
 | コンテナの起動 | `docker compose up -d` | 起動後 http://localhost:8501 でアプリを確認できる。コードはマウントされているので、保存すると Streamlit が再読み込みする |
 | 起動の確認 | `docker compose ps` | `shinouta-time` が `running` |
+| コードの変更を確実に反映 | `docker compose restart shinouta-time` | `src/` の変更が画面に反映されないことがある(起動中のアプリが古いモジュールを読み込んだまま。WSL のファイル監視のため)。`src/` を直して画面で確かめるときは再起動する |
 | アプリのログ | `docker compose logs --tail=100 shinouta-time` | 例外のスタックトレースはここに出る |
 | テスト(全部) | `docker compose exec shinouta-time pytest` | 作業の終わりに必ず。e2e は `data/` の本物の TSV を読む |
 | テスト(一部) | `docker compose exec shinouta-time pytest tests/unit -q` | `tests/unit` を `tests/property`・`tests/integration`・`tests/e2e` やファイル名に替えてよい |
@@ -21,7 +22,10 @@
 | データ v2 の検査 | `docker compose exec shinouta-time python -m src.cli.data validate` | `data/v2/` の主キー・外部キー・値の形・並び順 |
 | データ v2 の表示 | `docker compose exec shinouta-time python -m src.cli.data show` | 歌唱の一覧と曲ごとの集計 |
 | データ v2 の値の修正 | `docker compose exec shinouta-time python -m src.cli.data set <テーブル> <主キー> <列> <値>` | 検査を通ったときだけ保存する。TSV を手で編集しない |
-| 取り込みの状況 | `docker compose exec shinouta-time python -m src.cli.ingest status` | 取得結果のキャッシュごとに 未処理 / 下書きあり / 登録済み |
+| 投稿の一覧(読むだけ) | `docker compose exec shinouta-time python -m src.cli.ingest list --month 2025-04` | YouTube Data API(`.env` の `YOUTUBE_API_KEY`) |
+| 月ごとの取得 | `docker compose exec shinouta-time python -m src.cli.ingest fetch --month 2025-04` | 取得済みは飛ばす。`--force` で取り直す |
+| 曲なしの記録 | `docker compose exec shinouta-time python -m src.cli.ingest skip <content_id> "<理由>"` | `data/ingest/skipped.tsv` に記録する。ユーザーに確かめてから |
+| 取り込みの状況 | `docker compose exec shinouta-time python -m src.cli.ingest status --month 2025-04` | 登録済み / 曲なし / 下書きあり / 未処理 |
 | 取り込み(下書き → 追記) | `docker compose exec shinouta-time python -m src.cli.ingest prepare <content_id>` → 判断 → `… ingest apply <content_id> --dry-run` → `… ingest apply <content_id>` | 手順と判断の決まりは `docs/prompts/update-data.md` |
 | コンテナの停止 | `docker compose down` | |
 | 差分の確認 | `git status --short` / `git diff --stat` | コミットはユーザーの指示があったときだけ |

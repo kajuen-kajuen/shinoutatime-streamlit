@@ -56,6 +56,7 @@ class TestLinks:
         assert build_link("youtube", "https://www.youtube.com/shorts/abc", "0:00:05") == \
             "https://www.youtube.com/shorts/abc?t=5s"
 
+
     def test_existing_t_is_replaced(self):
         assert build_link("youtube", "https://www.youtube.com/watch?v=abc&t=10s", "0:00:20") == \
             "https://www.youtube.com/watch?v=abc&t=20s"
@@ -63,6 +64,9 @@ class TestLinks:
     @pytest.mark.parametrize("platform", ["zan", "x"])
     def test_platform_without_seek_keeps_url(self, platform):
         assert build_link(platform, "https://example.com/1", "0:10:00") == "https://example.com/1"
+
+    def test_zero_start_keeps_url(self):
+        assert build_link("youtube", "https://www.youtube.com/shorts/abc", "0:00:00") == "https://www.youtube.com/shorts/abc"
 
     def test_no_start_keeps_url(self):
         assert build_link("youtube", "https://www.youtube.com/watch?v=abc", "") == "https://www.youtube.com/watch?v=abc"

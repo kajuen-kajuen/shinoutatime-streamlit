@@ -31,6 +31,12 @@ _PAREN_ARTIST = re.compile(r"^(.+?)\s*[（(]([^()（）]+)[)）]\s*$")
 _SETLIST_HEADER = re.compile(r"セットリスト|セトリ|set\s*list", re.I)
 # 「作り手 feat.歌い手」
 _FEAT = re.compile(r"^(.*?)\s*\b(?:feat\.?|ft\.|featuring)\s*(.+)$", re.I)
+# 動画・ショートのタイトル: 先頭の【印】、本文、以降の【…】や # を除く
+_TITLE_TAGS = re.compile(r"^\s*((?:【[^】]*】\s*)+)")
+_TITLE_TAIL = re.compile(r"\s*(?:【|#|＃|　).*$")
+_TITLE_NOISE = re.compile(r"\s*(?:歌ってみた|弾いてみた|弾き語りで歌ってみた).*$")
+# タイトルの印 → 演奏の形
+_STYLE_TAGS = (("アカペラ", "アカペラ"), ("弾き語り", "弾き語り"), ("歌ってみた", "音源"))
 _YEAR = re.compile(r"^(?:19|20)\d{2}$")
 # 曲名の末尾の尺の注記
 _PART_PATTERNS: Sequence[Tuple[re.Pattern, str]] = (
@@ -107,12 +113,19 @@ def rank_timestamp_comments(comments: List[Comment]) -> List[Tuple[int, Comment,
     return [item for _, item in sorted(ranked, key=lambda r: r[0])]
 
 
+def is_setlist_like(text: str) -> bool:
+    """セットリストらしいコメント: 「セットリスト」などの見出しがあるか、曲らしい行が1行以上ある"""
+    return bool(_SETLIST_HEADER.search(text)) or _song_like_count(text) > 0
+
+
 def choose_comment(capture: Capture, index: Optional[int] = None) -> Optional[Tuple[int, Comment]]:
     """
     職人さんのコメントを選ぶ
 
     index を指定すればそれ。環境変数 SHINOUTA_TRUSTED_COMMENTERS(投稿者名のカンマ区切り)が
-    あれば、その人のコメントの中で時刻の行が最も多いもの。無ければ全体で最も多いもの。
+    あれば、その人のコメントの中から選ぶ。
+    動画・ショートは、セットリストらしいコメント(is_setlist_like)が無ければ None
+    (「0:20 の歌い方が好き」のような感想を曲と取り違えないため。タイトルから下書きを作る)。
     """
     if index is not None:
         return index, capture.comments[index]
@@ -120,6 +133,8 @@ def choose_comment(capture: Capture, index: Optional[int] = None) -> Optional[Tu
     trusted = _trusted_names()
     if trusted:
         ranked = [r for r in ranked if r[1].author in trusted]
+    if capture.type in ("video", "short"):
+        ranked = [r for r in ranked if is_setlist_like(r[1].text)]
     return (ranked[0][0], ranked[0][1]) if ranked else None
 
 
@@ -249,9 +264,49 @@ def build_staged_rows(dataset: Dataset, lines: List[TimestampLine]) -> pd.DataFr
     return pd.DataFrame(rows, columns=STAGED_COLUMNS)
 
 
+def title_tags(title: str) -> List[str]:
+    """タイトルの先頭の【…】の中身(例: ['アカペラ'])"""
+    m = _TITLE_TAGS.match(title)
+    return re.findall(r"【([^】]*)】", m.group(1)) if m else []
+
+
+def style_hint(title: str) -> str:
+    """タイトルの印から演奏の形の候補(アカペラ / 弾き語り / 音源)。分からなければ空"""
+    tags = " ".join(title_tags(title)) or title
+    for word, style in _STYLE_TAGS:
+        if word in tags:
+            return style
+    return ""
+
+
+def song_from_title(title: str) -> SplitText:
+    """
+    動画・ショートのタイトルから曲名とアーティストの候補を取る
+
+    例: 「【アカペラ】アポリア/ヨルシカ　歌ってみた【幽音しの / ななしいんく】#shorts」→ アポリア / ヨルシカ
+    """
+    body = _TITLE_TAGS.sub("", title)
+    body = _TITLE_TAIL.sub("", body)
+    split = split_song_text(body)
+    split.title = _TITLE_NOISE.sub("", split.title).strip()
+    split.artist = _TITLE_NOISE.sub("", split.artist).strip()
+    return split
+
+
+def build_rows_from_title(dataset: Dataset, capture: Capture) -> pd.DataFrame:
+    """セットリストのコメントが無い動画・ショートの、タイトルからの1行の下書き"""
+    split = song_from_title(capture.title)
+    line = TimestampLine(start="0:00:00", text="/".join(p for p in (split.title, split.artist) if p),
+                         raw_line=capture.title)
+    rows = build_staged_rows(dataset, [line])
+    rows["flag"] = rows["flag"].map(lambda f: "・".join(x for x in ("タイトルから読み取った", f) if x))
+    return rows
+
+
 def build_content_row(capture: Capture) -> dict:
-    """取得結果から contents の下書き1行を作る(kind・default_style は判断で埋める)"""
+    """取得結果から contents の下書き1行を作る(kind・default_style の候補はタイトルから。判断で直す)"""
     published = capture.published_jst
+    kind = {"short": "歌ショート", "video": "歌ってみた"}.get(capture.type, "")
     return {
         "content_id": capture.content_id,
         "platform": capture.platform,
@@ -259,10 +314,10 @@ def build_content_row(capture: Capture) -> dict:
         "url": capture.url,
         "channel": "",
         "date": published.strftime("%Y-%m-%d"),
-        "start_time": published.strftime("%H:%M") if capture.type == "live" else "",
+        "start_time": published.strftime("%H:%M"),
         "title": capture.title,
-        "kind": "",
-        "default_style": "弾き語り" if "弾き語り" in capture.title else "",
+        "kind": kind,
+        "default_style": style_hint(capture.title),
         "access": "",
         "available_until": "",
     }

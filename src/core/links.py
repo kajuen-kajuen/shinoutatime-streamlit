@@ -55,7 +55,8 @@ def build_link(platform: str, url: str, start: str = "") -> str:
     YouTube は t=秒(watch と shorts の両方)。それ以外と、時刻が空のときは url のまま。
     """
     seconds = start_to_seconds(start)
-    if platform != "youtube" or seconds is None or not url:
+    # 0秒からの再生(ショートや歌ってみた動画)は、時刻を付けなくても同じなので url のまま
+    if platform != "youtube" or not seconds or not url:
         return url
     if "t=" in url:
         return _with_query(url, "t", f"{seconds}s")
