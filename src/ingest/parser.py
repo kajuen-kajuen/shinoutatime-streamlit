@@ -1,0 +1,254 @@
+"""
+取得結果から下書きを作る(prepare)
+
+1. 職人さんのタイムスタンプのコメントを選ぶ
+2. 時刻の行を抜き出し、「曲名/アーティスト/作品/年」に分ける
+3. 曲名の注記((1chorus) など)を part・note に分ける
+4. aliases・songs と照合して、既存の曲の候補を入れる
+
+ここで作るのは下書きで、確定は Claude の判断(docs/prompts/update-data.md)のあと apply で行う。
+"""
+
+import os
+import re
+from dataclasses import dataclass
+from typing import List, Optional, Sequence, Tuple
+
+import pandas as pd
+
+from src.core.links import seconds_to_start, start_to_seconds
+from src.core.text import normalize_for_match
+from src.ingest.capture import Capture, Comment
+from src.repositories.table_repository import Dataset
+
+# 行の先頭(または [ ] で囲まれた)時刻。H:MM:SS / HH:MM:SS / MM:SS / M:SS
+_TIMESTAMP = re.compile(r"^\s*[\[(【]?\s*((?:\d{1,2}:)?\d{1,2}:\d{2})\s*[\])】]?\s*(?:[-－–~～:：|｜]\s*)?(.*)$")
+# 「/」の区切り(全角・前後の空白を含む)とタブ
+_SEPARATOR = re.compile(r"\s*[/／]\s*|\t+")
+# 区切りが無いときの「曲名（アーティスト）」
+_PAREN_ARTIST = re.compile(r"^(.+?)\s*[（(]([^()（）]+)[)）]\s*$")
+# セットリストのコメントの見出し
+_SETLIST_HEADER = re.compile(r"セットリスト|セトリ|set\s*list", re.I)
+_YEAR = re.compile(r"^(?:19|20)\d{2}$")
+# 曲名の末尾の尺の注記
+_PART_PATTERNS: Sequence[Tuple[re.Pattern, str]] = (
+    (re.compile(r"\s*[\(（]\s*1\s*chorus\s*[\)）]\s*$", re.I), "1chorus"),
+    (re.compile(r"\s*[\(（]\s*1\s*phrase\s*[\)）]\s*$", re.I), "1phrase"),
+    (re.compile(r"\s*[\(（]\s*short(?:\s*ver\.?)?\s*[\)）]\s*$", re.I), "short"),
+    (re.compile(r"\s*[\(（]\s*1番のみ\s*[\)）]\s*$"), "1番のみ"),
+)
+# 曲名の先頭・末尾の、歌唱についての注記(note に移す)
+_NOTE_PATTERN = re.compile(r"^\s*[\(（【]\s*(リクエスト|アカペラ|弾き語り|音源|再)\s*[\)）】]\s*|\s*[\(（【]\s*(リクエスト|アカペラ|弾き語り|音源)\s*[\)）】]\s*$")
+
+STAGED_COLUMNS = [
+    "include", "start", "raw_line", "raw_title", "raw_artist", "raw_work", "raw_year",
+    "match", "song_id", "title", "sort_title", "artist", "artist_sort", "song_kind",
+    "work", "year", "style", "part", "note", "flag",
+]
+
+
+@dataclass
+class TimestampLine:
+    start: str  # H:MM:SS
+    text: str
+    raw_line: str
+
+
+def extract_timestamp_lines(text: str) -> List[TimestampLine]:
+    """コメントから、時刻で始まる行を抜き出す(時刻は H:MM:SS にそろえる)"""
+    lines = []
+    for raw in text.splitlines():
+        m = _TIMESTAMP.match(raw)
+        if not m:
+            continue
+        seconds = start_to_seconds(m.group(1))
+        if seconds is None:
+            continue
+        # raw_line は人と Claude が読むためのものなので、タブは「 / 」にして下書きの TSV を読みやすくする
+        lines.append(TimestampLine(start=seconds_to_start(seconds), text=m.group(2).strip(),
+                                   raw_line=raw.strip().replace("\t", " / ")))
+    return lines
+
+
+def _trusted_names() -> List[str]:
+    value = os.environ.get("SHINOUTA_TRUSTED_COMMENTERS", "")
+    return [v.strip() for v in value.split(",") if v.strip()]
+
+
+def _song_like_count(text: str) -> int:
+    """曲らしい行(区切りで曲名とアーティストに分けられる行)の数"""
+    return sum(1 for line in extract_timestamp_lines(text) if split_song_text(line.text).artist)
+
+
+def rank_timestamp_comments(comments: List[Comment]) -> List[Tuple[int, Comment, int]]:
+    """
+    職人さんのセットリストらしい順に (元の番号, コメント, 時刻の行数) を並べる(時刻の行が無いものは除く)
+
+    順の決め方: 「セットリスト」などの見出しがある → 曲らしい行が多い → 時刻の行が多い → いいねが多い。
+    雑談の目次(配信開始・自己紹介…)は時刻の行が多くても、曲らしい行が少ないので下がる。
+    """
+    ranked = []
+    for i, c in enumerate(comments):
+        total = len(extract_timestamp_lines(c.text))
+        if total == 0:
+            continue
+        has_header = bool(_SETLIST_HEADER.search(c.text))
+        ranked.append(((-int(has_header), -_song_like_count(c.text), -total, -c.likes, i), (i, c, total)))
+    return [item for _, item in sorted(ranked, key=lambda r: r[0])]
+
+
+def choose_comment(capture: Capture, index: Optional[int] = None) -> Optional[Tuple[int, Comment]]:
+    """
+    職人さんのコメントを選ぶ
+
+    index を指定すればそれ。環境変数 SHINOUTA_TRUSTED_COMMENTERS(投稿者名のカンマ区切り)が
+    あれば、その人のコメントの中で時刻の行が最も多いもの。無ければ全体で最も多いもの。
+    """
+    if index is not None:
+        return index, capture.comments[index]
+    ranked = rank_timestamp_comments(capture.comments)
+    trusted = _trusted_names()
+    if trusted:
+        ranked = [r for r in ranked if r[1].author in trusted]
+    return (ranked[0][0], ranked[0][1]) if ranked else None
+
+
+@dataclass
+class SplitText:
+    title: str
+    artist: str = ""
+    work: str = ""
+    year: str = ""
+    part: str = ""
+    note: str = ""
+    artist_from_paren: bool = False
+
+
+def split_song_text(text: str) -> SplitText:
+    """
+    「曲名/アーティスト/作品/年」を分ける(区切りは「/」「／」とタブ)
+
+    年は4桁の数字の項目。区切りが無ければ全体を曲名とし、「曲名（アーティスト）」の形なら
+    括弧の中をアーティストの候補にする(artist_from_paren=True。判断で確かめる)。
+    曲名の注記((1chorus) など)は part、(リクエスト) などは note に移す。
+    """
+    parts = [p.strip() for p in _SEPARATOR.split(text.strip()) if p.strip() != ""]
+    year = ""
+    if len(parts) >= 2 and _YEAR.match(parts[-1]):
+        year = parts.pop()
+    title = parts[0] if parts else ""
+    artist = parts[1] if len(parts) > 1 else ""
+    work = "/".join(parts[2:]) if len(parts) > 2 else ""
+
+    artist_from_paren = False
+    if not artist:
+        m = _PAREN_ARTIST.match(title)
+        is_annotation = m and (any(p.search(title) for p, _ in _PART_PATTERNS) or _NOTE_PATTERN.search(title))
+        if m and not is_annotation:
+            title, artist, artist_from_paren = m.group(1), m.group(2).strip(), True
+
+    part = ""
+    for pattern, value in _PART_PATTERNS:
+        if pattern.search(title):
+            title, part = pattern.sub("", title), value
+            break
+    notes = []
+    while True:
+        m = _NOTE_PATTERN.search(title)
+        if not m:
+            break
+        notes.append(m.group(1) or m.group(2))
+        title = (title[:m.start()] + title[m.end():]).strip()
+    return SplitText(title=title.strip(), artist=artist.strip(), work=work.strip(),
+                     year=year, part=part, note="・".join(notes), artist_from_paren=artist_from_paren)
+
+
+@dataclass
+class Match:
+    kind: str  # alias / exact / similar / new
+    song_id: str = ""
+    score: float = 0.0
+
+
+def match_song(dataset: Dataset, raw_title: str, raw_artist: str, threshold: float = 0.85) -> Match:
+    """既存の曲との照合: aliases の一致 → 曲名とアーティストの一致 → 曲名の類似 → 新しい曲"""
+    nt, na = normalize_for_match(raw_title), normalize_for_match(raw_artist)
+    aliases = dataset["aliases"]
+    if not aliases.empty:
+        hit = aliases[(aliases["raw_title"].map(normalize_for_match) == nt)
+                      & (aliases["raw_artist"].map(normalize_for_match) == na)]
+        if not hit.empty:
+            return Match("alias", hit.iloc[0]["song_id"], 1.0)
+
+    songs = dataset["songs"].merge(dataset["artists"], on="artist_id", how="left")
+    if songs.empty:
+        return Match("new")
+    songs = songs.assign(_t=songs["title"].map(normalize_for_match), _a=songs["name"].map(normalize_for_match))
+    exact = songs[(songs["_t"] == nt) & (songs["_a"] == na)]
+    if not exact.empty:
+        return Match("exact", exact.iloc[0]["song_id"], 1.0)
+
+    from src.utils.similarity_checker import SimilarityChecker
+    checker = SimilarityChecker()
+    best = max(((checker.calculate_similarity(nt, t), sid) for t, sid in zip(songs["_t"], songs["song_id"])),
+               default=(0.0, ""))
+    if best[0] >= threshold:
+        return Match("similar", best[1], round(best[0], 3))
+    return Match("new")
+
+
+def build_staged_rows(dataset: Dataset, lines: List[TimestampLine]) -> pd.DataFrame:
+    """時刻の行を、下書きの表(STAGED_COLUMNS)にする"""
+    rows = []
+    for line in lines:
+        split = split_song_text(line.text)
+        match = match_song(dataset, split.title, split.artist)
+        flags = []
+        if not split.artist:
+            flags.append("アーティストが無い")
+        if split.artist_from_paren:
+            flags.append("括弧の中をアーティストとみなした")
+        if match.kind == "similar":
+            flags.append(f"似た曲あり({match.score})")
+        rows.append({
+            "include": "y",
+            "start": line.start,
+            "raw_line": line.raw_line,
+            "raw_title": split.title,
+            "raw_artist": split.artist,
+            "raw_work": split.work,
+            "raw_year": split.year,
+            "match": match.kind,
+            "song_id": match.song_id if match.kind in ("alias", "exact") else "",
+            "title": split.title,
+            "sort_title": "",
+            "artist": split.artist,
+            "artist_sort": "",
+            "song_kind": "",
+            "work": split.work,
+            "year": split.year,
+            "style": "",
+            "part": split.part,
+            "note": split.note,
+            "flag": "・".join(flags),
+        })
+    return pd.DataFrame(rows, columns=STAGED_COLUMNS)
+
+
+def build_content_row(capture: Capture) -> dict:
+    """取得結果から contents の下書き1行を作る(kind・default_style は判断で埋める)"""
+    published = capture.published_jst
+    return {
+        "content_id": capture.content_id,
+        "platform": capture.platform,
+        "type": capture.type,
+        "url": capture.url,
+        "channel": "",
+        "date": published.strftime("%Y-%m-%d"),
+        "start_time": published.strftime("%H:%M") if capture.type == "live" else "",
+        "title": capture.title,
+        "kind": "",
+        "default_style": "弾き語り" if "弾き語り" in capture.title else "",
+        "access": "",
+        "available_until": "",
+    }

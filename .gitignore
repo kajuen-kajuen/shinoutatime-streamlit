@@ -180,3 +180,7 @@ docs/plans/
 
 # repomix の出力(必要なときに手元で生成する。リポジトリには入れない)
 repomix-output.xml
+
+# 取り込みのキャッシュと下書き(コメント本文や投稿者名を含むので、公開リポジトリに入れない)
+data/ingest/cache/
+data/ingest/staged/

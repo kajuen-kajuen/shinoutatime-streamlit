@@ -1,0 +1,189 @@
+# データモデル v2 仕様書
+
+- 状態: 下書き
+- 作成日: 2026-10-19
+- 関連: `docs/prompts/update-data.md`(取り込みの判断の決まり)、`src/models/schema.py`、`src/repositories/table_repository.py`、`src/core/views.py`、`src/ingest/`
+
+## 1. 背景と目的
+
+今のデータ(`data/M_YT_LIVE*.TSV`)は、歌唱1件ごとに曲名とアーティストを文字で持っています。表記の揺れ(「サカナクション」と「サクナクション」、「(1chorus)」付きの曲名など)があるため、曲ごとの歌唱回数を GROUP BY で正しく集計できません。集め方も Excel への手入力で、自動化の試みは表記の揺れで止まりました。
+
+v2 では次のことをします。
+
+- 曲・アーティストをマスタに分け、歌唱はその ID を参照します。こうすることで、集計を GROUP BY で正しく計算できます。
+- データは移行せず、取り込みの仕組みで取り直します。
+- ライブ配信のほか、動画・ショート・X・Z-aN も扱います。
+
+## 2. 非目的(やらないこと)
+
+- 今の `data/M_YT_LIVE*.TSV` からの移行(比べるための参照には使う)
+- 保存の形式を TSV 以外にすること(性能の目安を超えたら見直す。4章)
+- 曲の歌詞や音源そのものを保存すること
+
+## 3. 仕様
+
+### 3.1 テーブル
+
+置き場所は `data/v2/` です。どのファイルも UTF-8、タブ区切り、改行は LF、1行目がヘッダーです。値はすべて文字列で、空は空文字です。
+
+```
+contents ┐                         artists
+         │ 1:N                        │ 1:N
+         └─< performances >── N:1 ─ songs ─< aliases
+```
+
+| ファイル | 1行が表すもの | キー |
+|---|---|---|
+| `contents.tsv` | 歌が含まれるコンテンツ(ライブ配信・動画・ショート・X の投稿・Z-aN のライブ) | 主キー `content_id` |
+| `artists.tsv` | アーティスト | 主キー `artist_id` |
+| `songs.tsv` | 曲 | 主キー `song_id`、外部キー `artist_id` |
+| `performances.tsv` | 歌唱(集計の元) | 主キー (`content_id`, `seq`)、外部キー `content_id`・`song_id` |
+| `aliases.tsv` | 表記の揺れの辞書(取り込み用) | 主キー (`raw_title`, `raw_artist`)、外部キー `song_id` |
+
+**contents**
+
+| 列 | 必須 | 値 |
+|---|---|---|
+| `content_id` | ○ | `<接頭辞>:<そのプラットフォームでの ID>`。接頭辞は youtube=`yt`、x=`x`、zan=`zan`。例: `yt:rPoEadXC5ck`、`zan:10889` |
+| `platform` | ○ | `youtube` / `x` / `zan`(増やすときは `schema.py` と `links.py` に足す) |
+| `type` | ○ | `live` / `video` / `short` / `post` |
+| `url` | ○ | 元のコンテンツの URL。YouTube は `https://www.youtube.com/watch?v=<ID>`(共有用の `si` は付けない)。ショートは `https://www.youtube.com/shorts/<ID>` |
+| `channel` | | 本人以外のチャンネルへの出演のときだけ、そのチャンネル名 |
+| `date` | ○ | `YYYY-MM-DD`(日本時間)。ライブは開始日、それ以外は公開日 |
+| `start_time` | | `HH:MM`(日本時間)。同じ日の並び順に使う |
+| `title` | ○ | コンテンツのタイトル |
+| `kind` | | 細かい種類。歌枠 / 縦型歌枠 / 雑談 / コラボ / イベント / 歌ってみた / オリジナルMV / 歌ショート / 切り抜き など |
+| `default_style` | | そのコンテンツの基本の演奏の形。`音源` / `弾き語り` / `アカペラ`。空は不明 |
+| `access` | | `public` / `members`(メンバー限定)/ `paid`(有料チケット)。空は public |
+| `available_until` | | アーカイブの公開期限 `YYYY-MM-DD`(Z-aN の有料ライブなど) |
+
+**artists**: `artist_id`(○、`a0001` 形式。連番で、消しても再利用しない)、`name`(○、表示名)、`sort_name`(読み)。
+
+**songs**: `song_id`(○、`s0001` 形式)、`title`(○)、`sort_title`(曲名の読み)、`artist_id`(○)、`kind`(`カバー` / `オリジナル` / `即興`)、`work`(作品名。例: アニメ「〇〇」ED)、`year`(4桁)。
+
+**performances**
+
+| 列 | 必須 | 値 |
+|---|---|---|
+| `content_id` | ○ | |
+| `seq` | ○ | コンテンツの中の曲順。**10 刻み**(10, 20, 30…)で振り、間に足せるようにする。画面の No. は順位から計算する |
+| `start` | | 開始時刻 `H:MM:SS`。時刻を指定できないもの(Z-aN など)は空 |
+| `song_id` | ○ | |
+| `style` | | **基本(`default_style`)と違うときだけ**書く演奏の形。1つの配信で音源と弾き語りが混ざるときに使う |
+| `part` | | 尺。空はフル。`1chorus` / `1phrase` / `short` / `1番のみ` |
+| `note` | | リクエスト・役名など、自由に書く |
+
+**aliases**: `raw_title`(○)、`raw_artist`、`song_id`(○)。取り込みのとき、職人さんの書いた表記と曲を結び付ける。
+
+### 3.2 並び順
+
+**ファイルの中**: 保存するたびに `TableRepository` が並べ直します。新しいものは、たいてい末尾に入ります。
+
+| ファイル | 並び |
+|---|---|
+| contents | `date` → `start_time`(空は先)→ `content_id` |
+| performances | contents の並び → `seq` |
+| artists・songs | ID の数字の順 |
+| aliases | `song_id` → `raw_title` → `raw_artist` |
+
+**画面の初期の並び**: 利用者は、列見出しで並べ替えられます。
+
+| 画面 | 並び |
+|---|---|
+| 歌唱の一覧(Home) | コンテンツの新しい順(`date` 降順 → `start_time` 降順)→ コンテンツの中は `seq` 順 |
+| 曲の一覧(Song List) | アーティストの読み → 曲の読み |
+
+**読みの並べ方**(`src/core/text.py` の `reading_sort_key`):
+- カタカナはひらがなに、全角英数は半角にそろえる。大文字小文字は区別しない。
+- 順は「記号・数字 → 英字 → かな → その他」。
+- 読みが空なら表示名で並べる。
+
+### 3.3 集計(`src/core/views.py`)
+
+集計は実行時に計算し、生成物のファイルは持ちません。
+
+- **歌唱の一覧**(`build_performance_view`):
+  - 結合: performances に contents・songs・artists を結合する。
+  - No.: コンテンツの中の順位。同じ日に複数のコンテンツがあるときは、`start_time` の早い順の枝番を付けて「枝番-順位」にする。
+  - 演奏の形: `style` があればそれ、無ければ `default_style`。
+  - リンク: `build_link(platform, url, start)` で組み立てる。YouTube は `t=秒`。X・Z-aN は url のまま。
+  - 検索用の列: 曲名・アーティスト・タイトルを `normalize_for_match` でならし、改行で区切ってつないだもの。検索語も同じようにならしてから照合する。
+- **曲ごとの集計**(`build_song_stats`、GROUP BY song_id): 次の値を出す。
+  - 歌唱回数(`count`)・初歌唱日・最終歌唱日・最新の歌唱へのリンク
+  - ライブでの回数・歌ってみた動画の有無・ショートの有無
+  - 弾き語りの回数
+  - **`kind=切り抜き` のコンテンツは数えない**(元の配信と二重になるため)。
+
+### 3.4 後から足す・直すとき
+
+| ケース | 扱い |
+|---|---|
+| 過去のコンテンツを足す | 日付の位置に入る。ほかの行の ID は変わらない |
+| セットリストの途中に曲を足す | 間の `seq` を使う(20 と 30 の間なら 25)。詰まったら `data renumber <content_id>` |
+| 同じ曲・アーティストが2つあった | `data merge-song <残す> <消す>` / `data merge-artist`。消した ID は再利用しない。元の表記は aliases に残る |
+| 値の修正 | 値を直すだけ(キーは変わらない) |
+
+### 3.5 取り込み(`src/ingest/`、`python -m src.cli.ingest`)
+
+```
+1. 取得   取得結果 JSON を data/ingest/cache/ に保存する(Git 管理外)
+          ブラウザ(Claude が操作)/ YouTube Data API(from-api)/ yt-dlp の JSON(from-ytdlp)
+2. 下書き prepare: 職人さんのコメントを選び、時刻の行を「曲名/アーティスト/作品/年」に分け、
+          aliases・songs と照合する → data/ingest/staged/(Git 管理外)
+3. 判断   Claude が下書きを確かめて直す(docs/prompts/update-data.md)
+4. 追記   apply: 検査を通してから data/v2/ に追記する(--dry-run あり)
+```
+
+**取得結果 JSON**(`src/ingest/capture.py` の `Capture`):
+
+| 項目 | 内容 |
+|---|---|
+| 識別 | `content_id`・`platform`・`type`・`url`・`title` |
+| 日時 | `published_at`(ISO 8601、日本時間) |
+| 取得の情報 | `captured_by`(browser / api / ytdlp / manual)・`captured_at` |
+| 任意 | `description`・`channel`・`duration_seconds`・`comments`(`text`・`author`・`likes`) |
+
+- 投稿者名はキャッシュの中でだけ使い、`data/v2/` には入れません。
+- 職人さんのコメントは、時刻の行が最も多いコメントを候補にします。環境変数 `SHINOUTA_TRUSTED_COMMENTERS`(投稿者名のカンマ区切り)で決め打ちにできます。
+
+### 3.6 エッジケース
+
+- **時刻が無い歌唱**(Z-aN など): `start` は空にし、`seq` だけで順を持ちます。
+- **時刻の書式**: `MM:SS`・`HH:MM:SS` は `H:MM:SS` にそろえます。時刻があるときは、`seq` の順と時刻の順が合っていなければなりません(検査で確かめる)。
+- **曲名の注記**: 曲名の末尾の `(1chorus)` などは `part` に、先頭か末尾の `(リクエスト)` などは `note` に移します。
+- **アーティストの無い行**: 下書きに印を付け、判断で埋めるか除外します。
+- **同じコンテンツの取り直し**: `apply --replace` で置き換えます(曲・アーティスト・aliases は残る)。
+
+## 4. 実装メモ
+
+- **主なファイル**:
+  - スキーマ: `src/models/schema.py`
+  - 読み書き: `src/repositories/table_repository.py`
+  - 検査: `src/core/validation.py`
+  - 操作: `src/core/dataset_ops.py`
+  - 集計: `src/core/views.py`
+  - 文字列と読み: `src/core/text.py`
+  - リンク: `src/core/links.py`
+  - CLI: `src/cli/data.py`・`src/cli/ingest.py`
+- **性能**: 架空の 2万件(今のペースで約12年分)で、読み込みから集計までを約0.5秒で終えることを `tests/performance/` で確かめています(`--runslow`)。
+  - 集計で `lambda` を使ったり、Arrow の文字列のまま min・max を取ったりすると、グループごとに遅くなります(2万件で約6秒だった)。NumPy の列にしてから集計します。
+  - 保存の形式を見直す目安: 歌唱が数十万件を超えるか、読み込みが1秒を超えたとき(Parquet や DuckDB を検討する)。
+- **公開リポジトリ**: API キー・職人さんの指定・コメント本文はコミットしません。`check-rules.sh` で検出します。
+
+## 5. テストと検証
+
+- **自動テスト**: `tests/unit/v2/`(文字列とリンク、読み書きと検査、操作と集計、取り込み)、`tests/performance/`(slow)。
+- **コマンドでの確認**: `python -m src.cli.data validate`、`python -m src.cli.data show`。
+
+## 6. 未決事項
+
+- 切り抜きのショートを、歌唱回数に数えるか(今は数えない)
+- Z-aN の複数タレントのライブで、どこまで登録するか。ユニット曲の扱い
+- `kind`・`style` の言葉の一覧
+- 同じ日の複数のコンテンツの、画面での並び(今は早い時間のものを枝番 1 にしている)
+
+## 7. 変更履歴
+
+| 日付 | 変更内容 |
+|---|---|
+| 2026-10-19 | 初版(下書き) |

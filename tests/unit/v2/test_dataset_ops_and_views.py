@@ -1,0 +1,113 @@
+"""データの操作(採番・曲順・まとめ)と、集計・ビューのテスト"""
+
+import pytest
+
+from src.core import dataset_ops
+from src.core.validation import validate_dataset
+from src.core.views import build_performance_view, build_song_stats
+
+
+class TestIdsAndSeq:
+    def test_next_id(self, sample_dataset):
+        assert dataset_ops.next_id(sample_dataset["songs"]["song_id"], "s") == "s0003"
+
+    def test_next_id_empty(self, sample_dataset):
+        assert dataset_ops.next_id(sample_dataset["songs"]["song_id"].iloc[0:0], "s") == "s0001"
+
+    def test_seq_values(self):
+        assert dataset_ops.seq_values(3) == ["10", "20", "30"]
+
+    @pytest.mark.parametrize("before, after, expected", [("10", "20", "15"), ("20", "", "30"), ("", "10", "5")])
+    def test_seq_between(self, before, after, expected):
+        assert dataset_ops.seq_between(before, after) == expected
+
+    def test_seq_between_without_room(self):
+        with pytest.raises(ValueError):
+            dataset_ops.seq_between("10", "11")
+
+    def test_renumber(self, sample_dataset):
+        perf = sample_dataset["performances"]
+        perf.loc[perf["content_id"] == "zan:10001", "seq"] = ["15", "17"]
+        assert dataset_ops.renumber(sample_dataset, "zan:10001") == 2
+        zan = sample_dataset["performances"].query("content_id == 'zan:10001'")
+        assert list(zan["seq"]) == ["10", "20"]
+        assert list(zan["song_id"]) == ["s0002", "s0001"]
+
+
+class TestMerge:
+    def test_merge_song_moves_performances_and_aliases(self, sample_dataset):
+        moved = dataset_ops.merge_song(sample_dataset, "s0001", "s0002")
+        assert moved == 3
+        assert set(sample_dataset["performances"]["song_id"]) == {"s0001"}
+        assert set(sample_dataset["aliases"]["song_id"]) == {"s0001"}
+        assert "s0002" not in set(sample_dataset["songs"]["song_id"])
+        assert [i for i in validate_dataset(sample_dataset) if i.level == "error"] == []
+
+    def test_merge_artist(self, sample_dataset):
+        assert dataset_ops.merge_artist(sample_dataset, "a0001", "a0002") == 1
+        assert set(sample_dataset["songs"]["artist_id"]) == {"a0001"}
+
+    def test_merge_unknown_raises(self, sample_dataset):
+        with pytest.raises(ValueError):
+            dataset_ops.merge_song(sample_dataset, "s0001", "s9999")
+
+
+class TestPerformanceView:
+    def test_order_newest_first_then_seq(self, sample_dataset):
+        view = build_performance_view(sample_dataset)
+        assert list(view["content_id"]) == [
+            "yt:CCCCCCCCCCC", "x:1234567890", "zan:10001", "zan:10001",
+            "yt:BBBBBBBBBBB", "yt:AAAAAAAAAAA", "yt:AAAAAAAAAAA"]
+
+    def test_no_with_branch_for_same_day(self, sample_dataset):
+        view = build_performance_view(sample_dataset).set_index(["content_id", "title"])
+        assert view.loc[("yt:AAAAAAAAAAA", "はじまりの歌"), "no"] == "1-1"
+        assert view.loc[("yt:AAAAAAAAAAA", "Blue Sky"), "no"] == "1-2"
+        assert view.loc[("yt:BBBBBBBBBBB", "はじまりの歌"), "no"] == "2-1"
+        assert view.loc[("zan:10001", "Blue Sky"), "no"] == "1"
+
+    def test_style_falls_back_to_content_default(self, sample_dataset):
+        view = build_performance_view(sample_dataset).set_index(["content_id", "title"])
+        assert view.loc[("yt:AAAAAAAAAAA", "はじまりの歌"), "style"] == "弾き語り"
+        assert view.loc[("yt:AAAAAAAAAAA", "Blue Sky"), "style"] == "音源"
+
+    def test_links(self, sample_dataset):
+        view = build_performance_view(sample_dataset).set_index(["content_id", "title"])
+        assert view.loc[("yt:AAAAAAAAAAA", "Blue Sky"), "link"].endswith("&t=630s")
+        assert view.loc[("zan:10001", "Blue Sky"), "link"] == "https://www.zan-live.com/ja/live/detail/10001"
+
+    def test_search_column_is_normalized(self, sample_dataset):
+        from src.core.text import normalize_for_match
+        view = build_performance_view(sample_dataset)
+        assert view["search"].str.contains(normalize_for_match("ＢＬＵＥ ＳＫＹ"), regex=False).any()
+        # 曲名の終わりとアーティスト名の始まりをまたいで一致しない
+        assert not view["search"].str.contains(normalize_for_match("skyalpha"), regex=False).any()
+
+
+class TestSongStats:
+    def test_counts_exclude_clips(self, sample_dataset):
+        stats = build_song_stats(sample_dataset).set_index("song_id")
+        # s0001: 配信2 + Z-aN 1(切り抜きのショートは数えない)
+        assert stats.loc["s0001", "count"] == 3
+        assert stats.loc["s0002", "count"] == 3
+        assert stats.loc["s0001", "live_count"] == 3
+
+    def test_first_and_last_date(self, sample_dataset):
+        stats = build_song_stats(sample_dataset).set_index("song_id")
+        assert stats.loc["s0002", "first_date"] == "2025-05-01"
+        assert stats.loc["s0002", "last_date"] == "2025-06-02"
+        assert stats.loc["s0002", "latest_link"].startswith("https://x.com/")
+
+    def test_acoustic_count(self, sample_dataset):
+        stats = build_song_stats(sample_dataset).set_index("song_id")
+        assert stats.loc["s0001", "acoustic_count"] == 1
+        assert stats.loc["s0002", "acoustic_count"] == 0
+
+    def test_sorted_by_artist_reading(self, sample_dataset):
+        stats = build_song_stats(sample_dataset)
+        assert list(stats["artist"]) == ["Alpha", "テストバンド"]  # 英字 → かな
+
+    def test_empty_dataset(self):
+        from tests.unit.v2.conftest import make_dataset
+        assert build_song_stats(make_dataset()).empty
+        assert build_performance_view(make_dataset()).empty

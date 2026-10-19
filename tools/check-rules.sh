@@ -7,7 +7,8 @@
 # 確かめること:
 #   - ブランチ: main・develop の上にいない(push されると本番・stg に反映される)
 #   - 公開リポジトリ: 追跡中・未追跡(.gitignore 対象外)のファイルに、ローカルの絶対パス・
-#     メールアドレス・トークンらしき文字列が無い。.env・secrets.toml を追跡していない
+#     メールアドレス・トークンらしき文字列(Google API キーを含む)が無い。
+#     .env・secrets.toml・取り込みのキャッシュ(data/ingest/cache・staged)を追跡していない
 #   - コード(WARN): HTML の escape=False、Streamlit 内部クラス名(st-emotion-cache-*)、
 #     キャッシュ関数の中の st.* の表示、ADMIN_PASSWORD の既定値
 #     → 今のコードに既知の違反があるため WARN に留める。直したら ng に上げる
@@ -42,13 +43,17 @@ hits=$(search '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' | grep -viE '@(ex
 if [ -n "$hits" ]; then ng "メールアドレスがある:
 $hits"; else ok "メールアドレスなし"; fi
 
-hits=$(search 'ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{10,}')
+hits=$(search 'ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[baprs]-[A-Za-z0-9-]{10,}')
 if [ -n "$hits" ]; then ng "トークンらしき文字列がある:
 $hits"; else ok "トークンらしき文字列なし"; fi
 
 hits=$(git ls-files | grep -E '(^|/)\.env$|(^|/)secrets\.toml$|settings\.local\.json$')
 if [ -n "$hits" ]; then ng "秘密の設定ファイルを追跡している:
 $hits"; else ok ".env・secrets.toml・settings.local.json を追跡していない"; fi
+
+hits=$(git ls-files 'data/ingest/cache' 'data/ingest/staged')
+if [ -n "$hits" ]; then ng "取り込みのキャッシュ・下書き(コメント本文を含む)を追跡している:
+$hits"; else ok "取り込みのキャッシュ・下書きを追跡していない"; fi
 
 echo "== コード"
 hits=$(git grep -n 'escape=False' -- '*.py' | grep -v '^[^:]*:[0-9]*:[[:space:]]*#')
