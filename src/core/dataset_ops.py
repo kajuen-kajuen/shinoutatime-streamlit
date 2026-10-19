@@ -51,6 +51,36 @@ def renumber(dataset: Dataset, content_id: str) -> int:
     return len(ordered)
 
 
+def set_value(dataset: Dataset, table: str, key: str, column: str, value: str) -> str:
+    """
+    1行の1つの値を直す。直す前の値を返す
+
+    key は主キーの値。主キーが複数の列のテーブル(performances・aliases)は、カンマで区切って並べる
+    (例: "yt:rPoEadXC5ck,20")。主キーの列は直せない(ID が変わるので、merge などを使う)。
+    """
+    from src.models.schema import SCHEMAS
+    if table not in SCHEMAS:
+        raise ValueError(f"テーブル {table} はありません。{sorted(SCHEMAS)} のどれかにします")
+    schema = SCHEMAS[table]
+    if column not in schema.columns:
+        raise ValueError(f"{table} に列 {column} はありません。{list(schema.columns)} のどれかにします")
+    if column in schema.primary_key:
+        raise ValueError(f"主キーの列 {column} は直せません")
+    keys = key.split(",") if len(schema.primary_key) > 1 else [key]
+    if len(keys) != len(schema.primary_key):
+        raise ValueError(f"{table} の主キーは {schema.primary_key} です(カンマで区切って指定します)")
+    df = dataset[table]
+    mask = pd.Series(True, index=df.index)
+    for col, val in zip(schema.primary_key, keys):
+        mask &= df[col] == val
+    if mask.sum() != 1:
+        raise ValueError(f"{table} に {key} の行がありません")
+    before = df.loc[mask, column].iloc[0]
+    df.loc[mask, column] = value
+    dataset[table] = df
+    return before
+
+
 def merge_song(dataset: Dataset, keep_id: str, drop_id: str) -> int:
     """
     同じ曲だった2つをまとめる

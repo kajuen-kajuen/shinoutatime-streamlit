@@ -29,6 +29,19 @@ class TestTableRepository:
         dataset = TableRepository(str(tmp_path)).load()
         assert all(dataset[name].empty for name in dataset.tables)
 
+    def test_missing_optional_column_is_read_as_empty(self, tmp_path):
+        """後から足した任意の列(songs.feat)が無い古いファイルも読める"""
+        (tmp_path / "songs.tsv").write_text(
+            "song_id\ttitle\tsort_title\tartist_id\tkind\twork\tyear\ns0001\t曲\t\ta0001\t\t\t\n", encoding="utf-8")
+        songs = TableRepository(str(tmp_path)).load()["songs"]
+        assert list(songs.columns) == list(SONGS.columns)
+        assert songs.loc[0, "feat"] == ""
+
+    def test_missing_required_column_is_error(self, tmp_path):
+        (tmp_path / "songs.tsv").write_text("song_id\tsort_title\n", encoding="utf-8")
+        with pytest.raises(DataLoadError):
+            TableRepository(str(tmp_path)).load()
+
     def test_unknown_column_is_error(self, tmp_path):
         (tmp_path / "artists.tsv").write_text("artist_id\tname\tsort_name\textra\n", encoding="utf-8")
         with pytest.raises(DataLoadError):

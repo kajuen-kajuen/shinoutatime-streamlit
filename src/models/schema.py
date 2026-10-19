@@ -7,7 +7,7 @@ data/v2/ の5つの TSV(contents・artists・songs・performances・aliases)の
 
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Pattern, Tuple
+from typing import Dict, Pattern, Tuple
 
 
 @dataclass(frozen=True)
@@ -92,9 +92,10 @@ ARTISTS = TableSchema(
     patterns={"artist_id": ARTIST_ID_PATTERN},
 )
 
+# feat: 歌い手(ボーカロイドなど)。アーティストは作り手にまとめ、歌い手はここに持つ(表示は「作り手 feat.歌い手」)
 SONGS = TableSchema(
     name="songs",
-    columns=("song_id", "title", "sort_title", "artist_id", "kind", "work", "year"),
+    columns=("song_id", "title", "sort_title", "artist_id", "feat", "kind", "work", "year"),
     required=("song_id", "title", "artist_id"),
     primary_key=("song_id",),
     foreign_keys=(ForeignKey("artist_id", "artists", "artist_id"),),

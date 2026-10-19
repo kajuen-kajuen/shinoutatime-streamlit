@@ -34,6 +34,29 @@ class TestIdsAndSeq:
         assert list(zan["song_id"]) == ["s0002", "s0001"]
 
 
+class TestSetValue:
+    def test_set_song_column(self, sample_dataset):
+        before = dataset_ops.set_value(sample_dataset, "songs", "s0001", "work", "アニメ「架空」ED")
+        assert before == ""
+        assert sample_dataset["songs"].set_index("song_id").loc["s0001", "work"] == "アニメ「架空」ED"
+
+    def test_set_with_composite_key(self, sample_dataset):
+        dataset_ops.set_value(sample_dataset, "performances", "yt:AAAAAAAAAAA,20", "note", "リクエスト")
+        perf = sample_dataset["performances"].set_index(["content_id", "seq"])
+        assert perf.loc[("yt:AAAAAAAAAAA", "20"), "note"] == "リクエスト"
+
+    @pytest.mark.parametrize("table, key, column", [
+        ("nope", "s0001", "work"),        # テーブルが無い
+        ("songs", "s0001", "nope"),       # 列が無い
+        ("songs", "s0001", "song_id"),    # 主キーは直せない
+        ("songs", "s9999", "work"),       # 行が無い
+        ("performances", "yt:AAAAAAAAAAA", "note"),  # 主キーが足りない
+    ])
+    def test_invalid(self, sample_dataset, table, key, column):
+        with pytest.raises(ValueError):
+            dataset_ops.set_value(sample_dataset, table, key, column, "x")
+
+
 class TestMerge:
     def test_merge_song_moves_performances_and_aliases(self, sample_dataset):
         moved = dataset_ops.merge_song(sample_dataset, "s0001", "s0002")

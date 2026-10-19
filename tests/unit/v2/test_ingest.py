@@ -8,7 +8,7 @@ import pytest
 from src.core.validation import validate_dataset
 from src.ingest.capture import Capture, Comment, from_ytdlp_info, load_capture, save_capture
 from src.ingest.parser import (build_content_row, build_staged_rows, choose_comment,
-                               extract_timestamp_lines, match_song, split_song_text)
+                               extract_timestamp_lines, match_song, split_feat, split_song_text)
 from src.ingest.staging import apply_staged, load_staged, save_staged
 from src.ingest.youtube_api import YouTubeApiClient, parse_duration
 from tests.unit.v2.conftest import make_dataset
@@ -118,6 +118,39 @@ class TestParser:
     def test_content_row(self):
         row = build_content_row(make_capture())
         assert (row["date"], row["start_time"], row["default_style"]) == ("2025-05-01", "20:00", "弾き語り")
+
+
+class TestFeat:
+    @pytest.mark.parametrize("artist, expected", [
+        ("メル feat.IA", ("メル", "IA")),
+        ("Eve feat. 初音ミク", ("Eve", "初音ミク")),
+        ("架空P ft.架空ボーカル", ("架空P", "架空ボーカル")),
+        ("テストバンド", ("テストバンド", "")),
+        ("Feather", ("Feather", "")),  # 単語の途中の feat は分けない
+    ])
+    def test_split_feat(self, artist, expected):
+        assert split_feat(artist) == expected
+
+    def test_creator_gets_one_artist_and_feat_is_kept(self):
+        comment = "0:01:00 架空の歌/架空P feat.IA/2015\n0:05:00 別の歌/架空P feat.初音ミク/2015"
+        dataset = make_dataset()
+        rows = build_staged_rows(dataset, extract_timestamp_lines(comment))
+        assert list(rows["artist"]) == ["架空P", "架空P"]
+        assert list(rows["feat"]) == ["IA", "初音ミク"]
+        content_row = build_content_row(make_capture())
+        result = apply_staged(dataset, content_row, rows)
+        assert len(result.new_artists) == 1 and len(result.new_songs) == 2
+        assert set(dataset["songs"]["feat"]) == {"IA", "初音ミク"}
+        # 2回目は aliases(元の表記)で同じ曲に結び付く
+        assert match_song(dataset, "架空の歌", "架空P feat.IA").kind == "alias"
+
+    def test_display_artist_with_feat(self):
+        from src.core.views import build_performance_view, build_song_stats
+        dataset = make_dataset()
+        rows = build_staged_rows(dataset, extract_timestamp_lines("0:01:00 架空の歌/架空P feat.IA"))
+        apply_staged(dataset, build_content_row(make_capture()), rows)
+        assert list(build_performance_view(dataset)["artist"]) == ["架空P feat.IA"]
+        assert list(build_song_stats(dataset)["artist"]) == ["架空P feat.IA"]
 
 
 class TestApply:

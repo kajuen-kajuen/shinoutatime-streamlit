@@ -13,7 +13,7 @@ from typing import Dict
 import pandas as pd
 
 from src.exceptions.errors import DataLoadError, DataSaveError
-from src.models.schema import ALL_SCHEMAS, SCHEMAS, TableSchema
+from src.models.schema import ALL_SCHEMAS, TableSchema
 
 logger = logging.getLogger(__name__)
 
@@ -86,8 +86,13 @@ class TableRepository:
         except Exception as e:
             raise DataLoadError(file_path=str(path), message=f"TSV を読めません: {e}")
         missing = [c for c in schema.columns if c not in df.columns]
-        if missing:
-            raise DataLoadError(file_path=str(path), message=f"列が足りません: {missing}")
+        essential = [c for c in missing if c in schema.required or c in schema.primary_key]
+        if essential:
+            raise DataLoadError(file_path=str(path), message=f"列が足りません: {essential}")
+        for column in missing:
+            # 後から足した任意の列は、古いファイルでは空として読む(次の保存で列が加わる)
+            logger.info("%s に列 %s が無いので空として読みます", path, column)
+            df[column] = ""
         extra = [c for c in df.columns if c not in schema.columns]
         if extra:
             raise DataLoadError(file_path=str(path), message=f"知らない列があります: {extra}")

@@ -22,6 +22,12 @@ def _normalized(series: pd.Series) -> pd.Series:
     return series.map({v: normalize_for_match(v) for v in series.unique()})
 
 
+def display_artist(name: pd.Series, feat: pd.Series) -> pd.Series:
+    """表示用のアーティスト: 歌い手(feat)があれば「作り手 feat.歌い手」"""
+    feat = feat.fillna("")
+    return name.fillna("").where(feat == "", name.fillna("") + " feat." + feat)
+
+
 def search_text(*columns: pd.Series) -> pd.Series:
     """検索用の文字列: 各列を normalize_for_match し、改行で区切ってつなぐ"""
     result = _normalized(columns[0])
@@ -49,9 +55,10 @@ def build_performance_view(dataset: Dataset) -> pd.DataFrame:
 
     view = (
         perf.merge(contents.rename(columns={"title": "content_title"}), on="content_id", how="left")
-        .merge(songs[["song_id", "title", "sort_title", "artist_id", "song_kind"]], on="song_id", how="left")
+        .merge(songs[["song_id", "title", "sort_title", "artist_id", "feat", "song_kind"]], on="song_id", how="left")
         .merge(artists[["artist_id", "artist", "sort_name"]], on="artist_id", how="left")
     )
+    view["artist"] = display_artist(view["artist"], view["feat"])
     view["seq_n"] = pd.to_numeric(view["seq"])
     view["no_in_content"] = view.groupby("content_id")["seq_n"].rank(method="first").astype(int)
 
@@ -97,6 +104,7 @@ def build_song_stats(dataset: Dataset, view: pd.DataFrame = None) -> pd.DataFram
     songs = dataset["songs"].merge(
         dataset["artists"].rename(columns={"name": "artist"}), on="artist_id", how="left"
     )
+    songs["artist"] = display_artist(songs["artist"], songs["feat"])
     columns = ["song_id", "title", "artist", "kind", "work", "year", "count", "first_date",
                "last_date", "latest_link", "live_count", "has_video", "has_short",
                "acoustic_count", "sort_name", "sort_title"]

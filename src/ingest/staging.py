@@ -120,7 +120,8 @@ def apply_staged(dataset: Dataset, content_row: dict, rows: pd.DataFrame, replac
                 song_id = next_id(dataset["songs"]["song_id"], "s")
                 _append(dataset, "songs", {
                     "song_id": song_id, "title": r["title"], "sort_title": r["sort_title"],
-                    "artist_id": artist_id, "kind": r["song_kind"], "work": r["work"], "year": r["year"],
+                    "artist_id": artist_id, "feat": r.get("feat", ""), "kind": r["song_kind"],
+                    "work": r["work"], "year": r["year"],
                 })
                 result.new_songs.append(song_id)
         elif song_id not in set(dataset["songs"]["song_id"]):

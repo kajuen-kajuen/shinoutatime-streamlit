@@ -7,6 +7,7 @@
   python -m src.cli.data renumber <content_id> [--dir data/v2]
   python -m src.cli.data merge-song <残す song_id> <消す song_id> [--dir data/v2]
   python -m src.cli.data merge-artist <残す artist_id> <消す artist_id> [--dir data/v2]
+  python -m src.cli.data set <テーブル> <主キー> <列> <値> [--dir data/v2]   # 例: set songs s0003 kind オリジナル
   python -m src.cli.data normalize [--dir data/v2]   # 並べ直して保存し直す
 """
 
@@ -82,6 +83,13 @@ def cmd_merge_artist(repo: TableRepository, args) -> int:
     return _save_after(repo, dataset)
 
 
+def cmd_set(repo: TableRepository, args) -> int:
+    dataset = repo.load()
+    before = dataset_ops.set_value(dataset, args.table, args.key, args.column, args.value)
+    print(f"{args.table} {args.key} の {args.column}: 「{before}」→「{args.value}」")
+    return _save_after(repo, dataset)
+
+
 def cmd_normalize(repo: TableRepository, args) -> int:
     return _save_after(repo, repo.load())
 
@@ -104,6 +112,12 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("keep", help=f"残す {label}")
         p.add_argument("drop", help=f"消す {label}")
         p.set_defaults(func=func)
+    p = sub.add_parser("set", help="1行の1つの値を直す(検査を通ったときだけ保存する)")
+    p.add_argument("table", help="contents / artists / songs / performances / aliases")
+    p.add_argument("key", help="主キーの値。複数の列のときはカンマ区切り(例: yt:rPoEadXC5ck,20)")
+    p.add_argument("column")
+    p.add_argument("value", help="新しい値(空にするときは \"\")")
+    p.set_defaults(func=cmd_set)
     sub.add_parser("normalize", help="決まった順に並べ直して保存し直す").set_defaults(func=cmd_normalize)
     return parser
 

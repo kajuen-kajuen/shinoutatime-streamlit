@@ -18,6 +18,11 @@
 | Excel から TSV(確認だけ) | `docker compose exec shinouta-time python -m src.cli.excel_to_tsv_cli --dry-run` | ファイルを書かない |
 | Excel から TSV | `docker compose exec shinouta-time python -m src.cli.excel_to_tsv_cli` | `M_YT_LIVE*.TSV` と `V_SONG_LIST.TSV` を上書きする。**打つ前にユーザーへ確認** |
 | アーティストの読みの一覧 | `docker compose exec shinouta-time python -m src.cli.artist_sort_cli list` | 追加・削除(`add`・`delete`)は `ARTIST_SORT_MAPPING.TSV` を書き換えるので確認してから |
+| データ v2 の検査 | `docker compose exec shinouta-time python -m src.cli.data validate` | `data/v2/` の主キー・外部キー・値の形・並び順 |
+| データ v2 の表示 | `docker compose exec shinouta-time python -m src.cli.data show` | 歌唱の一覧と曲ごとの集計 |
+| データ v2 の値の修正 | `docker compose exec shinouta-time python -m src.cli.data set <テーブル> <主キー> <列> <値>` | 検査を通ったときだけ保存する。TSV を手で編集しない |
+| 取り込みの状況 | `docker compose exec shinouta-time python -m src.cli.ingest status` | 取得結果のキャッシュごとに 未処理 / 下書きあり / 登録済み |
+| 取り込み(下書き → 追記) | `docker compose exec shinouta-time python -m src.cli.ingest prepare <content_id>` → 判断 → `… ingest apply <content_id> --dry-run` → `… ingest apply <content_id>` | 手順と判断の決まりは `docs/prompts/update-data.md` |
 | コンテナの停止 | `docker compose down` | |
 | 差分の確認 | `git status --short` / `git diff --stat` | コミットはユーザーの指示があったときだけ |
 

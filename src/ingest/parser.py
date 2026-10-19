@@ -29,6 +29,8 @@ _SEPARATOR = re.compile(r"\s*[/／]\s*|\t+")
 _PAREN_ARTIST = re.compile(r"^(.+?)\s*[（(]([^()（）]+)[)）]\s*$")
 # セットリストのコメントの見出し
 _SETLIST_HEADER = re.compile(r"セットリスト|セトリ|set\s*list", re.I)
+# 「作り手 feat.歌い手」
+_FEAT = re.compile(r"^(.*?)\s*\b(?:feat\.?|ft\.|featuring)\s*(.+)$", re.I)
 _YEAR = re.compile(r"^(?:19|20)\d{2}$")
 # 曲名の末尾の尺の注記
 _PART_PATTERNS: Sequence[Tuple[re.Pattern, str]] = (
@@ -42,9 +44,17 @@ _NOTE_PATTERN = re.compile(r"^\s*[\(（【]\s*(リクエスト|アカペラ|弾�
 
 STAGED_COLUMNS = [
     "include", "start", "raw_line", "raw_title", "raw_artist", "raw_work", "raw_year",
-    "match", "song_id", "title", "sort_title", "artist", "artist_sort", "song_kind",
+    "match", "song_id", "title", "sort_title", "artist", "artist_sort", "feat", "song_kind",
     "work", "year", "style", "part", "note", "flag",
 ]
+
+
+def split_feat(artist: str) -> Tuple[str, str]:
+    """「メル feat.IA」を ("メル", "IA") に分ける。feat. が無ければ (artist, "")"""
+    m = _FEAT.match(artist.strip())
+    if not m or not m.group(1).strip():
+        return artist.strip(), ""
+    return m.group(1).strip(), m.group(2).strip()
 
 
 @dataclass
@@ -172,11 +182,13 @@ class Match:
 
 def match_song(dataset: Dataset, raw_title: str, raw_artist: str, threshold: float = 0.85) -> Match:
     """既存の曲との照合: aliases の一致 → 曲名とアーティストの一致 → 曲名の類似 → 新しい曲"""
-    nt, na = normalize_for_match(raw_title), normalize_for_match(raw_artist)
+    nt = normalize_for_match(raw_title)
+    na_raw = normalize_for_match(raw_artist)  # aliases は元の表記のまま照合する
+    na = normalize_for_match(split_feat(raw_artist)[0])  # 曲の照合は作り手で行う
     aliases = dataset["aliases"]
     if not aliases.empty:
         hit = aliases[(aliases["raw_title"].map(normalize_for_match) == nt)
-                      & (aliases["raw_artist"].map(normalize_for_match) == na)]
+                      & (aliases["raw_artist"].map(normalize_for_match) == na_raw)]
         if not hit.empty:
             return Match("alias", hit.iloc[0]["song_id"], 1.0)
 
@@ -203,6 +215,7 @@ def build_staged_rows(dataset: Dataset, lines: List[TimestampLine]) -> pd.DataFr
     for line in lines:
         split = split_song_text(line.text)
         match = match_song(dataset, split.title, split.artist)
+        creator, feat = split_feat(split.artist)
         flags = []
         if not split.artist:
             flags.append("アーティストが無い")
@@ -222,8 +235,9 @@ def build_staged_rows(dataset: Dataset, lines: List[TimestampLine]) -> pd.DataFr
             "song_id": match.song_id if match.kind in ("alias", "exact") else "",
             "title": split.title,
             "sort_title": "",
-            "artist": split.artist,
+            "artist": creator,
             "artist_sort": "",
+            "feat": feat,
             "song_kind": "",
             "work": split.work,
             "year": split.year,
