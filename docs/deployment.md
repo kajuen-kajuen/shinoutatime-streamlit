@@ -4,6 +4,17 @@
 
 本ドキュメントは、「しのうたタイム」アプリケーションをStreamlit Cloudにデプロイする手順を説明します。Streamlit Cloudは、Streamlitアプリケーションを無料でホスティングできるプラットフォームです。
 
+### 今の環境(2026-10)
+
+| ブランチ | 環境 | URL |
+|---|---|---|
+| `main` | 本番 | https://shinoutatime.streamlit.app/ |
+| `develop` | ステージング(stg) | https://stg-shinoutatime.streamlit.app/ |
+
+- どちらも、ブランチに push すると自動で再デプロイされます。
+- 開発の流れは「作業ブランチ(`feature/xxx` など)→ `develop`(stg で確認)→ `main`(本番)」です。`develop`・`main` への統合と push は、持ち主が手で行います([`docs/development/BRANCH_STRATEGY.md`](development/BRANCH_STRATEGY.md))。
+- `.github/workflows/wake_up_streamlit.yml` が6時間ごとに両方の環境へアクセスし、スリープを防いでいます(テストの CI はありません)。
+
 ## 前提条件
 
 デプロイを開始する前に、以下の準備が必要です：
@@ -104,14 +115,14 @@ Thumbs.db
 1. Streamlit Cloudダッシュボードで「New app」ボタンをクリック
 2. 以下の情報を入力：
    - **Repository**: デプロイするGitHubリポジトリを選択
-   - **Branch**: デプロイするブランチ（通常は`main`または`master`）
+   - **Branch**: デプロイするブランチ（本番は`main`、stg は`develop`）
    - **Main file path**: `Home.py`
 3. 「Advanced settings」をクリックし、**Python version を 3.14** にする（必要に応じて環境変数も設定）
 4. 「Deploy!」ボタンをクリック
 
 > **Python のバージョンについて**: Streamlit Cloud は、デプロイしたあとで Python のバージョンを変えられません。変えるときは、次の「Python のバージョンを上げる」の手順でアプリを作り直します。
 
-#### 2.4 Python のバージョンを上げる
+#### 2.3 Python のバージョンを上げる
 
 1. 今の設定を控える: カスタムサブドメイン（`shinoutatime` / `stg-shinoutatime`）、リポジトリ、ブランチ、`Home.py`、Secrets
 2. 先に `requirements.txt` の版が新しい Python で動くことを、コンテナ（`Dockerfile` の Python を同じ版にしたもの）で確かめる
@@ -121,7 +132,7 @@ Thumbs.db
 
 依存は `requirements.txt` に `==` で固定しています。Streamlit Cloud はこのファイルだけを読み、`requirements-tools.txt`（データ生成の CLI）と `requirements-dev.txt`（テスト）は読みません。
 
-#### 2.3 デプロイの確認
+#### 2.4 デプロイの確認
 
 - デプロイプロセスが開始され、ログがリアルタイムで表示されます
 - 通常、数分でデプロイが完了します
@@ -238,10 +249,12 @@ Streamlit Cloudの無料プランには以下の制限があります：
 
 データファイルを更新する場合：
 
-1. ローカルでデータファイルを更新
-2. GitHubにコミット＆プッシュ
+1. ローカルでデータファイルを更新(v2 のデータは、手で編集せず取り込みの CLI で書く。[`docs/prompts/update-data.md`](prompts/update-data.md))
+2. 作業ブランチにコミットし、持ち主が `develop` → `main` に統合して push する
 3. Streamlit Cloudが自動的に再デプロイ
 4. キャッシュがクリアされ、新しいデータが反映される
+
+本番の画面を v2 に切り替えるまでは、`data/v2/` を更新しても本番の画面は変わりません(確認用のページだけが読む)。
 
 #### 2.3 データのバックアップ
 
@@ -253,7 +266,7 @@ Streamlit Cloudの無料プランには以下の制限があります：
 
 Streamlit Cloudは、GitHubリポジトリの変更を検知して自動的に再デプロイします：
 
-- **トリガー**: `main`ブランチへのプッシュ
+- **トリガー**: `main`ブランチ(本番)・`develop`ブランチ(stg)へのプッシュ
 - **デプロイ時間**: 通常2〜5分
 - **ダウンタイム**: 最小限（数秒程度）
 
@@ -329,11 +342,11 @@ df = pd.read_csv("data/M_YT_LIVE.TSV", delimiter="\t", encoding="utf-8")
 #### 6.3 依存関係の問題
 
 - `requirements.txt` にすべての依存パッケージを記載
-- バージョンを明示的に指定（推奨）
+- バージョンは `==` で固定する(このリポジトリの決まり)。例(2026-10 時点の `requirements.txt`):
 
 ```txt
-streamlit==1.28.0
-pandas==2.1.0
+streamlit==1.66.0
+pandas==3.0.6
 ```
 
 ### 7. モニタリングとログ

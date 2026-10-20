@@ -191,6 +191,8 @@ Docker Compose使用時の問題については、[TROUBLESHOOTING.md](TROUBLESH
 
 ### 方法2: Python 仮想環境を使用する
 
+> **注意**: このリポジトリの開発・テスト・データの取り込みは、**方法1(Docker)で行う決まり**です([`CONTRIBUTING.md`](CONTRIBUTING.md)・[`CLAUDE.md`](CLAUDE.md))。方法2は、手元で画面を見るだけのための参考です。AI エージェントは使いません。
+
 #### 必要な環境
 - **Python 3.14** (本番環境と同じバージョンを推奨)
 - **pip** (Pythonパッケージマネージャー)

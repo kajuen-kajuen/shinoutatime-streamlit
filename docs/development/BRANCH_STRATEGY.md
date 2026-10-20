@@ -4,6 +4,13 @@
 
 本ドキュメントは、「しのうたタイム」プロジェクトにおけるGitブランチ戦略と、各ブランチとStreamlit Cloud環境の対応関係を説明します。
 
+### 今の運用(2026-10)
+
+- 運用は、持ち主1人と AI(Claude Code など)です。
+- **`main`・`develop` への統合(merge)と push は、持ち主が手で行います。** AI は行いません。`.claude/settings.json` で、AI の `git push`・`git merge`・`git rebase`・`git checkout main|develop`・`git switch main|develop` を禁止しています。下の手順に出てくる `git checkout main`・`git merge`・`git push` は、持ち主が打つものです。
+- AI は作業ブランチ(`feature/xxx` など)でコミットまでを行います(持ち主の指示があったときだけ)。コミットの前に `sh tools/check-rules.sh` が自動で流れ、問題があればコミットが止まります。
+- データ v2(`data/v2/*.tsv`・`data/ingest/skipped.tsv`)の取り込みは、2026-10 時点では作業ブランチ `feature/brushup` で、コードの変更と並べて行っています。コミットは、コード・文書(`feat:`・`docs:`)とデータ(`data:`)で分けます。
+
 ## ブランチと環境の対応関係
 
 ```mermaid
@@ -93,6 +100,11 @@ graph LR
 - データファイルのフォーマット（TSV形式）を維持
 - 文字エンコーディング（UTF-8）を確認
 - データの整合性を確認してからマージ
+
+**データ v2 との関係**:
+- 上の説明は、v1 のデータ(`data/*.TSV`)のものです。
+- v2 のデータ(`data/v2/*.tsv`・`data/ingest/skipped.tsv`)も「データの更新」ですが、手で編集せず、取り込みの CLI(`ingest`・`data`)を通して書きます(手順は [`docs/prompts/update-data.md`](../prompts/update-data.md))。
+- 本番の画面を v2 に切り替えるまでは、v2 のデータを `main` に入れても画面は変わりません(確認用のページだけが読む)。
 
 ## 開発ワークフロー
 
@@ -206,6 +218,7 @@ sequenceDiagram
    - `data/M_YT_LIVE.TSV`: 配信情報
    - `data/M_YT_LIVE_TIMESTAMP.TSV`: タイムスタンプ情報
    - `data/V_SONG_LIST.TSV`: 楽曲リスト
+   - v2 のデータ(`data/v2/*.tsv`)は、手で編集せず、取り込みの CLI で書く([`docs/prompts/update-data.md`](../prompts/update-data.md))
 
 3. コミット・プッシュ
    ```bash
@@ -352,10 +365,12 @@ feat: 検索機能に日付範囲フィルタを追加
 
 developまたはmainブランチにマージする前に、以下を確認してください：
 
-- [ ] ローカル環境で動作確認済み
+- [ ] ローカル環境(Docker のコンテナ)で動作確認済み
+- [ ] `docker compose exec shinouta-time pytest` で、失敗が増えていない
+- [ ] `sh tools/check-rules.sh` が「問題なし」(秘密の値・絶対パス・メールアドレスが無い)
 - [ ] コードレビュー完了
-- [ ] コミットメッセージが適切
-- [ ] 不要なファイルが含まれていない（.env、logs/など）
+- [ ] コミットメッセージが適切(`<type>: <日本語の件名>`。データは `data:` で別のコミット)
+- [ ] 不要なファイルが含まれていない（.env、logs/、data/ingest/cache・staged など）
 - [ ] requirements.txtが最新
 - [ ] ドキュメントが更新されている（必要な場合）
 

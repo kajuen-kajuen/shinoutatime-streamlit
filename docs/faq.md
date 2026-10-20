@@ -384,7 +384,10 @@
 
 ### Q34: データファイルの形式は何ですか？
 
-**A:** データファイルはTSV（Tab-Separated Values）形式です。タブ区切りのテキストファイルで、Excelやテキストエディタで編集できます。
+**A:** データファイルはTSV（Tab-Separated Values）形式です。タブ区切りのテキストファイルです。
+
+- 今の画面が読む v1 のデータ(`data/*.TSV`)は、Excel(`data/data.xlsx`)から生成しています。
+- 今後の正本になる v2 のデータ(`data/v2/`)は、YouTube などから取り込みの CLI で作ります。手で編集はしません([データモデル v2](specs/data-model.md))。
 
 データファイルの詳細は、[README.md](../README.md)の「データファイル構造」セクションをご覧ください。
 
