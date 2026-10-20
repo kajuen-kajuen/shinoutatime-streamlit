@@ -16,6 +16,7 @@ CHE.R.RY	YUI	s0010
 アポリア	ヨルシカ	s0014
 少女レイ	みきとP	s0015
 少女レイ	みきとP feat.初音ミク	s0015
+モニタリング	DECO*27	s0016
 モニタリング	deco*27	s0016
 快晴	Orangestar feat.IA	s0017
 快晴	Orangestar feat.初音ミク	s0017
@@ -31,12 +32,14 @@ more  than words	羊文学	s0025
 more than words	羊文学	s0025
 お気に召すまま	EVE feat.初音ミク	s0026
 お気に召すまま	Eve	s0026
+Laugh away	YUI	s0027
 Laugh away	Yui	s0027
 flos	R Sound Design feat.初音ミク	s0028
 灯火	Vaundy	s0029
 鼓膜の歌	幽音しの	s0030
 ドライフラワー	優里	s0031
 秒針を噛む	ずっと真夜中でいいのに	s0032
+秒針を噛む	ずっと真夜中でいいのに。	s0032
 真夜中遊園地	チャットモンチー	s0033
 想像フォレスト	じん(自然の敵P) feat.IA	s0034
 空想フォレスト	じん(自然の敵P) feat.IA	s0034
@@ -123,6 +126,7 @@ My Soul Your Beats!	Lia	s0109
 マリーゴールド	あいみょん	s0113
 Henceforth	Orangestar feat.IA	s0114
 地球最後の告白を	Kemu  feat.Gumi	s0115
+地球最後の告白を	Kemu feat.Gumi	s0115
 地球最後の告白を	kemu	s0115
 花に亡霊	ヨルシカ	s0116
 うたかた花火	supercell	s0117
@@ -177,6 +181,7 @@ Bling-Bang-Bang-Born	Creepy Nuts	s0159
 脱法ロック	Neru feat.鏡音レン	s0166
 独りんぼエンヴィー	koyori(電ポルP) feat.初音ミク	s0167
 ハロー、プラネット。	ささくれ。P feat.初音ミク	s0168
+酔いどれ知らず	kanaria.GUMI	s0169
 花瓶に触れた	バルーン(須田景凪) feat.flower	s0170
 死んでしまったのだろうか	Guiano feat.flower	s0171
 ナンセンス文学	Eve feat.初音ミク	s0172
@@ -191,6 +196,7 @@ Bling-Bang-Bang-Born	Creepy Nuts	s0159
 チルになりたい	幽音しの	s0180
 ワロタ＆明日の宣伝の歌	幽音しの	s0181
 化けの花	25時、ナイトコードで。x KAITO	s0182
+化けの花	25時、ナイトコードで。×KAITO	s0182
 化けの花	なきそ	s0182
 ストリーミングハート	DECO*27 feat.初音ミク	s0183
 The Beginning	ONE OK ROCK	s0184
@@ -347,6 +353,7 @@ you are my curse	nyamura	s0324
 群青	YOASOBI	s0333
 あいす	z²	s0334
 夜咄ディセイブ	じん feat.IA(自然の敵P)	s0335
+夜咄ディセイブ	じん(自然の敵P) feat.IA	s0335
 フルドライブ	KANA-BOON	s0336
 Mela!	緑黄色社会	s0337
 君のせい	the peggies	s0338
@@ -391,3 +398,56 @@ innocent promise	TRUSTRICK	s0371
 あいまいでいいよ	羊文学	s0377
 レトロポリス	R Sound Design feat.可不	s0378
 心に穴が空いた	ヨルシカ	s0379
+いますぐ輪廻	なきそ	s0380
+ICHIDAIJI	ポルカドットスティングレイ	s0381
+オシャレ大作戦	ネクライトーキー	s0382
+オドループ	フレデリック	s0383
+SHIKIBU feat. 阿波の踊り子	チャットモンチー(レキシ)	s0384
+若者のすべて	フジファブリック	s0385
+今夜このまま	あいみょん	s0386
+Yeah! Yeah! Yeah!	androp	s0387
+シルエット	KANA-BOON	s0388
+恋の寿命	Galileo Galilei	s0389
+1999	羊文学	s0390
+ワタリドリ	Alexandros	s0391
+プロミスザスター	BiSH	s0392
+栞	クリープハイプ	s0393
+新宝島	サカナクション	s0394
+前前前世	RADWIMPS	s0395
+トリノコシティ	40㍍p	s0396
+白日	King Gnu	s0397
+ピンクレモネード	三月のパンタシア	s0398
+SNOW SOUND	［Alexandros］	s0399
+金木犀の夜	きのこ帝国	s0400
+サターン	ずっと真夜中でいいのに。	s0401
+Ham	ずっと真夜中でいいのに。	s0402
+サイノウサンプラー	電ポルP feat.初音ミク	s0403
+T氏の話を信じるな	ピノキオピー	s0404
+心做し	蝶々P feat.GUMI	s0405
+ミュージックミュージック	とあ feat.初音ミク	s0406
+夢灯篭	RADWIMPS	s0407
+ミュージック	サカナクション	s0408
+しのバースデーソング	幽音しの	s0409
+From now on	幽音しの	s0410
+シニカルナイトプラン	Ayase(YOASOBI) feat.初音ミク	s0411
+夜もすがら君想ふ	TOKOTOKO feat.GUMI	s0412
+Heal Me	*Luna feat.マクネナナ	s0413
+点描の唄	Mrs. GREEN APPLE feat.井上苑子	s0414
+メルティランドナイトメア	はるまきごはん feat.初音ミク	s0415
+ノクティルーカ	Orangestar feat.IA	s0416
+GLORIA	YUI	s0417
+リバーシブル・キャンペーン	DECO*27 feat.初音ミク	s0418
+ライアーダンス	DECO*27 feat.初音ミク	s0419
+フラジール	ぬゆりfeat.GUMI	s0420
+フォニイ	ツミキ feat.可不	s0421
+ガランド	ピコン feat.初音ミク	s0422
+ギラギラ	Ado	s0423
+ワールド・コーリング	じん(自然の敵) feat.IA	s0424
+Sincerely	TRUE	s0425
+神っぽいな	ピノキオピー	s0426
+火星人	ヨルシカ	s0427
+スパークル	RADWIMPS	s0428
+春を待つ	lslet feat.倚水	s0429
+晴れるなら	Guiano	s0430
+ネハン	Guiano	s0431
+白日夢	lslet feat.倚水	s0432
