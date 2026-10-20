@@ -12,7 +12,7 @@ from src.ingest.parser import (build_content_row, build_rows_from_title, build_s
                                split_song_text, style_hint)
 from src.ingest.skips import add_skip, load_skips
 from src.ingest.staging import apply_staged, load_staged, save_staged
-from src.ingest.youtube_api import YouTubeApiClient, YouTubeApiError, parse_duration
+from src.ingest.youtube_api import YouTubeApiClient, YouTubeApiError, load_api_keys, parse_duration
 from tests.unit.v2.conftest import make_dataset
 
 TIMESTAMP_COMMENT = """配信おつかれさまでした!
@@ -282,8 +282,52 @@ class TestYouTubeApi:
 
     def test_requires_key(self, monkeypatch):
         monkeypatch.delenv("YOUTUBE_API_KEY", raising=False)
+        monkeypatch.delenv("YOUTUBE_API_KEYS", raising=False)
         with pytest.raises(ValueError):
             YouTubeApiClient()
+
+    def test_load_api_keys_merges_and_dedupes(self):
+        """YOUTUBE_API_KEY → YOUTUBE_API_KEYS の順。重複と空白は除く"""
+        env = {"YOUTUBE_API_KEY": "KEY-A", "YOUTUBE_API_KEYS": " KEY-B , KEY-A,,KEY-C "}
+        assert load_api_keys(env) == ["KEY-A", "KEY-B", "KEY-C"]
+        assert load_api_keys({"YOUTUBE_API_KEYS": "KEY-B"}) == ["KEY-B"]
+        assert load_api_keys({}) == []
+
+    @staticmethod
+    def _ok_response(body):
+        return MagicMock(ok=True, json=MagicMock(return_value=body))
+
+    @pytest.mark.parametrize("status, reason", [(403, "quotaExceeded"), (429, "rateLimitExceeded")])
+    def test_switches_to_next_key_on_quota(self, capsys, status, reason):
+        """上限で失敗したら、次のキーで同じリクエストを送り直す。切り替えたら次からもそのキーを使う"""
+        session = MagicMock()
+        session.get.side_effect = [self._error_response(status, reason),
+                                   self._ok_response({"items": []}), self._ok_response({"items": []})]
+        client = YouTubeApiClient(session=session, api_keys=["SECRET-A", "SECRET-B"])
+        assert client.fetch_comments("AAAAAAAAAAA") == []
+        assert client.fetch_comments("BBBBBBBBBBB") == []
+        keys = [c.kwargs["params"]["key"] for c in session.get.call_args_list]
+        assert keys == ["SECRET-A", "SECRET-B", "SECRET-B"]
+        err = capsys.readouterr().err
+        assert "2/2" in err and "SECRET" not in err  # キーの値は出さない
+
+    def test_raises_when_all_keys_hit_quota(self):
+        session = MagicMock()
+        session.get.return_value = self._error_response(403, "quotaExceeded")
+        client = YouTubeApiClient(session=session, api_keys=["SECRET-A", "SECRET-B"])
+        with pytest.raises(YouTubeApiError) as e:
+            client.fetch_comments("AAAAAAAAAAA")
+        assert e.value.reason == "quotaExceeded" and session.get.call_count == 2
+        assert "SECRET" not in str(e.value)
+
+    def test_does_not_switch_on_other_errors(self):
+        """上限以外の失敗では、キーを切り替えない"""
+        session = MagicMock()
+        session.get.return_value = self._error_response(404, "videoNotFound")
+        client = YouTubeApiClient(session=session, api_keys=["SECRET-A", "SECRET-B"])
+        with pytest.raises(YouTubeApiError):
+            client.fetch_comments("AAAAAAAAAAA")
+        assert session.get.call_count == 1 and client.api_key == "SECRET-A"
 
     def test_fetch_capture(self):
         session = MagicMock()

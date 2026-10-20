@@ -26,7 +26,7 @@
 | データ v2 の曲順の振り直し | `docker compose exec shinouta-time python -m src.cli.data renumber <content_id>` | `seq` を 10, 20, 30… に振り直す。間に足す余地が無くなったときに |
 | データ v2 の同じ曲・アーティストをまとめる | `docker compose exec shinouta-time python -m src.cli.data merge-song <残す song_id> <消す song_id>`(アーティストは `merge-artist <残す> <消す>`) | 消した ID は再利用しない。元の表記は aliases に残る。**打つ前にユーザーへ確認** |
 | データ v2 の並べ直し | `docker compose exec shinouta-time python -m src.cli.data normalize` | 決まった順に並べ直して保存し直す |
-| 投稿の一覧(読むだけ) | `docker compose exec shinouta-time python -m src.cli.ingest list --month 2025-04` | YouTube Data API(`.env` の `YOUTUBE_API_KEY`) |
+| 投稿の一覧(読むだけ) | `docker compose exec shinouta-time python -m src.cli.ingest list --month 2025-04` | YouTube Data API(`.env` の `YOUTUBE_API_KEY`。複数のキーは `YOUTUBE_API_KEYS` に書くと、上限で次のキーへ切り替える) |
 | 本人以外のチャンネルの検索 | `docker compose exec shinouta-time python -m src.cli.ingest others --month 2025-04` | 読むだけ。「幽音しの」「うるぱんおばけ」を7日ずつ検索する(1か月で約 1,000 ユニット)。ファンの切り抜きも混じるので、対象かどうかは `update-data.md` の決まりで判断する。対象は `ingest from-api <動画ID>` で取る |
 | 月ごとの取得 | `docker compose exec shinouta-time python -m src.cli.ingest fetch --month 2025-04` | 取得済みは飛ばす。`--force` で取り直す |
 | 1本の取得 | `docker compose exec shinouta-time python -m src.cli.ingest from-api <動画ID>` | 種類(live / video / short)は自動で決める。動画の ID は大文字・小文字を区別する。メン限の動画は、コメント0件で取る(API キーではコメントを読めない) |

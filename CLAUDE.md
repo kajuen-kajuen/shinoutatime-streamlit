@@ -31,7 +31,7 @@ VTuber「幽音しの」さんの配信で歌われた楽曲を検索し、YouTu
 
 - Python 3.14(Docker イメージ `python:3.14.8-slim-trixie`)、Streamlit(マルチページ: `Home.py` と `pages/NN_Name.py`)、pandas
 - 依存は `==` で固定し、3つに分ける: `requirements.txt`(本番。Streamlit Cloud はこれだけを読む)、`requirements-tools.txt`(データ生成の CLI)、`requirements-dev.txt`(テスト。コンテナはこれを入れる)
-- データ: `data/` の TSV(UTF-8)。DB は使わない。アプリ(画面)は外部 API を使わない。取り込みの CLI だけが YouTube Data API を使う(キーは `.env` の `YOUTUBE_API_KEY`)
+- データ: `data/` の TSV(UTF-8)。DB は使わない。アプリ(画面)は外部 API を使わない。取り込みの CLI だけが YouTube Data API を使う(キーは `.env` の `YOUTUBE_API_KEY`。複数のキーは `YOUTUBE_API_KEYS`)
 - テスト: pytest + hypothesis(`tests/unit`・`property`・`integration`・`e2e`・`performance`。e2e は Streamlit の `AppTest`。性能テストは `--runslow` のときだけ)
 - オフラインのツール(CLI): pykakasi(読み)、python-Levenshtein(類似曲の検出)は `requirements-tools.txt`。openpyxl(Excel)と requests は `requirements.txt` に入っている
 

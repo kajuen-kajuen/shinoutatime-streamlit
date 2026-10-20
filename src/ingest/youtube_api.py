@@ -2,14 +2,16 @@
 YouTube Data API v3 からの取得(将来の無人の定期取得用)
 
 API キーは環境変数 YOUTUBE_API_KEY で渡す(リポジトリには書かない)。
+複数のキーを使うときは YOUTUBE_API_KEYS(カンマ区切り)にも書く。上限に達したら次のキーに切り替える。
 取得した内容は取得結果(Capture)にそろえる。
 """
 
 import os
 import re
+import sys
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import List, Optional, Sequence, Tuple
+from typing import List, Mapping, Optional, Sequence, Tuple
 
 import requests
 
@@ -20,6 +22,8 @@ CHANNEL_HANDLE = "@Shino_Kasukane"
 # 本人以外のチャンネルを探す検索語。タイトルに本人の名前が無いコラボ(同期3人の「うるぱんおばけ」など)もあるため複数
 OTHER_CHANNEL_QUERIES = ("幽音しの", "うるぱんおばけ")
 WINDOW_DAYS = 7  # 本人以外のチャンネルを検索するときの区間の長さ
+# API の上限で失敗したときの理由。このときだけ次のキーに切り替える
+QUOTA_REASONS = ("quotaExceeded", "rateLimitExceeded", "dailyLimitExceeded")
 _DURATION = re.compile(r"^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$")
 
 
@@ -64,15 +68,39 @@ class YouTubeApiError(Exception):
         super().__init__(f"YouTube API の {path} が失敗しました({detail}{'、' + reason if reason else ''})")
 
 
+def load_api_keys(env: Mapping[str, str] = os.environ) -> List[str]:
+    """使う API キーの一覧: YOUTUBE_API_KEY → YOUTUBE_API_KEYS(カンマ区切り)の順。重複と空は除く"""
+    keys = [env.get("YOUTUBE_API_KEY", "")] + env.get("YOUTUBE_API_KEYS", "").split(",")
+    return list(dict.fromkeys(k.strip() for k in keys if k.strip()))
+
+
 class YouTubeApiClient:
-    def __init__(self, api_key: Optional[str] = None, session: Optional[requests.Session] = None, timeout: int = 30):
-        self.api_key = api_key or os.environ.get("YOUTUBE_API_KEY", "")
-        if not self.api_key:
-            raise ValueError("環境変数 YOUTUBE_API_KEY が設定されていません")
+    def __init__(self, api_key: Optional[str] = None, session: Optional[requests.Session] = None, timeout: int = 30,
+                 api_keys: Optional[Sequence[str]] = None):
+        self.api_keys = [api_key] if api_key else list(api_keys or load_api_keys())
+        if not self.api_keys:
+            raise ValueError("環境変数 YOUTUBE_API_KEY(または YOUTUBE_API_KEYS)が設定されていません")
+        self._key_index = 0  # 上限で切り替えたら、同じ実行の中では次のキーを使い続ける
         self.session = session or requests.Session()
         self.timeout = timeout
 
+    @property
+    def api_key(self) -> str:
+        return self.api_keys[self._key_index]
+
     def _get(self, path: str, **params) -> dict:
+        while True:
+            try:
+                return self._get_once(path, **params)
+            except YouTubeApiError as e:
+                if e.reason not in QUOTA_REASONS or self._key_index + 1 >= len(self.api_keys):
+                    raise
+                self._key_index += 1
+                # キーの値は出さない(番号だけ)
+                print(f"API の上限に達したので、次のキー({self._key_index + 1}/{len(self.api_keys)})に切り替えます",
+                      file=sys.stderr)
+
+    def _get_once(self, path: str, **params) -> dict:
         try:
             response = self.session.get(f"{API_BASE}/{path}", params={**params, "key": self.api_key}, timeout=self.timeout)
         except requests.RequestException as e:

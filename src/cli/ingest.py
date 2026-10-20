@@ -14,7 +14,7 @@
   python -m src.cli.ingest skip <content_id> "<理由>"             # 曲の無いコンテンツとして記録する
   python -m src.cli.ingest status [--month 2025-04]
 
-API キーは環境変数 YOUTUBE_API_KEY(.env から docker-compose で渡す)。
+API キーは環境変数 YOUTUBE_API_KEY(.env から docker-compose で渡す)。複数のキーは YOUTUBE_API_KEYS(カンマ区切り)に書く。
 
 ブラウザで取得するときは、Claude が取得結果 JSON を data/ingest/cache/ に書き、check で確かめる。
 """
@@ -81,7 +81,7 @@ def cmd_others(args) -> int:
 
 
 def cmd_fetch(args) -> int:
-    from src.ingest.youtube_api import YouTubeApiError
+    from src.ingest.youtube_api import QUOTA_REASONS, YouTubeApiError
     client, videos = _uploads(args.month)
     fetched = skipped = failed = 0
     for v in videos:
@@ -91,10 +91,10 @@ def cmd_fetch(args) -> int:
         try:
             capture = client.fetch_capture(v.video_id)
         except YouTubeApiError as e:
-            # 1本の失敗で止めず、残りを取る。上限(quotaExceeded)のときは、続けても失敗するので止める
+            # 1本の失敗で止めず、残りを取る。すべてのキーで上限のときは、続けても失敗するので止める
             failed += 1
             print(f"失敗: {v.content_id}\t{e}", file=sys.stderr)
-            if e.reason == "quotaExceeded":
+            if e.reason in QUOTA_REASONS:
                 break
             continue
         save_capture(capture)
@@ -259,7 +259,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    from src.ingest.youtube_api import YouTubeApiError
+    from src.ingest.youtube_api import QUOTA_REASONS, YouTubeApiError
     args = build_parser().parse_args(argv)
     try:
         return args.func(args)
@@ -269,8 +269,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     except YouTubeApiError as e:
         # メッセージには URL(API キー)を入れていない(YouTubeApiError)
         print(f"エラー: {e}", file=sys.stderr)
-        if e.reason in ("quotaExceeded", "rateLimitExceeded"):
-            print("API の上限に達しました。時間をおいて(日本時間の16〜17時以降に)流し直してください", file=sys.stderr)
+        if e.reason in QUOTA_REASONS:
+            print("すべての API キーで上限に達しました。時間をおいて(日本時間の16〜17時以降に)流し直してください",
+                  file=sys.stderr)
         return 1
 
 

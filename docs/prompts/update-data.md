@@ -37,7 +37,7 @@ URL が無いときは、`python -m src.cli.ingest status` の「未処理」を
 ## 手順
 
 1. **取得**: コンテンツごとに、取得結果 JSON を `data/ingest/cache/` に作る。`ingest check <ファイル>` が OK になるまで。
-   - YouTube は、月ごとに `ingest list --month YYYY-MM` で本数を確かめ、`ingest fetch --month YYYY-MM` でまとめて取る(API キーは `.env` の `YOUTUBE_API_KEY`。種類は自動で判定する)。1本だけなら `ingest from-api <動画ID>`。
+   - YouTube は、月ごとに `ingest list --month YYYY-MM` で本数を確かめ、`ingest fetch --month YYYY-MM` でまとめて取る(API キーは `.env` の `YOUTUBE_API_KEY`。複数のキーは `YOUTUBE_API_KEYS`。種類は自動で判定する)。1本だけなら `ingest from-api <動画ID>`。
    - 同じ月に、本人以外のチャンネルへの出演を洗い出す。
      - `ingest others --month YYYY-MM` の結果から、対象になりそうなものを `ingest from-api <動画ID>` で取る(決まりは「本人のチャンネル以外」)。
      - 本人の X の投稿も確かめる(決まりは「X」)。検索に出ない出演と、X にだけある歌の動画を見つけるため。

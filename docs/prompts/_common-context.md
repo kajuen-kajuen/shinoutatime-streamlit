@@ -12,7 +12,7 @@
 - キャッシュ: 読み込みは `@st.cache_data` の関数で行う。キャッシュ関数の中では `st.*` で表示しない(キャッシュが効いた実行では表示されなくなる)
 - データ(v1): `data/` の TSV は UTF-8・タブ区切り。配信日の形式は `YYYY/M/D`(時刻付き `YYYY/M/D HH:MM` が混ざることがある【要確認】)。`V_SONG_LIST.TSV` は `song_list_generator` の生成物なので手で直さない。アーティストの読みは `ARTIST_SORT_MAPPING.TSV`(`artist_sort_cli`)で補正する
 - データ(v2): `data/v2/*.tsv` は UTF-8・LF・タブ区切り。日付は `YYYY-MM-DD`。手で編集せず、`ingest apply` か `data set` などの CLI を通す(保存のたびに並べ直して検査する)。曲の無いコンテンツは `data/ingest/skipped.tsv` に記録する。取得したコメントと下書き(`data/ingest/cache/`・`staged/`)は Git 管理外で、コメント本文・投稿者名はコミットに書かない
-- 環境変数: `YOUTUBE_API_KEY`(取り込みの YouTube Data API。`.env` から docker-compose で渡す)、`SHINOUTA_TRUSTED_COMMENTERS`(セットリストを書く職人さんの名前。カンマ区切り)、`ADMIN_PASSWORD`(管理ページ。既定値は無く、未設定ならログインできない)、ほかは `SHINOUTA_*`(`src/config/`)。値はリポジトリに書かない
+- 環境変数: `YOUTUBE_API_KEY`(取り込みの YouTube Data API。`.env` から docker-compose で渡す)、`YOUTUBE_API_KEYS`(任意。複数のキーをカンマ区切りで。上限に達したら次のキーへ切り替える)、`SHINOUTA_TRUSTED_COMMENTERS`(セットリストを書く職人さんの名前。カンマ区切り)、`ADMIN_PASSWORD`(管理ページ。既定値は無く、未設定ならログインできない)、ほかは `SHINOUTA_*`(`src/config/`)。値はリポジトリに書かない
 - デプロイ: Streamlit Community Cloud がブランチを見て自動デプロイする(`main` → 本番、`develop` → stg)。`requirements.txt` がそのまま本番に入る
 - 実行環境: Docker(`docker-compose.yml` のサービス名 `shinouta-time`、作業ディレクトリ `/app` にリポジトリをマウント)。コンテナには git が無いので、git と `tools/check-rules.sh` はホストの Git Bash で打つ
 - 表示: **見た目は現行と同じにする**(2026-10-19 決定。HTML の表、style.css、「YouTubeへ👻」、「さらに25件表示」。`st.dataframe` には切り替えない)。利用者の多くはスマホ。表は横に長くしすぎない。Streamlit の内部クラス名(`st-emotion-cache-*`)に依存した CSS は版を上げると壊れる

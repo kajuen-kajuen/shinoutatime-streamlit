@@ -106,7 +106,7 @@ data/M_YT_LIVE_TIMESTAMP.TSV ┘
 ## 8. 設定と秘密の値
 
 - 画面の設定は `src/config/settings.py` の `Config` で、環境変数 `SHINOUTA_*` で上書きできます(ファイルのパス、表示の件数、キャッシュなど)。
-- 取り込みの API キー `YOUTUBE_API_KEY`、職人さんの指定 `SHINOUTA_TRUSTED_COMMENTERS`、管理ページの `ADMIN_PASSWORD` は `.env` に置きます(Git 管理外。`docker-compose.yml` がコンテナに渡す)。
+- 取り込みの API キー `YOUTUBE_API_KEY`(複数のキーは `YOUTUBE_API_KEYS`。上限に達したら次のキーへ切り替える)、職人さんの指定 `SHINOUTA_TRUSTED_COMMENTERS`、管理ページの `ADMIN_PASSWORD` は `.env` に置きます(Git 管理外。`docker-compose.yml` がコンテナに渡す)。
 - 公開リポジトリなので、秘密の値・コメント本文・ローカルの絶対パスはコミットしません。`tools/check-rules.sh` で確かめます。
 
 ## 9. 既知の課題(2026-10-20 時点)

@@ -11,5 +11,6 @@ services:
       - SHINOUTA_LOG_FILE=${SHINOUTA_LOG_FILE:-logs/shinouta.log}
       # 取り込み用(値はリポジトリに書かない。Git 管理外の .env に書く)
       - YOUTUBE_API_KEY=${YOUTUBE_API_KEY:-}
+      - YOUTUBE_API_KEYS=${YOUTUBE_API_KEYS:-}
       - SHINOUTA_TRUSTED_COMMENTERS=${SHINOUTA_TRUSTED_COMMENTERS:-}
     command: streamlit run Home.py --server.address 0.0.0.0
