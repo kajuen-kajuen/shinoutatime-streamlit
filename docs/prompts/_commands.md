@@ -10,6 +10,7 @@
 | アプリのログ | `docker compose logs --tail=100 shinouta-time` | 例外のスタックトレースはここに出る |
 | テスト(全部) | `docker compose exec shinouta-time pytest` | 作業の終わりに必ず。e2e は `data/` の本物の TSV を読む |
 | テスト(一部) | `docker compose exec shinouta-time pytest tests/unit -q` | `tests/unit` を `tests/property`・`tests/integration`・`tests/e2e` やファイル名に替えてよい |
+| テスト(性能も) | `docker compose exec shinouta-time pytest --runslow` | `tests/performance`(架空の 2万件で読み込みから集計まで)は、`--runslow` のときだけ動く。集計(`src/core/views.py`)や読み込みを変えたときに流す |
 | カバレッジ | `docker compose exec shinouta-time pytest --cov=src --cov-report=term-missing` | |
 | 絶対制約の確認 | `sh tools/check-rules.sh` | ホストで打つ(コンテナに git が無い)。NG が 0 になるまで直す |
 | データ件数の確認 | `wc -l data/M_YT_LIVE.TSV data/M_YT_LIVE_TIMESTAMP.TSV data/V_SONG_LIST.TSV` | 1 行目はヘッダー。データを触る前後で比べる |
@@ -22,9 +23,15 @@
 | データ v2 の検査 | `docker compose exec shinouta-time python -m src.cli.data validate` | `data/v2/` の主キー・外部キー・値の形・並び順 |
 | データ v2 の表示 | `docker compose exec shinouta-time python -m src.cli.data show` | 歌唱の一覧と曲ごとの集計 |
 | データ v2 の値の修正 | `docker compose exec shinouta-time python -m src.cli.data set <テーブル> <主キー> <列> <値>` | 検査を通ったときだけ保存する。TSV を手で編集しない |
+| データ v2 の曲順の振り直し | `docker compose exec shinouta-time python -m src.cli.data renumber <content_id>` | `seq` を 10, 20, 30… に振り直す。間に足す余地が無くなったときに |
+| データ v2 の同じ曲・アーティストをまとめる | `docker compose exec shinouta-time python -m src.cli.data merge-song <残す song_id> <消す song_id>`(アーティストは `merge-artist <残す> <消す>`) | 消した ID は再利用しない。元の表記は aliases に残る。**打つ前にユーザーへ確認** |
+| データ v2 の並べ直し | `docker compose exec shinouta-time python -m src.cli.data normalize` | 決まった順に並べ直して保存し直す |
 | 投稿の一覧(読むだけ) | `docker compose exec shinouta-time python -m src.cli.ingest list --month 2025-04` | YouTube Data API(`.env` の `YOUTUBE_API_KEY`) |
 | 本人以外のチャンネルの検索 | `docker compose exec shinouta-time python -m src.cli.ingest others --month 2025-04` | 読むだけ。「幽音しの」「うるぱんおばけ」を7日ずつ検索する(1か月で約 1,000 ユニット)。ファンの切り抜きも混じるので、対象かどうかは `update-data.md` の決まりで判断する。対象は `ingest from-api <動画ID>` で取る |
 | 月ごとの取得 | `docker compose exec shinouta-time python -m src.cli.ingest fetch --month 2025-04` | 取得済みは飛ばす。`--force` で取り直す |
+| 1本の取得 | `docker compose exec shinouta-time python -m src.cli.ingest from-api <動画ID>` | 種類(live / video / short)は自動で決める。動画の ID は大文字・小文字を区別する |
+| 取得結果の確認 | `docker compose exec shinouta-time python -m src.cli.ingest check data/ingest/cache/<ファイル>.json` | ブラウザで作った取得結果の形を確かめる |
+| コメントの候補 | `docker compose exec shinouta-time python -m src.cli.ingest comments <content_id>` | 職人さんのコメントの候補を、番号つきで表示する。`prepare --comment <番号>` で選び直せる |
 | 曲なしの記録 | `docker compose exec shinouta-time python -m src.cli.ingest skip <content_id> "<理由>"` | `data/ingest/skipped.tsv` に記録する。ユーザーに確かめてから |
 | 取り込みの状況 | `docker compose exec shinouta-time python -m src.cli.ingest status --month 2025-04` | 登録済み / 曲なし / 下書きあり / 未処理 |
 | 取り込み(下書き → 追記) | `docker compose exec shinouta-time python -m src.cli.ingest prepare <content_id>` → 判断 → `… ingest apply <content_id> --dry-run` → `… ingest apply <content_id>` | 手順と判断の決まりは `docs/prompts/update-data.md` |
