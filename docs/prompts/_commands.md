@@ -29,7 +29,7 @@
 | 投稿の一覧(読むだけ) | `docker compose exec shinouta-time python -m src.cli.ingest list --month 2025-04` | YouTube Data API(`.env` の `YOUTUBE_API_KEY`) |
 | 本人以外のチャンネルの検索 | `docker compose exec shinouta-time python -m src.cli.ingest others --month 2025-04` | 読むだけ。「幽音しの」「うるぱんおばけ」を7日ずつ検索する(1か月で約 1,000 ユニット)。ファンの切り抜きも混じるので、対象かどうかは `update-data.md` の決まりで判断する。対象は `ingest from-api <動画ID>` で取る |
 | 月ごとの取得 | `docker compose exec shinouta-time python -m src.cli.ingest fetch --month 2025-04` | 取得済みは飛ばす。`--force` で取り直す |
-| 1本の取得 | `docker compose exec shinouta-time python -m src.cli.ingest from-api <動画ID>` | 種類(live / video / short)は自動で決める。動画の ID は大文字・小文字を区別する。メン限の動画は、コメントの取得が 403 で拒否されて失敗する(`update-data.md` の「X」) |
+| 1本の取得 | `docker compose exec shinouta-time python -m src.cli.ingest from-api <動画ID>` | 種類(live / video / short)は自動で決める。動画の ID は大文字・小文字を区別する。メン限の動画は、コメント0件で取る(API キーではコメントを読めない) |
 | 取得結果の確認 | `docker compose exec shinouta-time python -m src.cli.ingest check data/ingest/cache/<ファイル>.json` | ブラウザで作った取得結果の形を確かめる |
 | コメントの候補 | `docker compose exec shinouta-time python -m src.cli.ingest comments <content_id>` | 職人さんのコメントの候補を、番号つきで表示する。`prepare --comment <番号>` で選び直せる |
 | 曲なしの記録 | `docker compose exec shinouta-time python -m src.cli.ingest skip <content_id> "<理由>"` | `data/ingest/skipped.tsv` に記録する。ユーザーに確かめてから |

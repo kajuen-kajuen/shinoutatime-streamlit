@@ -38,6 +38,8 @@ _TITLE_NOISE = re.compile(r"\s*(?:歌ってみた|弾いてみた|弾き語り�
 # タイトルの印 → 演奏の形
 _STYLE_TAGS = (("アカペラ", "アカペラ"), ("弾き語り", "弾き語り"), ("歌ってみた", "音源"))
 _YEAR = re.compile(r"^(?:19|20)\d{2}$")
+# メンバー限定のコンテンツのタイトルの印(下書きの access を members にする)
+_MEMBERS_ONLY = re.compile(r"メン限|メンバー限定|メンバーシップ限定")
 # 曲名の先頭・末尾の尺の注記(「(1chorus) 化けの花」「忘れじの言の葉(short ver)」の両方がある)
 _PART_LABELS = (
     (r"1\s*chorus", "1chorus"),
@@ -307,7 +309,7 @@ def build_rows_from_title(dataset: Dataset, capture: Capture) -> pd.DataFrame:
 
 
 def build_content_row(capture: Capture) -> dict:
-    """取得結果から contents の下書き1行を作る(kind・default_style の候補はタイトルから。判断で直す)"""
+    """取得結果から contents の下書き1行を作る(kind・default_style・access の候補はタイトルから。判断で直す)"""
     published = capture.published_jst
     kind = {"short": "歌ショート", "video": "歌ってみた"}.get(capture.type, "")
     return {
@@ -321,6 +323,6 @@ def build_content_row(capture: Capture) -> dict:
         "title": capture.title,
         "kind": kind,
         "default_style": style_hint(capture.title),
-        "access": "",
+        "access": "members" if _MEMBERS_ONLY.search(capture.title) else "",
         "available_until": "",
     }

@@ -123,6 +123,12 @@ class TestParser:
     def test_content_row(self):
         row = build_content_row(make_capture())
         assert (row["date"], row["start_time"], row["default_style"]) == ("2025-05-01", "20:00", "弾き語り")
+        assert row["access"] == ""
+
+    @pytest.mark.parametrize("title", ["【メン限】参加型ゲームしたり、雑談する！", "メンバー限定の歌枠", "メンバーシップ限定配信"])
+    def test_members_only_title_sets_access(self, title):
+        """メンバー限定のタイトルなら、下書きの access を members にする(画面に出さないため)"""
+        assert build_content_row(make_capture(title=title))["access"] == "members"
 
 
 class TestFeat:
@@ -373,6 +379,12 @@ class TestYouTubeApi:
         session.get.return_value = self._error_response(403, "commentsDisabled")
         assert YouTubeApiClient(api_key="dummy", session=session).fetch_comments("AAAAAAAAAAA") == []
 
+    def test_members_only_comments_return_empty(self):
+        """メンバー限定の動画(コメントの取得が 403 forbidden)も、コメント0件として扱う"""
+        session = MagicMock()
+        session.get.return_value = self._error_response(403, "forbidden")
+        assert YouTubeApiClient(api_key="dummy", session=session).fetch_comments("AAAAAAAAAAA") == []
+
     @pytest.mark.parametrize("status, expected", [(200, "short"), (303, "video")])
     def test_detect_type_by_shorts_url(self, status, expected):
         session = MagicMock()
@@ -410,3 +422,21 @@ class TestYouTubeApi:
         assert [v.video_id for v in videos] == ["AAAAAAAAAAA", "BBBBBBBBBBB"]
         assert videos[0].is_live and videos[0].published_jst.strftime("%Y-%m-%d %H:%M") == "2025-04-27 20:29"
         assert videos[1].duration_seconds == 40 and videos[1].content_id == "yt:BBBBBBBBBBB"
+
+
+class TestIngestCli:
+    @pytest.mark.parametrize("reason, hint", [("rateLimitExceeded", True), ("quotaExceeded", True), ("forbidden", False)])
+    def test_api_error_is_reported_without_traceback(self, monkeypatch, capsys, reason, hint):
+        """API の失敗は、トレースバックではなく短いエラーとして出す(上限のときは流し直す時間の案内も)"""
+        from src.cli import ingest
+
+        class FailingClient:
+            def search_other_channels(self, month):
+                raise YouTubeApiError("search", 429, reason)
+
+        monkeypatch.setattr("src.ingest.youtube_api.YouTubeApiClient", FailingClient)
+        assert ingest.main(["others", "--month", "2025-09"]) == 1
+        err = capsys.readouterr().err
+        assert err.startswith("エラー: YouTube API の search が失敗しました")
+        assert ("上限" in err) is hint
+        assert "Traceback" not in err

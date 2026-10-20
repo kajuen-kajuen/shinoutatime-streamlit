@@ -1,14 +1,14 @@
 """
 データモデル v2 の操作 CLI
 
-使い方(コンテナの中で):
-  python -m src.cli.data validate [--dir data/v2]
-  python -m src.cli.data show [--dir data/v2] [--limit 30]
-  python -m src.cli.data renumber <content_id> [--dir data/v2]
-  python -m src.cli.data merge-song <残す song_id> <消す song_id> [--dir data/v2]
-  python -m src.cli.data merge-artist <残す artist_id> <消す artist_id> [--dir data/v2]
-  python -m src.cli.data set <テーブル> <主キー> <列> <値> [--dir data/v2]   # 例: set songs s0003 kind オリジナル
-  python -m src.cli.data normalize [--dir data/v2]   # 並べ直して保存し直す
+使い方(コンテナの中で。--dir はサブコマンドの前に書く):
+  python -m src.cli.data [--dir data/v2] validate
+  python -m src.cli.data [--dir data/v2] show [--limit 30]
+  python -m src.cli.data [--dir data/v2] renumber <content_id>
+  python -m src.cli.data [--dir data/v2] merge-song <残す song_id> <消す song_id>
+  python -m src.cli.data [--dir data/v2] merge-artist <残す artist_id> <消す artist_id>
+  python -m src.cli.data [--dir data/v2] set <テーブル> <主キー> <列> <値>   # 例: set songs s0003 kind オリジナル
+  python -m src.cli.data [--dir data/v2] normalize   # 並べ直して保存し直す
 """
 
 import argparse

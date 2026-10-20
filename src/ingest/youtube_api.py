@@ -96,6 +96,8 @@ class YouTubeApiClient:
             except YouTubeApiError as e:
                 if e.reason == "commentsDisabled":  # コメントを受け付けていない動画(予定表の枠など)
                     return comments
+                if e.reason == "forbidden":  # メンバー限定の動画(API キーではコメントを読めない)
+                    return comments
                 raise
             for item in data.get("items", []):
                 top = item["snippet"]["topLevelComment"]["snippet"]

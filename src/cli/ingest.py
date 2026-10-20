@@ -4,6 +4,7 @@
 使い方(コンテナの中で):
   python -m src.cli.ingest list [--month 2025-04]                  # チャンネルの投稿の一覧(読むだけ)
   python -m src.cli.ingest fetch --month 2025-04 [--force]         # その月の投稿をまとめて API で取得
+  python -m src.cli.ingest others --month 2025-04                  # 本人以外のチャンネルの動画を検索(読むだけ)
   python -m src.cli.ingest from-api <動画ID> [--type live]       # 1本を YouTube Data API で取得(種類は自動)
   python -m src.cli.ingest from-ytdlp <info.json> [--type live]   # yt-dlp の JSON を取得結果にする
   python -m src.cli.ingest check <取得結果.json>                  # 取得結果の形を確かめる
@@ -258,11 +259,18 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    from src.ingest.youtube_api import YouTubeApiError
     args = build_parser().parse_args(argv)
     try:
         return args.func(args)
     except (ValueError, FileNotFoundError) as e:
         print(f"エラー: {e}", file=sys.stderr)
+        return 1
+    except YouTubeApiError as e:
+        # メッセージには URL(API キー)を入れていない(YouTubeApiError)
+        print(f"エラー: {e}", file=sys.stderr)
+        if e.reason in ("quotaExceeded", "rateLimitExceeded"):
+            print("API の上限に達しました。時間をおいて(日本時間の16〜17時以降に)流し直してください", file=sys.stderr)
         return 1
 
 
