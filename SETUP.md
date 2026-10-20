@@ -357,7 +357,7 @@ VS Codeユーザーは、Dev Container機能を使用することもできます
 
 ### Python仮想環境を使用する場合
 
-Dockerを使用せずにPython仮想環境で実行することも可能です。詳細は`docs/guides/developer-guide.md`を参照してください。
+Dockerを使用せずにPython仮想環境で実行することも可能です。詳細は`README.md`の「方法2: Python 仮想環境を使用する」を参照してください。
 
 ## サポート
 

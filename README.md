@@ -755,7 +755,7 @@ python -m src.cli.excel_to_tsv_cli
 │   ├── data.xlsx           # 入力データ(v1)
 │   └── *.TSV               # 生成されたTSVファイル(v1)
 ├── docs/                   # ドキュメント(一覧は docs/README.md)
-│   ├── architecture/       # アーキテクチャドキュメント
+│   ├── architecture/       # 構成の概要(overview.md)
 │   ├── development/        # 開発関連ドキュメント
 │   ├── guides/             # ガイド
 │   ├── prompts/            # AI エージェント向けの手順(スキルの本体)
@@ -900,7 +900,7 @@ YouTube などの取得結果から歌唱を読み取り、`data/v2/` に追記�
 - **`docs/specs/`**: 仕様書(データモデル v2 は `data-model.md`)
 - **`docs/prompts/`**: AI エージェント向けの手順(データの取り込みは `update-data.md`)
 - **`docs/guides/`**: ユーザーおよび開発者向けのガイド
-- **`docs/architecture/`**: システムアーキテクチャ関連のドキュメント
+- **`docs/architecture/overview.md`**: 構成の概要(層・データの流れ・エラー・キャッシュ)
 - **`docs/development/`**: 開発プロセスや規約に関するドキュメント
 - **`docs/testing/`**: テストに関するドキュメント
 

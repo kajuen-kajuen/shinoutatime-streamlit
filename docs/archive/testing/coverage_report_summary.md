@@ -1,5 +1,7 @@
 # テストカバレッジレポート
 
+> 【古い】この文書は 2025年11月時点(v1 のテストのカバレッジ)の内容で、今の構成とは合いません。読み物として残しています。今の構成は [`docs/architecture/overview.md`](../../architecture/overview.md)、データの取り込みは [`docs/prompts/update-data.md`](../../prompts/update-data.md) を見てください。
+
 最終更新日: 2025年11月20日
 
 ## 全体カバレッジ
@@ -228,6 +230,6 @@ docker-compose exec shinouta-time pytest tests/ --cov=src --cov-report=term-miss
 
 ## 参考リンク
 
-- [テストREADME](../../tests/README.md) - テストの実行方法とベストプラクティス
+- [テストREADME](../../../tests/README.md) - テストの実行方法とベストプラクティス
 - [設計書](../../.kiro/specs/test-coverage-improvement/design.md) - テスト戦略と正確性プロパティ
 - [要件定義書](../../.kiro/specs/test-coverage-improvement/requirements.md) - テストカバレッジ向上の要件

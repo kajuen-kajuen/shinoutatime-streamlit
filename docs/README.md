@@ -10,11 +10,11 @@
 | レビュー記録 | [`reviews/`](reviews/) | [`reviews/_template.md`](reviews/_template.md) |
 | 開発ワークフロー用プロンプト | [`prompts/`](prompts/)(本体、`_common-context.md`、`_commands.md`。絶対制約の確認は `../tools/check-rules.sh`)。スキルの入口は `../.claude/skills/<名前>/SKILL.md`(本体の prompts を指すだけ) | — |
 | 作業の計画・調査のメモ | `plans/`(**手元だけ・Git 管理外**。ブラッシュアップの計画、参考サイト、X の調べ方など) | — |
-| アーキテクチャ | [`architecture/`](architecture/)(全体構成・データフロー・エラー処理) | — |
-| 開発の決まり | [`development/`](development/)(ブランチ戦略・ファイル構成) | — |
+| アーキテクチャ | [`architecture/overview.md`](architecture/overview.md)(層・v1 と v2・データの流れ・エラー・キャッシュ) | — |
+| 開発の決まり | [`development/`](development/)(ブランチ戦略) | — |
 | 利用者・運用向けガイド | [`guides/`](guides/)、[`data-management.md`](data-management.md)、[`deployment.md`](deployment.md)、[`faq.md`](faq.md) | — |
 | テスト | [`testing/`](testing/) | — |
-| 過去の仕様(要件・設計・タスクの3点セット) | [`archive/`](archive/) | — |
+| 過去の仕様(要件・設計・タスクの3点セット)、古くなった構成・開発者ガイドなど | [`archive/`](archive/)(一覧は [`archive/README.md`](archive/README.md)) | — |
 
 雛形は `_` で始まるファイル名。新しく書くときは、雛形をコピーして、`_` を外した名前にする。
 
@@ -28,7 +28,7 @@
 - **`CLAUDE.md`**(ルート): AI エージェント向けの入口。最初に読むもの・やってはいけないこと・構成の要約
 - **`docs/specs/`**: 機能ごとの詳しい仕様(動作、データ形式、エッジケース、テスト)。「そうあるべき挙動」を書く。実装と食い違ったら、どちらが正しいかを決めて、仕様書かコードを直す
 - **`docs/reviews/`**: レビューの記録(何を見て、何を指摘して、どう対応したか)。コードレビュー、ブラウザでの確認、データの確認のいずれでもよい
-- **`docs/archive/`**: 以前の仕様(`requirements.md`・`design.md`・`tasks.md`)。読み物として残す。新しく書くときは `specs/` に
+- **`docs/archive/`**: 以前の仕様(`requirements.md`・`design.md`・`tasks.md`)と、今の構成と合わなくなった文書。読み物として残す。新しく書くときは `specs/` に
 
 ## 書き方の目安
 

@@ -1,5 +1,7 @@
 # 開発者ガイド
 
+> 【古い】この文書は 2025年11月時点(v1。2026年10月に Python の版だけ直した)の内容で、今の構成とは合いません。読み物として残しています。今の構成は [`docs/architecture/overview.md`](../../architecture/overview.md)、データの取り込みは [`docs/prompts/update-data.md`](../../prompts/update-data.md) を見てください。
+
 ## 目次
 
 1. [はじめに](#はじめに)

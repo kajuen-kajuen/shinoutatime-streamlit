@@ -733,4 +733,4 @@ GitHubリポジトリ: [your-repo-url]
 
 - [環境構築手順（SETUP.md）](SETUP.md)
 - [README.md](README.md)
-- [開発者ガイド（docs/guides/developer-guide.md）](docs/guides/developer-guide.md)
+- [構成の概要（docs/architecture/overview.md）](docs/architecture/overview.md)

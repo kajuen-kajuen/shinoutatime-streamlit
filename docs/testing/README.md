@@ -4,7 +4,7 @@
 
 ## ドキュメント一覧
 
-### coverage_report_summary.md
+### coverage_report_summary.md(2026-10-20 に archive へ移した)
 
 最新のテストカバレッジレポートのサマリーです。
 
@@ -49,7 +49,7 @@ docker-compose exec shinouta-time pytest tests/test_utils.py -v
 
 ## テスト結果の確認
 
-最新のテスト結果は [カバレッジレポートサマリー](coverage_report_summary.md) で確認できます。
+2025年11月時点のテスト結果は [カバレッジレポートサマリー](../archive/testing/coverage_report_summary.md)(古い。v2 のテストを含まない)にあります。
 
 ### 最新の結果（2025年11月19日）
 
@@ -74,7 +74,7 @@ docker-compose exec shinouta-time pytest tests/test_utils.py -v
 ## 関連ドキュメント
 
 - [テストガイド](../../tests/README.md) - テストの実行方法と拡張方法
-- [開発者ガイド](../developer-guide.md) - 開発環境のセットアップ
+- [構成の概要](../architecture/overview.md) - アプリの層とデータの流れ。開発環境の起動は `docs/prompts/_commands.md`
 
 ## 継続的な改善
 

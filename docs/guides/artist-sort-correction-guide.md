@@ -339,5 +339,5 @@ A: 現在、自動バックアップ機能はありません。重要な変更�
 ## 関連ドキュメント
 
 - [Excel to TSV変換ツール 使い方](./excel-to-tsv-guide.md)
-- [開発者ガイド](./developer-guide.md)
+- [構成の概要](../architecture/overview.md)
 - [ユーザーガイド](./user-guide.md)

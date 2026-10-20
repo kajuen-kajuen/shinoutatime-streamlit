@@ -1,5 +1,7 @@
 # プロジェクト構成整理案
 
+> 【古い】この文書は 2025年11月時点(ファイルを整理したときの案)の内容で、今の構成とは合いません。読み物として残しています。今の構成は [`docs/architecture/overview.md`](../../architecture/overview.md)、データの取り込みは [`docs/prompts/update-data.md`](../../prompts/update-data.md) を見てください。
+
 ## 現在の問題点
 
 1. **ルートディレクトリが散らかっている**
