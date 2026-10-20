@@ -17,8 +17,9 @@
   - 層(repositories → services → core → ui)と、失敗は例外で上げる方針
   - 読み込みは `@st.cache_data` の関数で、その中で表示しない
   - データ由来の文字列をエスケープせずに HTML に埋め込まない
-- `data/` の TSV の形式・列は変えない(変えたくなったら、それはリファクタリングではなく feature として別に扱う)
-- 公開している関数・クラスの名前を変えるときは、`tests/` と `src/cli/` からの呼び出しもすべて追う
+- `data/` の TSV の形式・列は変えない(`data/v2/` も同じ。列と値の形は `src/models/schema.py` と `docs/specs/data-model.md` が正本)。変えたくなったら、それはリファクタリングではなく feature として別に扱う
+- 公開している関数・クラスの名前を変えるときは、`tests/` と `src/cli/` からの呼び出しもすべて追う。v2 の部品(`src/core/views.py`・`src/ingest/`・`src/repositories/table_repository.py`)は、CLI(`ingest`・`data`)と確認用ページ(`pages/9x_V2_*_Preview.py`、Git 管理外)からも呼ばれる
+- `views.py` の集計を変えるときは、性能テスト(`pytest --runslow`)も流す。`lambda` での集計や Arrow の文字列のままの min・max は、2万件で遅くなる(`docs/specs/data-model.md` の4章)
 
 ## 止まって聞く所
 

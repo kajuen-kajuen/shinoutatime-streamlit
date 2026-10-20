@@ -45,7 +45,7 @@
 
 ## 手順
 
-1. プロジェクト構造を把握し、主要ファイル(`Home.py`・`pages/`・`src/ui/pages/home_page.py`・`src/repositories/`・`src/services/`・`src/core/data_pipeline.py`)を精読する。完了条件: 各ファイルの責務を1行で言える
+1. プロジェクト構造を把握し、主要ファイル(`Home.py`・`pages/`・`src/ui/pages/home_page.py`・`src/repositories/`・`src/services/`・`src/core/data_pipeline.py`、v2 の `src/models/schema.py`・`src/repositories/table_repository.py`・`src/core/views.py`・`src/core/validation.py`・`src/ingest/`・`src/cli/ingest.py`・`src/cli/data.py`)を精読する。構成の概要は `docs/architecture/overview.md`。完了条件: 各ファイルの責務を1行で言える
 2. `sh tools/check-rules.sh` と `_commands.md`「テスト(全部)」を流し、チェックリストの表を埋める
 3. 観点ごとに問題を洗い出す。推測ではなく必ず該当コードを確認してから指摘する。完了条件: 各指摘に「ファイル:行番号」「問題の内容」「利用者・運用への影響」「修正案の概要」
 4. 【止まる】総評・指摘一覧・Top 5 を出し、対応の判断を待つ

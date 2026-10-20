@@ -8,9 +8,10 @@
 
 ## 現状
 
-- テスト基盤: pytest + hypothesis(`_commands.md`「テスト(全部)」)。`tests/unit`・`property`・`integration`・`e2e`(`AppTest`)・`fixtures`
+- テスト基盤: pytest + hypothesis(`_commands.md`「テスト(全部)」)。`tests/unit`(v2 は `tests/unit/v2`)・`property`・`integration`・`e2e`(`AppTest`)・`performance`(`--runslow` のときだけ)・`fixtures`。置き場所と今の状態は `docs/testing/README.md`
 - テストの CI は無い。テストは手元のコンテナで流す
-- 2026-05 のリファクタ(リポジトリ・サービスが例外を投げる形に統一)のあと、古い前提(`None` を返す、`get_last_error()`)のまま残っているテストがある【要確認】
+- 2026-10-20 時点: 全体は 792 passed / 21 failed / 11 errors。失敗は v1 の古いテストだけで、v2(`tests/unit/v2`)は全部通る
+- リファクタ(リポジトリ・サービスが例外を投げる形に統一)のあと、削除済みの `DataService.get_last_error()` を前提にしたテストが残っている(2026-10-20 に確認): `tests/unit/test_error_cases.py`・`tests/property/test_data_service_properties.py`・`tests/property/test_data_pipeline_properties.py`。ページ `pages/99_Song_List_beta.py` も同じ関数を呼んでいる。直すかどうかは持ち主に聞く
 
 ## 守るべきものの優先順位
 
@@ -19,6 +20,14 @@
 3. 検索 — 大文字小文字・部分一致・配信タイトルを含めるかどうか・空の検索語
 4. 楽曲一覧の生成(`song_list_generator`)— 最新の歌唱の選び方、アーティストの読み、類似曲の検出
 5. ページ — 各ページが例外なく起動すること、データが読めないときにエラー表示で止まること(e2e)
+
+v2(今後の正本。`tests/unit/v2`)で守るもの:
+
+1. 検査と読み書き — 主キー・外部キー・値の形・並び順の検査(`src/core/validation.py`)、検査を通ったときだけ保存すること、任意の列が無い古いファイルも読めること(`TableRepository`)
+2. 集計 — `views.build_performance_view`(No. と枝番、メン限を出さない、演奏の形、リンク、検索用の列)と `build_song_stats`(切り抜きを数えない)
+3. 取り込みの解析 — 職人さんのコメントの選び方、時刻の行の分け方、曲名の注記(part・note)、feat. の分け方、既存の曲との照合(`src/ingest/parser.py`)、追記(`staging.apply_staged`)
+4. YouTube API — 失敗のメッセージにキー・URL を入れないこと、上限で次のキーへ切り替えること、メン限・コメント不可の動画をコメント0件で取ること(ネットワークには出ずモックで)
+5. 性能 — 架空の2万件で、読み込みから集計まで約0.5秒(`tests/performance`、`--runslow`)。集計や読み込みを変えたときに流す
 
 ## 制約
 
