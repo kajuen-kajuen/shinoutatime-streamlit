@@ -17,7 +17,7 @@ from typing import List, Optional, Sequence, Tuple
 import pandas as pd
 
 from src.core.links import seconds_to_start, start_to_seconds
-from src.core.text import normalize_for_match
+from src.core.text import normalize_for_match, remove_invisible
 from src.ingest.capture import Capture, Comment
 from src.repositories.table_repository import Dataset
 
@@ -79,6 +79,8 @@ def extract_timestamp_lines(text: str) -> List[TimestampLine]:
     """コメントから、時刻で始まる行を抜き出す(時刻は H:MM:SS にそろえる)"""
     lines = []
     for raw in text.splitlines():
+        # ゼロ幅スペースなどが混じると、照合が外れ、aliases にも残るので先に除く
+        raw = remove_invisible(raw)
         m = _TIMESTAMP.match(raw)
         if not m:
             continue
@@ -290,7 +292,7 @@ def song_from_title(title: str) -> SplitText:
 
     例: 「【アカペラ】アポリア/ヨルシカ　歌ってみた【幽音しの / ななしいんく】#shorts」→ アポリア / ヨルシカ
     """
-    body = _TITLE_TAGS.sub("", title)
+    body = _TITLE_TAGS.sub("", remove_invisible(title))
     body = _TITLE_TAIL.sub("", body)
     split = split_song_text(body)
     split.title = _TITLE_NOISE.sub("", split.title).strip()

@@ -3,7 +3,7 @@
 import pytest
 
 from src.core.links import build_link, seconds_to_start, start_to_seconds
-from src.core.text import normalize_for_match, reading_sort_key, to_hiragana
+from src.core.text import normalize_for_match, reading_sort_key, remove_invisible, to_hiragana
 
 
 class TestNormalize:
@@ -14,12 +14,27 @@ class TestNormalize:
         ("Ｂｌｕｅ　Ｓｋｙ", "blue sky"),
         ("Eve feat. 初音ミク", "eve feat.初音ミク"),
         ("ドライフラワー", "どらいふらわー"),
+        ("​春​擬き​", "春擬き"),
     ])
     def test_same_after_normalize(self, a, b):
         assert normalize_for_match(a) == normalize_for_match(b)
 
     def test_empty(self):
         assert normalize_for_match("") == ""
+
+
+class TestRemoveInvisible:
+    def test_removes_format_chars(self):
+        # ゼロ幅スペース・単語結合子・BOM・左右の向きの印
+        assert remove_invisible("​春⁠擬き﻿‎") == "春擬き"
+
+    def test_keeps_visible_text(self):
+        text = "Blue Sky / 夜明けの歌　(1chorus) 🎵"
+        assert remove_invisible(text) == text
+
+    def test_empty(self):
+        assert remove_invisible("") == ""
+        assert remove_invisible(None) == ""
 
 
 class TestReadingSortKey:

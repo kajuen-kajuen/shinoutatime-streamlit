@@ -20,15 +20,27 @@ def to_hiragana(text: str) -> str:
     )
 
 
+def remove_invisible(text: str) -> str:
+    """
+    見えない書式文字(Unicode のカテゴリ Cf)を取り除く
+
+    ゼロ幅スペース(U+200B)・単語結合子(U+2060)・BOM(U+FEFF)など。
+    コメントに混じると、見た目は同じでも既存の曲に当たらなくなる。
+    """
+    if not text:
+        return ""
+    return "".join(ch for ch in text if unicodedata.category(ch) != "Cf")
+
+
 def normalize_for_match(text: str) -> str:
     """
     表記の揺れを照合するための正規化
 
-    NFKC(全角英数 → 半角など)、小文字化、空白の除去、カタカナ → ひらがな。
+    NFKC(全角英数 → 半角など)、見えない文字の除去、小文字化、空白の除去、カタカナ → ひらがな。
     """
     if not text:
         return ""
-    text = unicodedata.normalize("NFKC", text).lower()
+    text = remove_invisible(unicodedata.normalize("NFKC", text)).lower()
     text = _SPACES.sub("", text)
     return to_hiragana(text)
 

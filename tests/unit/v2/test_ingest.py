@@ -120,6 +120,16 @@ class TestParser:
         assert rows.loc[0, "song_id"] == "s0001"
         assert rows.loc[3, "part"] == "1chorus"
 
+    def test_invisible_chars_are_removed(self, sample_dataset):
+        """ゼロ幅スペースなどが混じっても、きれいな値になり、既存の曲に当たる(2026年5月の歌枠のコメント)"""
+        comment = "​​1:14:58   ​はじまりの歌​/テストバンド/2015​​"
+        line = extract_timestamp_lines(comment)[0]
+        assert line.start == "1:14:58"
+        assert "​" not in line.raw_line
+        rows = build_staged_rows(sample_dataset, [line])
+        assert (rows.loc[0, "raw_title"], rows.loc[0, "raw_artist"]) == ("はじまりの歌", "テストバンド")
+        assert (rows.loc[0, "match"], rows.loc[0, "song_id"]) == ("alias", "s0001")
+
     def test_content_row(self):
         row = build_content_row(make_capture())
         assert (row["date"], row["start_time"], row["default_style"]) == ("2025-05-01", "20:00", "弾き語り")
@@ -225,6 +235,7 @@ class TestTitleDraft:
         ("【歌ってみた】架空の歌/deco*00 　ひとこと【幽音しの】#架空", "架空の歌", "deco*00", "音源"),
         ("【弾き語り】月の歌/架空シンガー　弾き語りで歌ってみたよ!【幽音しの】", "月の歌", "架空シンガー", "弾き語り"),
         ("【アカペラ】　春の歌／架空バンド　春だから歌ってみたよ　#shorts", "春の歌", "架空バンド", "アカペラ"),
+        ("【弾き語り】​風の歌⁠/架空バンド﻿ #shorts", "風の歌", "架空バンド", "弾き語り"),
     ])
     def test_song_from_title(self, title, song, artist, style):
         split = song_from_title(title)
