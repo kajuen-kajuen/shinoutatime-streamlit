@@ -53,6 +53,15 @@ TwitterのツイートURLから埋め込みコードを自動的に取得し、�
 
 1. **コマンドラインインターフェース（CLI）**
    - スクリプトやバッチ処理での自動化に最適
+2. **Streamlit管理画面（UI）**
+   - ブラウザから操作する(ローカル専用。`pages/*_Admin.py` は Git 管理外)
+
+詳細は「[Twitter埋め込みコード自動取得機能](#twitter埋め込みコード自動取得機能)」セクションを参照してください。
+
+#### Excel to TSV変換ツール(旧フロー)
+
+> 【旧フロー】v1 のデータ(`data/*.TSV`・`data.xlsx`)の仕組みです。v2(`data/v2/`)への切り替えが進行中で、切り替え後は使いません。今後のデータの追加は [`docs/prompts/update-data.md`](docs/prompts/update-data.md)。
+
 **主な機能:**
 - ✅ Excelファイルからの自動TSV生成
 - ✅ データ検証機能（フィールド数、データ型、URL形式）
@@ -63,9 +72,9 @@ TwitterのツイートURLから埋め込みコードを自動的に取得し、�
 
 詳細は「[Excel to TSV変換ツール](#excel-to-tsv変換ツール管理者向け)」セクションを参照してください。
 
-#### アーティスト名ソート修正機能
+#### アーティスト名ソート修正機能(旧フロー)
 
-V_SONG_LIST.TSVのアーティスト名（ソート用）が誤っている場合に修正できる機能です。
+V_SONG_LIST.TSVのアーティスト名（ソート用）が誤っている場合に修正できる機能です。v2 では、アーティストの読みは `data/v2/artists.tsv` の `sort_name` に持ちます。
 
 **主な機能:**
 - ✅ 誤ったソート名の手動修正
@@ -100,7 +109,7 @@ docker exec shinoutatime-streamlit-shinouta-time-1 python -m src.cli.artist_sort
 
 | 方法 | メリット | デメリット |
 |-----|---------|-----------|
-| **Docker Compose（推奨）** | ・ローカル環境にPythonや依存パッケージをインストール不要<br>・本番環境（Python 3.14）と同じ環境を再現<br>・環境のクリーンアップが容易<br>・`docker-compose up`コマンド一つで起動 | ・Dockerのインストールが必要<br>・初回起動時にイメージのビルドが必要 |
+| **Docker Compose（推奨）** | ・ローカル環境にPythonや依存パッケージをインストール不要<br>・本番環境（Python 3.14）と同じ環境を再現<br>・環境のクリーンアップが容易<br>・`docker compose up`コマンド一つで起動 | ・Dockerのインストールが必要<br>・初回起動時にイメージのビルドが必要 |
 | **Python 仮想環境** | ・Dockerが不要<br>・軽量で高速 | ・ローカル環境にPython 3.14のインストールが必要<br>・依存パッケージの管理が必要<br>・環境の分離が不完全 |
 
 **推奨**: ローカル環境を汚さず、本番環境と同じ構成で動作させるため、**Docker Compose を使用する方法**を推奨します。
@@ -123,7 +132,7 @@ cd <repository-directory>
 #### 2. Docker Compose で起動
 
 ```bash
-docker-compose up
+docker compose up
 ```
 
 初回起動時は、Dockerイメージのビルドが行われるため、数分かかる場合があります。
@@ -145,7 +154,7 @@ scripts/verify_environment.bat
 または、手動でテストを実行：
 
 ```bash
-docker-compose exec shinouta-time pytest tests/integration/test_environment_verification.py -v
+docker compose exec shinouta-time pytest tests/integration/test_environment_verification.py -v
 ```
 
 全てのテストが成功すれば、環境構築は完了です。
@@ -161,7 +170,7 @@ docker-compose exec shinouta-time pytest tests/integration/test_environment_veri
 コンテナを完全に削除するには：
 
 ```bash
-docker-compose down
+docker compose down
 ```
 
 #### 環境変数の設定（オプション）
@@ -287,11 +296,17 @@ streamlit run Home.py
 
 本アプリケーションは、`data/` ディレクトリ内のTSV（タブ区切り）ファイルからデータを読み込みます。
 
+データは2つが並んでいます。
+- **v1(今の画面が読む)**: `data/*.TSV`・`data.xlsx`。下の表はこちらの説明です。
+- **v2(今後の正本)**: `data/v2/` の5つのテーブル(contents・artists・songs・performances・aliases)。YouTube などから取り込みの CLI で追加します。今は確認用のページだけが読みます。本番の画面の切り替えはこれからです。形の決まりは [`docs/specs/data-model.md`](docs/specs/data-model.md)、追加の手順は [`docs/prompts/update-data.md`](docs/prompts/update-data.md)。
+
 ### ディレクトリ構造
 
 ```
 data/
-├── data.xlsx                   # 入力用Excelファイル（管理者向け）
+├── v2/                         # v2 のテーブル(TSV。取り込みの CLI で書く)
+├── ingest/                     # 取り込み: skipped.tsv(曲なしの記録、Git 管理)、cache/・staged/(Git 管理外)
+├── data.xlsx                   # 入力用Excelファイル（v1、管理者向け）
 ├── M_YT_LIVE.TSV               # 配信データ
 ├── M_YT_LIVE_TIMESTAMP.TSV     # 楽曲タイムスタンプデータ
 ├── V_SONG_LIST.TSV             # 楽曲リストデータ
@@ -383,7 +398,7 @@ python -m src.cli.twitter_embed_cli -v https://twitter.com/user/status/123
 
 ```bash
 # Docker Composeを使用
-docker-compose exec shinouta-time python -m src.cli.twitter_embed_cli \
+docker compose exec shinouta-time python -m src.cli.twitter_embed_cli \
   https://twitter.com/user/status/1234567890
 ```
 
@@ -448,6 +463,8 @@ TWITTER_API_RETRY_DELAY=1.0
 
 ## Excel to TSV変換ツール（管理者向け）
 
+> 【旧フロー】この節は v1 のデータ(`data/*.TSV`・`data.xlsx`)の手順です。v2(`data/v2/`)への切り替えが進行中で、切り替え後は使いません。今後のデータの追加は [`docs/prompts/update-data.md`](docs/prompts/update-data.md)。
+
 ### 概要
 
 Excel to TSV変換ツールは、Excelファイル（data.xlsx）から2つのTSVファイル（M_YT_LIVE.TSVとM_YT_LIVE_TIMESTAMP.TSV）を自動生成し、さらに既存のsong_list_generatorツールを呼び出してV_SONG_LIST.TSVを生成する一連の処理を自動化します。
@@ -471,7 +488,7 @@ Excel to TSV変換ツールは、Excelファイル（data.xlsx）から2つのTS
 python -m src.cli.excel_to_tsv_cli
 
 # Docker環境
-docker-compose exec shinouta-time python -m src.cli.excel_to_tsv_cli
+docker compose exec shinouta-time python -m src.cli.excel_to_tsv_cli
 ```
 
 デフォルトでは、`data/data.xlsx`を読み込み、`data/`ディレクトリに以下のファイルを生成します：
@@ -522,10 +539,10 @@ python -m src.cli.excel_to_tsv_cli --verbose
 
 ```bash
 # 基本的な実行
-docker-compose exec shinouta-time python -m src.cli.excel_to_tsv_cli
+docker compose exec shinouta-time python -m src.cli.excel_to_tsv_cli
 
 # カスタムオプション付き
-docker-compose exec shinouta-time python -m src.cli.excel_to_tsv_cli \
+docker compose exec shinouta-time python -m src.cli.excel_to_tsv_cli \
   --input-file data/custom.xlsx \
   --verbose
 ```
@@ -730,40 +747,51 @@ python -m src.cli.excel_to_tsv_cli
 ├── .devcontainer/          # Dev Container設定
 ├── .github/                # GitHub設定
 ├── .streamlit/             # Streamlit設定
+├── .claude/skills/         # AI エージェント向けのスキルの入口(本体は docs/prompts/)
 ├── data/                   # データファイル
-│   ├── backups/            # バックアップ
-│   ├── data.xlsx           # 入力データ
-│   └── *.TSV               # 生成されたTSVファイル
-├── docs/                   # ドキュメント
+│   ├── v2/                 # v2 のテーブル(今後の正本)
+│   ├── ingest/             # 取り込み(skipped.tsv。cache/・staged/ は Git 管理外)
+│   ├── backups/            # バックアップ(v1)
+│   ├── data.xlsx           # 入力データ(v1)
+│   └── *.TSV               # 生成されたTSVファイル(v1)
+├── docs/                   # ドキュメント(一覧は docs/README.md)
 │   ├── architecture/       # アーキテクチャドキュメント
 │   ├── development/        # 開発関連ドキュメント
 │   ├── guides/             # ガイド
-│   └── testing/            # テスト関連
-├── pages/                  # Streamlitページ
+│   ├── prompts/            # AI エージェント向けの手順(スキルの本体)
+│   ├── specs/              # 仕様書(data-model.md など)
+│   ├── testing/            # テスト関連
+│   └── archive/            # 古い仕様
+├── pages/                  # Streamlitページ(*_Admin.py・*_Preview.py はローカル専用)
 ├── scripts/                # 実行スクリプト
 ├── src/                    # ソースコード
-│   ├── cli/                # CLIツール
+│   ├── cli/                # CLIツール(v2 の ingest・data を含む)
 │   ├── clients/            # 外部APIクライアント
 │   ├── config/             # 設定
-│   ├── core/               # コア機能
+│   ├── core/               # コア機能(v2 の集計 views.py を含む)
 │   ├── exceptions/         # 例外定義
-│   ├── models/             # データモデル
+│   ├── ingest/             # v2 の取り込み(YouTube API・コメントの解析・下書き・曲なしの記録)
+│   ├── models/             # データモデル(v2 のテーブル定義 schema.py を含む)
 │   ├── repositories/       # データアクセス層
 │   ├── services/           # ビジネスロジック
-│   ├── ui/                 # UI コンポーネント
+│   ├── ui/                 # UI(components/・pages/・styles/)
 │   └── utils/              # ユーティリティ
 ├── tests/                  # テスト
+│   ├── e2e/                # ページの起動(Streamlit の AppTest)
 │   ├── fixtures/           # テストフィクスチャ
 │   ├── integration/        # 統合テスト
-│   ├── manual/             # 手動テスト
+│   ├── performance/        # 性能テスト(--runslow のときだけ)
 │   ├── property/           # プロパティベーステスト
-│   └── unit/               # ユニットテスト
+│   └── unit/               # ユニットテスト(v2 は unit/v2)
+├── tools/check-rules.sh    # 絶対制約の確認(読み取り専用)
 ├── .gitignore              # Git除外設定
 ├── docker-compose.yml      # Docker Compose設定
 ├── Dockerfile              # Dockerイメージ定義
 ├── Home.py                 # Streamlitメインページ
 ├── README.md               # プロジェクト概要
-└── requirements.txt        # Python依存関係
+├── requirements.txt        # Python依存関係(本番。Streamlit Cloud はこれだけを読む)
+├── requirements-tools.txt  # データ生成の CLI 用
+└── requirements-dev.txt    # テスト用(コンテナはこれを入れる)
 ```
 
 ### モジュール構造の説明
@@ -786,6 +814,11 @@ python -m src.cli.excel_to_tsv_cli
   - `SearchService`クラス: キーワード検索、複数フィールド検索、大文字小文字を区別しない検索
   - 複数条件によるフィルタリング機能
 
+- **song_list_service.py**: 楽曲リスト(Song List)の生成
+  - `SongListService`クラス: 配信・楽曲データから `V_SONG_LIST.TSV` を作る(v1)
+
+- **excel_to_tsv_service.py**・**twitter_embed_service.py**: Excel から TSV への変換(v1)と、Twitter 埋め込みコードの取得
+
 ##### core/（コア機能層）
 
 データ処理パイプラインとユーティリティ関数を格納します。
@@ -801,15 +834,31 @@ python -m src.cli.excel_to_tsv_cli
   - `generate_song_numbers()`: 曲目番号の自動生成
   - `convert_date_string()`: 日付文字列の変換
 
+- **v2 の部品**(仕様は [`docs/specs/data-model.md`](docs/specs/data-model.md))
+  - **views.py**: 歌唱の一覧と曲ごとの集計を、5つのテーブルから計算する
+  - **validation.py**・**dataset_ops.py**: テーブルの検査と、値の修正・曲順の振り直し・まとめ
+  - **text.py**・**links.py**: 照合用の文字列のならし・読みの並べ方と、リンクの組み立て
+
+##### ingest/（v2 の取り込み）
+
+YouTube などの取得結果から歌唱を読み取り、`data/v2/` に追記するための部品です(`python -m src.cli.ingest`)。
+
+- **youtube_api.py**: YouTube Data API からの取得(月ごとの一覧、1本の取得、本人以外のチャンネルの検索)
+- **parser.py**: 職人さんのコメントの選び方、時刻の行の分け方、既存の曲との照合
+- **staging.py**: 下書き(`data/ingest/staged/`)の読み書きと、`data/v2/` への追記
+- **skips.py**: 曲の無いコンテンツの記録(`data/ingest/skipped.tsv`)
+
 ##### ui/（UIコンポーネント層）
 
 再利用可能なUIコンポーネントを格納します。
 
-- **components.py**: Streamlit UIコンポーネント
+- **components/**: Streamlit UIコンポーネント(`__init__.py`)とフッター(`footer.py`)
   - `render_search_form()`: 検索フォームの表示
   - `render_results_table()`: 検索結果テーブルの表示
   - `render_pagination()`: ページネーション（段階的表示）
   - `render_twitter_embed()`: Twitter埋め込み表示
+- **pages/home_page.py**: Home の画面(`HomePage`。`Home.py` から呼ぶ)
+- **styles/style.css**: 画面のスタイル
 
 ##### config/（設定管理層）
 
@@ -838,7 +887,7 @@ python -m src.cli.excel_to_tsv_cli
 ## 技術スタック
 
 - **フレームワーク**: Streamlit
-- **プログラミング言語**: Python 3.x
+- **プログラミング言語**: Python 3.14(Docker イメージ `python:3.14.8-slim-trixie`)
 - **データ処理**: Pandas
 - **データ形式**: TSV (Tab-Separated Values)
 - **スタイリング**: CSS
@@ -847,6 +896,9 @@ python -m src.cli.excel_to_tsv_cli
 
 `docs/` ディレクトリに、より詳細なドキュメントがあります。
 
+- **`docs/README.md`**: ドキュメントの一覧
+- **`docs/specs/`**: 仕様書(データモデル v2 は `data-model.md`)
+- **`docs/prompts/`**: AI エージェント向けの手順(データの取り込みは `update-data.md`)
 - **`docs/guides/`**: ユーザーおよび開発者向けのガイド
 - **`docs/architecture/`**: システムアーキテクチャ関連のドキュメント
 - **`docs/development/`**: 開発プロセスや規約に関するドキュメント
@@ -886,9 +938,9 @@ python -m src.cli.excel_to_tsv_cli
 
 ## 🛠️ ツールとスクリプト
 
-### Excel to TSV変換ツール
+### Excel to TSV変換ツール(旧フロー)
 
-`data/data.xlsx` からTSVファイルを自動生成する統合ツールです。
+`data/data.xlsx` からTSVファイルを自動生成する統合ツールです。v1 のデータ用で、v2 への切り替え後は使いません。
 
 **使い方:**
 1. `data/data.xlsx` を `data/` フォルダに配置します。

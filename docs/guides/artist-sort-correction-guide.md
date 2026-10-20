@@ -1,5 +1,7 @@
 # アーティスト名ソート修正機能 使い方
 
+> 【旧フロー】この文書は v1 のデータ(`data/*.TSV`・`data.xlsx`)の手順です。v2(`data/v2/`)への切り替えが進行中で、切り替え後は使いません。v2 では、アーティストの読みは `data/v2/artists.tsv` の `sort_name` に持ち、`python -m src.cli.data set artists <artist_id> sort_name <読み>` で直します([`docs/specs/data-model.md`](../specs/data-model.md))。
+
 ## 概要
 
 この機能は、V_SONG_LIST.TSVのアーティスト名（ソート用）が誤っている場合に修正できる仕組みを提供します。

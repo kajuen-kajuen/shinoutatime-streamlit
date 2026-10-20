@@ -1,5 +1,7 @@
 # データ管理ガイド
 
+> 【旧フロー】この文書は v1 のデータ(`data/*.TSV`・`data.xlsx`)の手順です。v2(`data/v2/`)への切り替えが進行中で、切り替え後は使いません。今後のデータの追加は [`docs/prompts/update-data.md`](prompts/update-data.md)、データの形は [`docs/specs/data-model.md`](specs/data-model.md) を見てください。
+
 ## 概要
 
 本ドキュメントは、「しのうたタイム」アプリケーションで使用するデータファイルの管理方法を説明します。データは全てTSV（タブ区切り）形式で保存されており、手動での更新・追加が可能です。
@@ -192,7 +194,7 @@ Twitter埋め込みの表示高さを設定するファイルです。
     ```
     - このコマンドは、`M_YT_LIVE.TSV`、`M_YT_LIVE_TIMESTAMP.TSV`、`V_SONG_LIST.TSV`を生成・更新します。
     - 各TSVファイルは更新前に自動的にバックアップされます。
-    - 詳細は [Excel to TSV変換ガイド](../guides/excel-to-tsv-guide.md) を参照してください。
+    - 詳細は [Excel to TSV変換ガイド](guides/excel-to-tsv-guide.md) を参照してください。
 
 ### Twitter埋め込みコードの更新
 
@@ -202,12 +204,12 @@ Twitterの埋め込みコードは、以下のCLIツールまたはStreamlit管�
 ```bash
 docker-compose exec shinouta-time python -m src.cli.twitter_embed_cli [ツイートURL...]
 ```
-- 詳細は [Twitter埋め込みコード自動取得システム](../twitter-embed-automation.md) を参照してください。
+- 詳細は [Twitter埋め込みコード自動取得システム](archive/specs/twitter-embed-automation/design.md) を参照してください。
 
 #### Streamlit管理画面 (UI)
 1. Streamlitアプリケーションを起動し、サイドバーから「Twitter Embed Admin」ページにアクセスします。
 2. 管理者パスワードを入力してログインし、ツイートURLを入力して更新します。
-- 詳細は [Twitter埋め込みコード管理画面 使用ガイド](../twitter-embed-admin-guide.md) を参照してください。
+- 詳細は [Twitter埋め込みコード管理画面 使用ガイド](archive/specs/twitter-embed-automation/design.md) を参照してください。
 
 ### タイムスタンプ付きURLの作成方法
 
