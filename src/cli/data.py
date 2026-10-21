@@ -8,6 +8,8 @@
   python -m src.cli.data [--dir data/v2] merge-song <残す song_id> <消す song_id>
   python -m src.cli.data [--dir data/v2] merge-artist <残す artist_id> <消す artist_id>
   python -m src.cli.data [--dir data/v2] set <テーブル> <主キー> <列> <値>   # 例: set songs s0003 kind オリジナル
+  python -m src.cli.data [--dir data/v2] add-artist <名前> [--sort-name <読み>]   # 振った ID を表示する
+  python -m src.cli.data [--dir data/v2] drop-artist <artist_id>   # どの曲からも参照されていないときだけ消す
   python -m src.cli.data [--dir data/v2] normalize   # 並べ直して保存し直す
 """
 
@@ -90,6 +92,21 @@ def cmd_set(repo: TableRepository, args) -> int:
     return _save_after(repo, dataset)
 
 
+def cmd_add_artist(repo: TableRepository, args) -> int:
+    dataset = repo.load()
+    artist_id = dataset_ops.add_artist(dataset, args.name, args.sort_name)
+    reading = f"({args.sort_name.strip()})" if args.sort_name.strip() else ""
+    print(f"{artist_id} を足しました: {args.name.strip()}{reading}")
+    return _save_after(repo, dataset)
+
+
+def cmd_drop_artist(repo: TableRepository, args) -> int:
+    dataset = repo.load()
+    name = dataset_ops.drop_artist(dataset, args.artist_id)
+    print(f"{args.artist_id}({name})を消しました")
+    return _save_after(repo, dataset)
+
+
 def cmd_normalize(repo: TableRepository, args) -> int:
     return _save_after(repo, repo.load())
 
@@ -118,6 +135,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("column")
     p.add_argument("value", help="新しい値(空にするときは \"\")")
     p.set_defaults(func=cmd_set)
+    p = sub.add_parser("add-artist", help="アーティストを1人足す(同じ名前がいれば足さない)")
+    p.add_argument("name")
+    p.add_argument("--sort-name", default="", help="読み(ひらがな。英字の名前は空でよい)")
+    p.set_defaults(func=cmd_add_artist)
+    p = sub.add_parser("drop-artist", help="どの曲からも参照されていないアーティストを消す")
+    p.add_argument("artist_id")
+    p.set_defaults(func=cmd_drop_artist)
     sub.add_parser("normalize", help="決まった順に並べ直して保存し直す").set_defaults(func=cmd_normalize)
     return parser
 

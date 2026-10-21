@@ -75,6 +75,42 @@ class TestMerge:
             dataset_ops.merge_song(sample_dataset, "s0001", "s9999")
 
 
+class TestArtists:
+    def test_add_artist(self, sample_dataset):
+        assert dataset_ops.add_artist(sample_dataset, " 新しいバンド ", "あたらしいばんど") == "a0003"
+        row = sample_dataset["artists"].set_index("artist_id").loc["a0003"]
+        assert (row["name"], row["sort_name"]) == ("新しいバンド", "あたらしいばんど")
+        # まだどの曲も参照していないので、使われていないアーティストの warning に出る
+        assert any(i.table == "artists" and "a0003" in i.message for i in validate_dataset(sample_dataset))
+
+    def test_add_artist_then_reassign_song(self, sample_dataset):
+        artist_id = dataset_ops.add_artist(sample_dataset, "Beta")
+        dataset_ops.set_value(sample_dataset, "songs", "s0002", "artist_id", artist_id)
+        # a0002 が使われなくなる以外の問題は無い
+        assert [i for i in validate_dataset(sample_dataset) if i.level == "error"] == []
+
+    @pytest.mark.parametrize("name", ["テストバンド", "てすとバンド", "ALPHA", "Ａｌｐｈａ", "  "])
+    def test_add_artist_rejects_same_or_empty_name(self, sample_dataset, name):
+        with pytest.raises(ValueError):
+            dataset_ops.add_artist(sample_dataset, name)
+        assert len(sample_dataset["artists"]) == 2
+
+    def test_drop_unused_artist(self, sample_dataset):
+        dataset_ops.add_artist(sample_dataset, "Beta")
+        dataset_ops.add_artist(sample_dataset, "Gamma")
+        assert dataset_ops.drop_artist(sample_dataset, "a0003") == "Beta"
+        assert list(sample_dataset["artists"]["artist_id"]) == ["a0001", "a0002", "a0004"]
+
+    def test_drop_used_artist_raises(self, sample_dataset):
+        with pytest.raises(ValueError, match="s0001"):
+            dataset_ops.drop_artist(sample_dataset, "a0001")
+        assert len(sample_dataset["artists"]) == 2
+
+    def test_drop_unknown_artist_raises(self, sample_dataset):
+        with pytest.raises(ValueError):
+            dataset_ops.drop_artist(sample_dataset, "a9999")
+
+
 class TestPerformanceView:
     def test_order_newest_day_first_then_earlier_content_then_seq(self, sample_dataset):
         """日付は新しい順。同じ日(2025-05-01)は早い時間(20:00 の AAAA)が上。今の Home と同じ"""

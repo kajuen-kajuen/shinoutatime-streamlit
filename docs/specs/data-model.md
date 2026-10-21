@@ -132,6 +132,8 @@ contents ┐                         artists
 | セットリストの途中に曲を足す | 間の `seq` を使う(20 と 30 の間なら 25)。詰まったら `data renumber <content_id>` |
 | 同じ曲・アーティストが2つあった | `data merge-song <残す> <消す>` / `data merge-artist`。消した ID は再利用しない。元の表記は aliases に残る |
 | 値の修正 | `data set <テーブル> <主キー> <列> <値>` で直す(例: `data set songs s0001 work "…"`。主キーが複数の列なら `yt:xxx,20` のようにカンマで区切る)。キーは変わらない。主キーの列は直せない |
+| 曲を、まだいないアーティストに付け替える | `data add-artist <名前> [--sort-name <読み>]` で足し(振った ID が出る)、`data set songs <song_id> artist_id <その ID>`。既存のアーティストを改名して代わりにしない(ほかの曲まで変わる) |
+| 使われなくなったアーティスト | `data drop-artist <artist_id>`。どの曲からも参照されていないときだけ消せる。ID は最大値+1 で振るので、いちばん大きい ID を消すと次に足したときに同じ ID が使われる(merge-artist も同じ)。いちばん大きい ID は消さない |
 
 ### 3.5 取り込み(`src/ingest/`、`python -m src.cli.ingest`)
 
@@ -218,9 +220,10 @@ contents ┐                         artists
 | `data set <テーブル> <主キー> <列> <値>` | 値の修正(3.4) |
 | `data renumber <content_id>` | 曲順を 10, 20, 30… に振り直す |
 | `data merge-song <残す> <消す>` / `data merge-artist <残す> <消す>` | 同じだった曲・アーティストをまとめる |
+| `data add-artist <名前> [--sort-name <読み>]` / `data drop-artist <artist_id>` | アーティストを足す(同じ名前がいれば足さない) / 使われなくなったアーティストを消す(3.4) |
 | `data normalize` | 決まった順に並べ直して保存し直す |
 
-`data` の書き込み(`set`・`renumber`・`merge-*`・`normalize`)は、検査を通ったときだけ保存します。
+`data` の書き込み(`set`・`renumber`・`merge-*`・`add-artist`・`drop-artist`・`normalize`)は、検査を通ったときだけ保存します。
 
 ### 3.6 エッジケース
 

@@ -1,7 +1,7 @@
 """
 データモデル v2 の操作
 
-ID の採番、曲順(seq)の振り直し、重複した曲・アーティストのまとめ。
+ID の採番、曲順(seq)の振り直し、重複した曲・アーティストのまとめ、アーティストの追加と削除。
 どの操作も Dataset を書き換えるだけで、保存は TableRepository.save で行う。
 """
 
@@ -9,6 +9,7 @@ from typing import List
 
 import pandas as pd
 
+from src.core.text import normalize_for_match
 from src.models.schema import SEQ_STEP
 from src.repositories.table_repository import Dataset
 
@@ -119,3 +120,46 @@ def merge_artist(dataset: Dataset, keep_id: str, drop_id: str) -> int:
     dataset["songs"] = songs
     dataset["artists"] = artists[artists["artist_id"] != drop_id]
     return moved
+
+
+def add_artist(dataset: Dataset, name: str, sort_name: str = "") -> str:
+    """
+    アーティストを1人足す。振った artist_id を返す
+
+    同じ名前(normalize_for_match で同じ。取り込みの照合と同じ判定)のアーティストがいれば足さない。
+    """
+    name = name.strip()
+    if not name:
+        raise ValueError("名前を入れてください")
+    artists = dataset["artists"]
+    same = artists[artists["name"].map(normalize_for_match) == normalize_for_match(name)]
+    if not same.empty:
+        row = same.iloc[0]
+        raise ValueError(f"アーティスト「{row['name']}」は既にいます({row['artist_id']})")
+    artist_id = next_id(artists["artist_id"], "a")
+    row = {"artist_id": artist_id, "name": name, "sort_name": sort_name.strip()}
+    dataset["artists"] = pd.concat([artists, pd.DataFrame([row])], ignore_index=True).fillna("")
+    return artist_id
+
+
+def drop_artist(dataset: Dataset, artist_id: str) -> str:
+    """
+    どの曲からも参照されていないアーティストを消す。消したアーティストの名前を返す
+
+    ID は最大値+1 で振るので、いちばん大きい ID を消すと、次に足したときに同じ ID が使われる
+    (merge_artist でも同じ)。消した ID は再利用しない決まりなので、いちばん大きい ID は消さない運用にする。
+    """
+    artists = dataset["artists"]
+    hit = artists[artists["artist_id"] == artist_id]
+    if hit.empty:
+        raise ValueError(f"アーティスト {artist_id} がいません")
+    songs = dataset["songs"]
+    used = list(songs.loc[songs["artist_id"] == artist_id, "song_id"])
+    if used:
+        more = "…" if len(used) > 5 else ""
+        raise ValueError(
+            f"{artist_id} は曲 {', '.join(used[:5])}{more} から参照されています。"
+            f"merge-artist か set songs <song_id> artist_id で付け替えてから消してください"
+        )
+    dataset["artists"] = artists[artists["artist_id"] != artist_id]
+    return hit.iloc[0]["name"]
