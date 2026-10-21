@@ -339,11 +339,12 @@ docker-compose up
 
 ### ブランチ戦略
 
-- **develop**: 開発用ブランチ（ステージング環境: stg-shinoutatime.streamlit.app）
+- **develop**: ステージング用ブランチ（stg-shinoutatime.streamlit.app）
 - **main**: 本番用ブランチ（本番環境: shinoutatime.streamlit.app）
-- **update-data**: データファイル更新専用ブランチ
+- **update-data**: データ v2 の更新(取り込み)用ブランチ
+- **feature/xxx・fix/xxx**: 用件ごとの作業ブランチ(`origin/develop` から作り、develop → main の順に出す)
 
-詳細は`BRANCH_STRATEGY.md`を参照してください。
+詳細は [`docs/development/BRANCH_STRATEGY.md`](docs/development/BRANCH_STRATEGY.md) を参照してください。
 
 ## 追加情報
 

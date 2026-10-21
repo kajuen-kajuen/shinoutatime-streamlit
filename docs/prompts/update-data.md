@@ -166,6 +166,7 @@ URL が無いときは、`python -m src.cli.ingest status` の「未処理」を
 ## 終わりの型
 
 `sh tools/check-rules.sh` → `data validate` → `_commands.md` のテスト → 差分の要約 → 【要確認】【仮定】の一覧。
+作業ブランチは `update-data`(`origin/develop` から作り直す。[`docs/development/BRANCH_STRATEGY.md`](../development/BRANCH_STRATEGY.md))。
 コミットは私が指示したときだけ行う。push はしない(定期実行は、`data/auto-*` ブランチと PR だけ)。
 
 ## ブラウザでの取得の依頼文(Claude.ai やブラウザを操作できる Claude に渡す)

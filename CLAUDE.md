@@ -24,7 +24,7 @@ VTuber「幽音しの」さんの配信で歌われた楽曲を検索し、YouTu
 
 - 本番: `main` → https://shinoutatime.streamlit.app/
 - ステージング: `develop` → https://stg-shinoutatime.streamlit.app/
-- データ更新用のブランチ: `update-data`(デプロイなし)。詳細は [`docs/development/BRANCH_STRATEGY.md`](docs/development/BRANCH_STRATEGY.md)。データの取り込みの手順は `/update-data` スキル([`docs/prompts/update-data.md`](docs/prompts/update-data.md))
+- データ v2 の更新用のブランチ: `update-data`(デプロイなし。`origin/develop` から作り直して使い、develop → main で出す)。コードの作業ブランチは用件ごとに `origin/develop` から作る。詳細は [`docs/development/BRANCH_STRATEGY.md`](docs/development/BRANCH_STRATEGY.md)。データの取り込みの手順は `/update-data` スキル([`docs/prompts/update-data.md`](docs/prompts/update-data.md))
 - `.github/workflows/wake_up_streamlit.yml` が 6 時間ごとに本番をブラウザ(Playwright。`tools/wake_up_streamlit.py`)で開き、スリープしていれば起こす(stg は対象外。テストの CI は無い。詳細は `docs/deployment.md`)
 
 ## 技術スタック

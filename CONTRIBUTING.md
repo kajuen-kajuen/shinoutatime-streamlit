@@ -43,8 +43,8 @@ sh tools/check-rules.sh                                # 絶対制約の確認(�
 |---|---|---|
 | `main` | 本番(https://shinoutatime.streamlit.app/) | push すると自動で反映される。持ち主だけが統合・push する |
 | `develop` | ステージング(https://stg-shinoutatime.streamlit.app/) | 同上 |
-| `feature/xxx`・`fix/xxx` など | なし | ここで作業する |
-| `update-data` | なし | v1 のデータの更新用 |
+| `feature/xxx`・`fix/xxx` など | なし | ここで作業する。用件ごとに `origin/develop` から作り、develop に出したら消す |
+| `update-data` | なし | データ v2 の更新(取り込み)用。使うたびに `origin/develop` から作り直し、develop → main で出す |
 
 詳しくは [`docs/development/BRANCH_STRATEGY.md`](docs/development/BRANCH_STRATEGY.md)。
 
