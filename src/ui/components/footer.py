@@ -28,12 +28,12 @@ def display_footer():
     この関数は、アプリケーションの全ページで共通のフッターを表示します。
     フッターには以下の要素が含まれます：
     - 水平区切り線（---）
-    - クレジット表示（「Streamlit アプリケーション by Gemini」）
+    - クレジット表示（「Made with Streamlit」）
     - 連絡先情報（質問・バグ報告先のTwitterアカウント）
     
     表示内容:
         - 区切り線: ページコンテンツとフッターを視覚的に分離
-        - クレジット: アプリケーションの作成者情報
+        - クレジット: アプリケーションを作っている道具(Streamlit)
         - 連絡先: サイトに関する質問やバグ報告の連絡先（@kajuen_kajuen）
     
     使用方法:
@@ -68,7 +68,7 @@ def display_footer():
     要件: 12.1, 12.2, 12.3
     """
     st.markdown("---")
-    st.caption("Streamlit アプリケーション by Gemini")
+    st.caption("Made with Streamlit")
     st.caption(
         "本サイトに関する質問・バグの報告などは[@kajuen_kajuen](https://x.com/kajuen_kajuen)までお願いします。"
     )
