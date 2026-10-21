@@ -3,6 +3,8 @@
 # Application logs
 logs/
 *.log
+# Streamlit Community Cloud の「Manage app」から落としたログ(リポジトリの直下に置いて読む)
+logs-*.txt
 
 # Backup files
 data/backups/
