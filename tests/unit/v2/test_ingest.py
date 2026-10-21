@@ -1,12 +1,13 @@
 """取り込み(取得結果・下書き・追記・YouTube API)のテスト。コメントはすべて架空"""
 
+from datetime import datetime
 from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
 
 from src.core.validation import validate_dataset
-from src.ingest.capture import Capture, Comment, from_ytdlp_info, load_capture, save_capture
+from src.ingest.capture import JST, Capture, Comment, from_ytdlp_info, load_capture, save_capture
 from src.ingest.parser import (build_content_row, build_rows_from_title, build_staged_rows, choose_comment,
                                extract_timestamp_lines, match_song, song_from_title, split_feat,
                                split_song_text, style_hint)
@@ -425,6 +426,26 @@ class TestYouTubeApi:
         assert windows[-1][1] == "2025-06-01T00:00:00+09:00"
         assert all(a[1] == b[0] for a, b in zip(windows, windows[1:]))  # 区間に隙間が無い
         assert len(windows) == 5  # 7日ずつ(31日 → 5区間)
+
+    def test_search_other_channels_stops_at_now_in_current_month(self):
+        """月の途中で流したときは、今までを検索する(未来の区間は search.list が 400 を返すため)"""
+        session = self._search_session({})
+        now = datetime(2025, 5, 21, 12, 30, 15, 123456, tzinfo=JST)
+        YouTubeApiClient(api_key="dummy", session=session).search_other_channels(
+            "2025-05", queries=("幽音しの",), now=now)
+        windows = [(c.kwargs["params"]["publishedAfter"], c.kwargs["params"]["publishedBefore"])
+                   for c in session.get.call_args_list if c.args[0].endswith("/search")]
+        assert windows[0][0] == "2025-05-01T00:00:00+09:00"
+        assert windows[-1][1] == "2025-05-21T12:30:15+09:00"  # 秒で切った今の時刻
+        assert len(windows) == 3  # 5/1〜5/8、5/8〜5/15、5/15〜今
+
+    def test_search_other_channels_future_month_is_empty(self):
+        """まだ来ていない月は検索しない(API を呼ばない)"""
+        session = self._search_session({})
+        found = YouTubeApiClient(api_key="dummy", session=session).search_other_channels(
+            "2025-06", now=datetime(2025, 5, 21, tzinfo=JST))
+        assert found == []
+        session.get.assert_not_called()
 
     def test_search_other_channels_merges_queries_and_drops_unrelated(self):
         """検索語ごとの結果をまとめ(同じ動画は1つ)、タイトル・概要欄に検索語が無い動画は落とす"""

@@ -163,7 +163,8 @@ class YouTubeApiClient:
         return sorted(videos, key=lambda v: v.published_jst)
 
     def search_other_channels(self, month: str, queries: Sequence[str] = OTHER_CHANNEL_QUERIES,
-                              handle: str = CHANNEL_HANDLE) -> List[Tuple[VideoSummary, str]]:
+                              handle: str = CHANNEL_HANDLE,
+                              now: Optional[datetime] = None) -> List[Tuple[VideoSummary, str]]:
         """
         その月(YYYY-MM、日本時間)に公開された、本人以外のチャンネルの動画を検索する
 
@@ -171,10 +172,14 @@ class YouTubeApiClient:
         検索語ごとに検索し、同じ動画は1つにまとめる。検索は関係の無い動画も返すので、
         タイトルか概要欄(先頭)に検索語が入っているものだけを残す。
         ファンの切り抜きなども混じるので、対象にするかは人(Claude)が判断する。戻り値は (動画, チャンネル名)。
+        月の途中で流したときは、今(now。既定は今の時刻)までを検索する(未来の区間は search.list が 400 を返す)。
         """
-        own = self._get("channels", part="id", forHandle=handle)["items"][0]["id"]
         start = datetime.strptime(month, "%Y-%m").replace(tzinfo=JST)
         end = start.replace(year=start.year + 1, month=1) if start.month == 12 else start.replace(month=start.month + 1)
+        end = min(end, (now or datetime.now(JST)).replace(microsecond=0))
+        if start >= end:
+            return []  # まだ来ていない月
+        own = self._get("channels", part="id", forHandle=handle)["items"][0]["id"]
         # 1か月まとめて検索すると、結果の一部しか返らず、打つたびに件数が変わる(2026-10-20 に確認)。
         # 期間を区切って検索する(1か月で 検索語 × 5区間 × 100 ユニットほど)
         windows, cursor = [], start
