@@ -9,10 +9,10 @@
 #   - 公開リポジトリ: 追跡中・未追跡(.gitignore 対象外)のファイルに、ローカルの絶対パス・
 #     メールアドレス・トークンらしき文字列(Google API キーを含む)が無い。
 #     .env・secrets.toml・取り込みのキャッシュ(data/ingest/cache・staged)を追跡していない
-#   - コード(WARN): Streamlit 内部クラス名(st-emotion-cache-*)、キャッシュ関数の中の st.* の表示
-#     → 今のコードに既知の違反があるため WARN に留める。直したら ng に上げる
 #   - コード(NG): ADMIN_PASSWORD の既定値(2026-10-20 に直したので ng)、
-#     HTML の escape=False(2026-10-21 に直したので ng)
+#     HTML の escape=False、Streamlit 内部クラス名(st-emotion-cache-*)、
+#     キャッシュ関数の中の st.* の表示(どれも 2026-10-21 に直したので ng)
+#     → 既知の違反があるうちは WARN(warn)に留め、直したら ng に上げる
 # 終了コード: 0 = 問題なし、1 = 問題あり(WARN は終了コードに影響しない)
 
 cd "$(dirname "$0")/.." || exit 1
@@ -62,7 +62,7 @@ if [ -n "$hits" ]; then ng "escape=False で HTML を組み立てている(デ�
 $hits"; else ok "escape=False なし"; fi
 
 hits=$(git grep -n 'st-emotion-cache-[a-z0-9]' -- '*.css' '*.py' | grep -v '^[^:]*:[0-9]*:[[:space:]]*\*')
-if [ -n "$hits" ]; then warn "Streamlit 内部クラス名に依存した CSS がある(版を上げると壊れる):
+if [ -n "$hits" ]; then ng "Streamlit 内部クラス名に依存した CSS がある(版を上げると壊れる):
 $hits"; else ok "内部クラス名への依存なし"; fi
 
 hits=$(git ls-files '*.py' | xargs awk '
@@ -75,7 +75,7 @@ hits=$(git ls-files '*.py' | xargs awk '
         if (RLENGTH <= defind) { inbody = 0; next }
         if ($0 ~ /st\.(error|warning|info|success|write|markdown|toast|exception)\(/) print FILENAME ":" FNR ":" $0
     }')
-if [ -n "$hits" ]; then warn "キャッシュ関数の中で st.* を表示している(キャッシュが効くと出なくなる。例外を上げてページ側で表示する):
+if [ -n "$hits" ]; then ng "キャッシュ関数の中で st.* を表示している(キャッシュが効くと出なくなる。例外を上げてページ側で表示する):
 $hits"; else ok "キャッシュ関数の中の表示なし"; fi
 
 hits=$(git grep -nE 'getenv\(["'\'']ADMIN_PASSWORD["'\''][[:space:]]*,' -- '*.py')
