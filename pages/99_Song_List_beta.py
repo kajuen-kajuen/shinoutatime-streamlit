@@ -21,17 +21,23 @@
 要件: 8.1-8.5
 """
 
+import html
+import logging
+
 import streamlit as st
 import pandas as pd
 from src.ui.components.footer import display_footer
 from src.config.settings import Config
+from src.exceptions.errors import DataLoadError
 from src.services.data_service import DataService
 from src.repositories.live_repository import LiveRepository
 from src.repositories.timestamp_repository import TimestampRepository
 from src.repositories.song_list_repository import SongListRepository
 
+logger = logging.getLogger(__name__)
+
 # --- 設定の初期化 ---
-config = Config()
+config = Config.from_env()
 
 # --- ページの基本設定 ---
 st.set_page_config(
@@ -58,11 +64,12 @@ CUSTOM_CSS = """
 /* 特定のStreamlit要素のスタイリング */
 /* ================================================= */
 
-/* タイトルの中央寄せ */
-# h1 {
-#     text-align: center;
-#     margin-bottom: 1.5rem;
-# }
+/* タイトルの中央寄せ(使っていない)
+h1 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+*/
 
 /* 検索結果件数表示のメッセージを左寄せに戻す */
 div[data-testid="stMarkdown"] p {
@@ -156,14 +163,15 @@ song_list_repo = SongListRepository(config.song_list_file_path)
 data_service = DataService(config, live_repo, timestamp_repo, song_list_repo)
 
 # --- データの読み込み ---
-@st.cache_data
+@st.cache_data(ttl=3600)
 def load_song_list():
     """
     楽曲リストデータを読み込む
-    
+
     DataServiceを使用してV_SONG_LIST.TSVファイルから楽曲リストデータを読み込みます。
     Streamlitのキャッシュ機能により、再読み込みを防ぎます。
-    
+    キャッシュの中では何も表示しない(失敗は例外のまま呼び出し側へ渡し、ページ側で表示する)。
+
     Returns:
         pandas.DataFrame: 読み込まれた楽曲データのDataFrame。
                          以下の列を含む:
@@ -171,23 +179,54 @@ def load_song_list():
                          - アーティスト(ソート用): アーティスト名（ソート用）
                          - 曲名: 楽曲名
                          - 最近の歌唱: 最近の歌唱へのYouTube URL
-        None: ファイルが見つからない場合、または読み込みエラーが発生した場合
-    
+                         ファイルが無いときは空のDataFrame。
+
+    Raises:
+        DataLoadError: ファイルの形が壊れているなど、読み込みに失敗した場合
+
     要件: 8.1, 8.2
     """
-    df = data_service.load_song_list_data()
-    if df is None:
-        # エラーメッセージを表示
-        error_msg = data_service.get_last_error()
-        if error_msg:
-            st.error(f"エラー: {error_msg}")
-            st.info(f"`{config.song_list_file_path}` が正しく配置されているか確認してください。")
-    return df
+    return data_service.load_song_list_data()
 
-df_original = load_song_list()
+
+def _cell(value) -> str:
+    """表のセルの文字列(データ由来なのでエスケープする。欠損は空)"""
+    return html.escape(str(value)) if pd.notna(value) else ""
+
+
+def build_table_html(df: pd.DataFrame) -> str:
+    """
+    アーティスト・曲名・リンクの表の HTML を組み立てる
+
+    データ由来の文字列はすべてエスケープする(曲名の < や & で表が壊れないように)。
+    クラス名と見出しの左寄せは、以前の DataFrame.to_html(justify="left", classes="dataframe") と同じ。
+    """
+    rows = []
+    for artist, title, url in zip(df["アーティスト"], df["曲名"], df["最近の歌唱"]):
+        link = (
+            f'<a href="{html.escape(str(url), quote=True)}" target="_blank" rel="noopener">YouTubeへ👻</a>'
+            if pd.notna(url) else ""
+        )
+        rows.append(
+            f'<tr><td><div class="artist-cell">{_cell(artist)}</div></td><td>{_cell(title)}</td><td>{link}</td></tr>'
+        )
+    header = '<tr style="text-align: left;"><th>アーティスト</th><th>曲名</th><th>リンク</th></tr>'
+    return (
+        '<table border="1" class="dataframe">'
+        f"<thead>{header}</thead><tbody>{''.join(rows)}</tbody></table>"
+    )
+
+
+try:
+    df_original = load_song_list()
+except DataLoadError as e:
+    logger.error(f"楽曲リストの読み込みに失敗しました: {e}", exc_info=True)
+    st.error("楽曲リストを読み込めませんでした。")
+    st.info(f"`{config.song_list_file_path}` が正しく配置されているか確認してください。")
+    df_original = None
 
 # --- メインコンテンツの表示 ---
-if df_original is not None:
+if df_original is not None and not df_original.empty:
     # フィルタリング処理: アーティスト名が「-」の楽曲を除外
     # 
     # フィルタリング仕様:
@@ -218,25 +257,6 @@ if df_original is not None:
         kind='mergesort' # 安定ソートを指定し、同じアーティスト内の曲順を維持
     )
 
-    # 表示用にデータをコピー
-    df_to_show = df_sorted.copy()
-
-    # YouTubeリンクの生成
-    # 「最近の歌唱」列のURLをクリック可能なHTMLリンクに変換
-    # 新しいタブで開くように target="_blank" を指定
-    # 要件: 8.4
-    df_to_show["リンク"] = df_to_show["最近の歌唱"].apply(
-        lambda url: f'<a href="{url}" target="_blank">YouTubeへ👻</a>' if pd.notna(url) else ""
-    )
-    
-    # アーティスト列のスタイリング
-    # 「アーティスト」列の各セルをdivタグで囲み、CSSクラス "artist-cell" を適用
-    # これにより、アーティスト名が長い場合に改行が許可される
-    # 要件: 8.4
-    df_to_show["アーティスト"] = df_to_show["アーティスト"].apply(
-        lambda x: f'<div class="artist-cell">{x}</div>'
-    )
-
     # 全件数の表示
     # 
     # フィルタリング後の正確な件数を表示します。
@@ -247,15 +267,9 @@ if df_original is not None:
     st.markdown(f"**全 {len(df_filtered)} 件表示**")
 
     # テーブルの表示
-    # 表示列の選択（ソート用の列は内部処理のみで使用）
-    display_columns = ["アーティスト", "曲名", "リンク"]
-    
-    # HTMLテーブルの生成と表示
-    # このページは特殊なHTMLカスタマイズが必要なため、直接HTMLを生成
-    html_table = df_to_show[display_columns].to_html(
-        escape=False, index=False, justify="left", classes="dataframe"
-    )
-    st.write(html_table, unsafe_allow_html=True)
+    # アーティスト(長い名前は改行を許す artist-cell)・曲名・最近の歌唱へのリンク(新しいタブで開く)
+    # 要件: 8.4
+    st.write(build_table_html(df_sorted), unsafe_allow_html=True)
 
 else:
     st.warning("楽曲データが読み込めませんでした。")
