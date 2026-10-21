@@ -68,6 +68,8 @@ class TestAppCoverage:
         table = next(m.value for m in at.markdown if "<table" in m.value)
         assert table.count("<tr>") == 25
         assert any(m.value.startswith("**全 ") for m in at.markdown)
+        # スマホの幅で表がはみ出さないよう、横スクロールの div で包んでいる
+        assert table.startswith('<div style="overflow-x: auto; max-width: 100%;"><table')
 
     def test_song_list_beta_page_pagination(self):
         """99_Song_List_beta.py: 「さらに表示」で表示件数が増える"""

@@ -140,6 +140,8 @@ def build_table_html(stats: pd.DataFrame) -> str:
     データ由来の文字列はすべてエスケープする(曲名の < や & で表が壊れないように)。
     リンクは最新の歌唱(views.build_song_stats の latest_link)。
     クラス名と見出しの左寄せは、以前の DataFrame.to_html(justify="left", classes="dataframe") と同じ。
+    表は Home(src/ui/components の render_results_table)と同じ横スクロールの div で包む
+    (列が改行しないので、スマホの幅では表が画面からはみ出すため)。
     """
     rows = []
     for artist, title, url, label in zip(
@@ -154,8 +156,10 @@ def build_table_html(stats: pd.DataFrame) -> str:
         )
     header = '<tr style="text-align: left;"><th>アーティスト</th><th>曲名</th><th>リンク</th></tr>'
     return (
+        '<div style="overflow-x: auto; max-width: 100%;">'
         '<table border="1" class="dataframe">'
         f"<thead>{header}</thead><tbody>{''.join(rows)}</tbody></table>"
+        "</div>"
     )
 
 
