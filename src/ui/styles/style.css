@@ -60,9 +60,19 @@
 div[data-testid="stTextInput"] {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    /* 中身(ラベルと、入力欄を包む要素)を幅いっぱいに伸ばす。flex-start だと入力欄が縮む。ラベルの文字は左寄せのまま */
+    align-items: stretch;
     margin-bottom: 0rem;
     /* ボタンとの隙間を詰める */
+}
+
+/*
+ * 検索ボックスの入力欄の幅
+ * パソコンでは最大 600px、それより狭い画面(スマホ)では幅いっぱい。
+ */
+div[data-testid="stTextInputRootElement"] {
+    width: 100%;
+    max-width: 600px;
 }
 
 /**
