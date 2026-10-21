@@ -1,6 +1,6 @@
 # Excel to TSV変換ツール 使い方
 
-> 【旧フロー】この文書は v1 のデータ(`data/*.TSV`・`data.xlsx`)の手順です。画面は v2(`data/v2/`)に切り替え済みで、もう使いません(フェーズ3で消す予定)。今後のデータの追加は [`docs/prompts/update-data.md`](../prompts/update-data.md)、データの形は [`docs/specs/data-model.md`](../specs/data-model.md) を見てください。
+> 【旧フロー・2026-10-22 に docs/archive へ移した】この文書は v1 のデータ(`data/*.TSV`・`data.xlsx`)の手順です。画面は v2(`data/v2/`)に切り替え済みで、もう使いません(フェーズ3で消す予定)。今後のデータの追加は [`docs/prompts/update-data.md`](../../prompts/update-data.md)、データの形は [`docs/specs/data-model.md`](../../specs/data-model.md) を見てください。
 
 ## 概要
 

@@ -18,6 +18,18 @@
 | [`development/FILE_ORGANIZATION_SUMMARY.md`](development/FILE_ORGANIZATION_SUMMARY.md) | `docs/development/` | 上の整理の記録 |
 | [`testing/coverage_report_summary.md`](testing/coverage_report_summary.md) | `docs/testing/` | 2025年11月時点の v1 のカバレッジ。v2 のテストを含まない |
 
+## 2026-10-22 に移した文書
+
+2026-10-21 のフェーズ2で画面が v2(`data/v2/`)を読むようになり、v1 のデータの手順はもう使わないため。
+
+| 文書 | もとの場所 | 移した理由 |
+|---|---|---|
+| [`data-management.md`](data-management.md) | `docs/` | v1 のデータ(`data/*.TSV`・`data.xlsx`)の形と更新の手順。今は `docs/specs/data-model.md`・`docs/prompts/update-data.md` |
+| [`guides/excel-to-tsv-guide.md`](guides/excel-to-tsv-guide.md) | `docs/guides/` | v1 の Excel → TSV の変換ツールの使い方 |
+| [`guides/artist-sort-correction-guide.md`](guides/artist-sort-correction-guide.md) | `docs/guides/` | v1 のアーティストの読みの直し方。v2 は `data set artists <id> sort_name <読み>` |
+| [`testing/tests-guide-2025.md`](testing/tests-guide-2025.md) | `tests/README.md` | 2025年11月時点のテストガイド(v1 の部品が中心)。今は `docs/testing/README.md` |
+| [`README-v1-sections.md`](README-v1-sections.md) | ルートの `README.md` | README の v1 のデータ・Excel の変換・アーティストの読み・X(Twitter)の埋め込みの節 |
+
 ## もとからある文書
 
 | 文書 | 中身 |

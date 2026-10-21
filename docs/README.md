@@ -12,7 +12,7 @@
 | 作業の計画・調査のメモ | `plans/`(**手元だけ・Git 管理外**。ブラッシュアップの計画、参考サイト、X の調べ方など) | — |
 | アーキテクチャ | [`architecture/overview.md`](architecture/overview.md)(層・v1 と v2・データの流れ・エラー・キャッシュ) | — |
 | 開発の決まり | [`development/`](development/)(ブランチ戦略) | — |
-| 利用者・運用向けガイド | [`guides/`](guides/)、[`data-management.md`](data-management.md)、[`deployment.md`](deployment.md)、[`faq.md`](faq.md) | — |
+| 利用者・運用向けガイド | [`guides/`](guides/)(使い方)、[`deployment.md`](deployment.md)、[`faq.md`](faq.md) | — |
 | テスト | [`testing/`](testing/) | — |
 | 過去の仕様(要件・設計・タスクの3点セット)、古くなった構成・開発者ガイドなど | [`archive/`](archive/)(一覧は [`archive/README.md`](archive/README.md)) | — |
 

@@ -75,5 +75,5 @@ docs/                   仕様書・レビュー記録・プロンプト(一覧�
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): コーディング規約・コミット規約
 - [`docs/architecture/overview.md`](docs/architecture/overview.md): 構成の概要(層・v1 と v2・データの流れ・エラー・キャッシュ)。古い構成の文書は `docs/archive/`
 - [`docs/specs/data-model.md`](docs/specs/data-model.md): データモデル v2 の正本
-- [`docs/data-management.md`](docs/data-management.md)(v1 のデータ)・[`docs/deployment.md`](docs/deployment.md)
+- [`docs/archive/data-management.md`](docs/archive/data-management.md)(v1 のデータ。参照用)・[`docs/deployment.md`](docs/deployment.md)
 - `.cursorrules`: Cursor 向けの同じ方針(日本語・Docker で実行。この CLAUDE.md を読む)
