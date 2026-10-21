@@ -93,7 +93,7 @@ sh tools/check-rules.sh                                # 絶対制約の確認(�
 ## テスト
 
 - `docker compose exec shinouta-time pytest` で全部を流します。v2 のテストは `tests/unit/v2/`、性能のテストは `--runslow` のときだけ動きます。
-- v1 の古いテストの一部は、今も失敗します(既知の課題。[`docs/architecture/overview.md`](docs/architecture/overview.md) の「既知の課題」)。変更の前後で、失敗が増えていないことを確かめます。
+- 今は全部のテストが通ります(失敗なし)。この状態を保ち、変更の前後で失敗が増えていないことを確かめます。
 - 詳しくは [`docs/testing/README.md`](docs/testing/README.md)。
 
 ## ライセンス

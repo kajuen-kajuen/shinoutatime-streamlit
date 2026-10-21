@@ -56,7 +56,7 @@ src/cli/                  CLI(v2: ingest・data / v1: excel_to_tsv_cli・song_li
 ```
 
 - どのページも最初に `src/ui/page_setup.py` の `setup_page()` を呼びます(ページ設定・共通の `style.css`・見出し「しのうたタイム👻🫧」と、Home 以外は絵文字付きのページ名)。CSS をページの中に書かず、`style.css` だけを直します。
-- `Home.py` は `setup_page()` のあと、`HomePage().run()` を呼ぶだけです。検索は `home_page.filter_view`(検索語を `normalize_for_match` してから、一覧の検索用の列に部分一致)。
+- `Home.py` は `setup_page()` のあと、返ってきた設定を渡して `HomePage(config).run()` を呼ぶだけです(設定の読み込みは1回)。検索欄は `st.form` で、Enter キーでも送信されます。検索は `home_page.filter_view`(検索語を `normalize_for_match` してから、一覧の検索用の列に部分一致)。検索欄の上に、データの時点(`home_page.data_as_of`。「データは YYYY/MM/DD の配信まで(歌唱 N 件)」)を出します。
 - 書き込みは、必ず CLI(`ingest apply`・`data set` など)を通します。保存の前に `validation.validate_dataset` で検査し、`sort_table` で決まった順に並べます。手で TSV を編集しないのはこのためです。
 - 並び順・No. の付け方・メン限を画面に出さない決まりなどは、`data-model.md` の 3.2〜3.3 にあります。
 
@@ -87,15 +87,17 @@ src/cli/                  CLI(v2: ingest・data / v1: excel_to_tsv_cli・song_li
 | `pages/01_Information.py` | 予定表置き場(本人のフリーチャットの枠)と、お知らせ・活動の記録の案内(非公式 Wiki・X・公式サイトへのリンク) | — |
 | `pages/02_About_Us.py` | サイトの説明 | — |
 | `pages/99_Song_List_beta.py` | 曲の一覧(β。アーティストの読み → 曲名の読みの順) | v2(曲ごとの集計) |
-| `pages/*_Admin.py` | X の埋め込みの管理(今は使っていない。Information の週間スケジュールを止めたため) | ローカル専用・Git 管理外 |
+
+`pages/*_Admin.py`・`pages/*_Preview.py` はローカル専用で Git 管理外です(今は置いていない)。
 
 ## 8. 設定と秘密の値
 
 - 画面の設定は `src/config/settings.py` の `Config` で、環境変数 `SHINOUTA_*` で上書きできます(v2 のデータのディレクトリ `SHINOUTA_V2_DATA_DIR`、表示の件数など)。
-- 取り込みの API キー `YOUTUBE_API_KEY`(複数のキーは `YOUTUBE_API_KEYS`。上限に達したら次のキーへ切り替える)、職人さんの指定 `SHINOUTA_TRUSTED_COMMENTERS`、管理ページの `ADMIN_PASSWORD` は `.env` に置きます(Git 管理外。`docker-compose.yml` がコンテナに渡す)。
+- 取り込みの API キー `YOUTUBE_API_KEY`(複数のキーは `YOUTUBE_API_KEYS`。上限に達したら次のキーへ切り替える)、職人さんの指定 `SHINOUTA_TRUSTED_COMMENTERS` は `.env` に置きます(Git 管理外。`docker-compose.yml` がコンテナに渡す)。`ADMIN_PASSWORD` は X の埋め込みの管理画面のためのもので、今は使うページがありません。
 - 公開リポジトリなので、秘密の値・コメント本文・ローカルの絶対パスはコミットしません。`tools/check-rules.sh` で確かめます。
 
 ## 9. 既知の課題(2026-10-21 時点)
 
-- v1 のコード・データ・テスト・CLI が残っている(画面からは使わない)。`src/core/__init__.py`・`src/repositories/__init__.py` が v1 の部品をまとめて import するので、openpyxl・requests を本番の requirements から外せない。フェーズ3で片付ける。
+- v1 のコード・データ・テスト・CLI が残っている(画面からは使わない)。`src/repositories/__init__.py` が `ExcelRepository`(openpyxl)を、`src/services/__init__.py` が `TwitterEmbedService`(requests)をまとめて import するので、openpyxl・requests を本番の requirements から外せない。フェーズ3で片付ける。
+- X の埋め込みの管理画面のコード(`src/ui/twitter_embed_admin.py`・`src/services/twitter_embed_service.py`・`src/clients/twitter_api_client.py`・そのテスト・`data/tweet_*`)が残っている。ページは消してあり、どこからも使っていない。フェーズ3で v1 と一緒に片付けるか決める。
 - `style.css` の `.block-container` は Streamlit の内部のクラス名に頼っている(data-testid の指定に置き換えるかは未定)。
