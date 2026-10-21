@@ -100,6 +100,27 @@ class TestHomeIntegration:
         assert '<table' in args[0]
         assert '曲名' in args[0]
 
+    @patch('streamlit.write')
+    def test_render_results_table_escapes_data(self, mock_write):
+        """データ由来のセルはエスケープし、html_columns の列だけそのまま出す"""
+        df = pd.DataFrame({
+            '曲名': ['<b>Rock & Roll</b>', None],
+            'リンク': ['<a href="https://example.com/1">YouTubeへ👻</a>', ''],
+        })
+
+        render_results_table(df, ['曲名', 'リンク'], {'曲名': '曲<名>', 'リンク': 'リンク'},
+                             html_columns={'リンク'})
+
+        html_out = mock_write.call_args.args[0]
+        assert '&lt;b&gt;Rock &amp; Roll&lt;/b&gt;' in html_out
+        assert '<b>' not in html_out
+        assert '<a href="https://example.com/1">YouTubeへ👻</a>' in html_out
+        assert '<th>曲&lt;名&gt;</th>' in html_out
+        # 欠損は "None" や "nan" ではなく空
+        assert '<tr><td></td><td></td></tr>' in html_out
+        assert '<table border="1" class="dataframe">' in html_out
+        assert '<tr style="text-align: left;">' in html_out
+
     @patch('streamlit.button')
     @patch('streamlit.info')
     def test_render_pagination(self, mock_info, mock_button):

@@ -194,6 +194,56 @@ class TestHomePage:
     @patch('src.ui.pages.home_page.render_results_table')
     @patch('src.ui.pages.home_page.render_pagination')
     @patch('src.ui.pages.home_page.st')
+    def test_render_results_escapes_link_and_artist(self, mock_st, mock_pagination, mock_results_table, home_page):
+        """リンクの URL とアーティストはエスケープして HTML に組み立て、html_columns で渡す"""
+        mock_st.session_state = MockSessionState()
+        mock_st.session_state.display_limit = 25
+        mock_pagination.return_value = None
+        df = pd.DataFrame({
+            'ライブ配信日': ['2023/01/01'],
+            '曲目': ['1-1'],
+            '曲名': ['<Song>'],
+            'アーティスト': ['A & <B>'],
+            'YouTubeタイムスタンプ付きURL': ['https://youtu.be/x?t=1&a="b"'],
+        })
+
+        home_page._render_results(df)
+
+        table, columns, _headers = mock_results_table.call_args.args
+        assert mock_results_table.call_args.kwargs['html_columns'] == {'アーティスト', 'YouTubeリンク'}
+        row = table.iloc[0]
+        assert row['アーティスト'] == '<div class="artist-cell">A &amp; &lt;B&gt;</div>'
+        assert row['YouTubeリンク'] == (
+            '<a href="https://youtu.be/x?t=1&amp;a=&quot;b&quot;" target="_blank" rel="noopener">YouTubeへ👻</a>'
+        )
+        # 曲名はそのまま渡し、render_results_table 側でエスケープする
+        assert row['曲名'] == '<Song>'
+
+    @patch('src.ui.pages.home_page.render_results_table')
+    @patch('src.ui.pages.home_page.render_pagination')
+    @patch('src.ui.pages.home_page.st')
+    def test_render_results_missing_artist_and_url(self, mock_st, mock_pagination, mock_results_table, home_page):
+        """アーティスト・URL の欠損は "nan" ではなく空にする"""
+        mock_st.session_state = MockSessionState()
+        mock_st.session_state.display_limit = 25
+        mock_pagination.return_value = None
+        df = pd.DataFrame({
+            'ライブ配信日': ['2023/01/01'],
+            '曲目': ['1-1'],
+            '曲名': ['Song'],
+            'アーティスト': pd.Series([None], dtype='str'),
+            'YouTubeタイムスタンプ付きURL': pd.Series([None], dtype='str'),
+        })
+
+        home_page._render_results(df)
+
+        row = mock_results_table.call_args.args[0].iloc[0]
+        assert row['アーティスト'] == '<div class="artist-cell"></div>'
+        assert row['YouTubeリンク'] == ''
+
+    @patch('src.ui.pages.home_page.render_results_table')
+    @patch('src.ui.pages.home_page.render_pagination')
+    @patch('src.ui.pages.home_page.st')
     def test_render_results_pagination_click(self, mock_st, mock_pagination, mock_results_table, home_page, sample_df):
         """ページネーションボタン押下時のテスト"""
         mock_st.session_state = MockSessionState()

@@ -5,10 +5,11 @@ UIコンポーネント
 各コンポーネントは独立して動作し、パラメータでカスタマイズ可能です。
 """
 
+import html
 import logging
 import streamlit as st
 import pandas as pd
-from typing import Tuple, List, Dict, Optional
+from typing import Tuple, List, Dict, Optional, Collection
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
@@ -66,55 +67,74 @@ def render_search_form(
 
 
 
+def build_results_table_html(
+    df: pd.DataFrame,
+    columns: List[str],
+    column_headers: Dict[str, str],
+    html_columns: Collection[str] = (),
+) -> str:
+    """
+    結果テーブルの HTML を組み立てる
+
+    html_columns 以外のセルと見出しはエスケープする。欠損は空。
+    クラス名と見出しの左寄せは、以前の DataFrame.to_html(justify="left", classes="dataframe") と同じ。
+    """
+    def cell(value, raw: bool) -> str:
+        if pd.isna(value):
+            return ""
+        return str(value) if raw else html.escape(str(value))
+
+    header = "".join(
+        f"<th>{html.escape(column_headers.get(col, col))}</th>" for col in columns
+    )
+    raw_flags = [col in html_columns for col in columns]
+    rows = [
+        "<tr>" + "".join(
+            f"<td>{cell(value, raw)}</td>" for value, raw in zip(values, raw_flags)
+        ) + "</tr>"
+        for values in df[columns].itertuples(index=False, name=None)
+    ]
+    return (
+        '<table border="1" class="dataframe">'
+        f'<thead><tr style="text-align: left;">{header}</tr></thead>'
+        f"<tbody>{''.join(rows)}</tbody></table>"
+    )
+
+
 def render_results_table(
     df: pd.DataFrame,
     columns: List[str],
-    column_headers: Dict[str, str]
+    column_headers: Dict[str, str],
+    html_columns: Collection[str] = (),
 ) -> None:
     """
     結果テーブルを表示する
-    
+
     DataFrameをHTMLテーブルとして表示します。
     カスタムヘッダーに対応し、スクロール可能なテーブルを生成します。
-    
+
     Args:
         df: 表示するDataFrame
         columns: 表示する列のリスト
         column_headers: 列名のマッピング（元の列名 -> 表示用ヘッダー名）
-    
+        html_columns: 呼び出し側で組み立て済みの HTML の列(リンクなど)。
+            中のデータ由来の文字列は、呼び出し側でエスケープしておく
+
     Examples:
         >>> df = pd.DataFrame({'曲名': ['曲A', '曲B'], 'アーティスト': ['歌手A', '歌手B']})
         >>> columns = ['曲名', 'アーティスト']
         >>> headers = {'曲名': '曲名', 'アーティスト': 'アーティスト'}
         >>> render_results_table(df, columns, headers)
-    
+
     Notes:
-        - HTMLタグを含む列（リンクなど）はそのまま表示されます
+        - html_columns の列だけそのまま出し、ほかの列と見出しはエスケープします
+          (データ中の < や & で表が壊れないように)。欠損は空にします
         - テーブルは横スクロール可能です
-        - アーティスト列には自動的にartist-cellクラスが適用されます
     """
     logger.debug(f"結果テーブルを表示中: {len(df)}件、列={columns}")
-    
-    # 表示する列のみを選択
-    df_display = df[columns].copy()
-    
-    # DataFrameをHTMLテーブルに変換
-    # escape=False: HTMLタグをそのまま表示（リンクとCSSクラスを有効化）
-    # index=False: 行番号を非表示
-    html_table = df_display.to_html(
-        escape=False, 
-        index=False, 
-        justify="left", 
-        classes="dataframe"
-    )
-    
-    # テーブルヘッダーをカスタムヘッダーに置き換え
-    for original, custom in column_headers.items():
-        html_table = html_table.replace(
-            f"<th>{original}</th>", 
-            f"<th>{custom}</th>"
-        )
-    
+
+    html_table = build_results_table_html(df, columns, column_headers, html_columns)
+
     # テーブルをスクロール可能なdivで囲む
     scrollable_html = f"""
     <div style="overflow-x: auto; max-width: 100%;">

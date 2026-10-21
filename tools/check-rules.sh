@@ -9,10 +9,10 @@
 #   - 公開リポジトリ: 追跡中・未追跡(.gitignore 対象外)のファイルに、ローカルの絶対パス・
 #     メールアドレス・トークンらしき文字列(Google API キーを含む)が無い。
 #     .env・secrets.toml・取り込みのキャッシュ(data/ingest/cache・staged)を追跡していない
-#   - コード(WARN): HTML の escape=False、Streamlit 内部クラス名(st-emotion-cache-*)、
-#     キャッシュ関数の中の st.* の表示
+#   - コード(WARN): Streamlit 内部クラス名(st-emotion-cache-*)、キャッシュ関数の中の st.* の表示
 #     → 今のコードに既知の違反があるため WARN に留める。直したら ng に上げる
-#   - コード(NG): ADMIN_PASSWORD の既定値(2026-10-20 に直したので ng)
+#   - コード(NG): ADMIN_PASSWORD の既定値(2026-10-20 に直したので ng)、
+#     HTML の escape=False(2026-10-21 に直したので ng)
 # 終了コード: 0 = 問題なし、1 = 問題あり(WARN は終了コードに影響しない)
 
 cd "$(dirname "$0")/.." || exit 1
@@ -58,7 +58,7 @@ $hits"; else ok "取り込みのキャッシュ・下書きを追跡していな
 
 echo "== コード"
 hits=$(git grep -n 'escape=False' -- '*.py' | grep -v '^[^:]*:[0-9]*:[[:space:]]*#')
-if [ -n "$hits" ]; then warn "escape=False で HTML を組み立てている(データ中の < や & で表が壊れる):
+if [ -n "$hits" ]; then ng "escape=False で HTML を組み立てている(データ中の < や & で表が壊れる):
 $hits"; else ok "escape=False なし"; fi
 
 hits=$(git grep -n 'st-emotion-cache-[a-z0-9]' -- '*.css' '*.py' | grep -v '^[^:]*:[0-9]*:[[:space:]]*\*')

@@ -4,6 +4,7 @@
 アプリケーションのメインページ（ホーム画面）の表示ロジックを担当します。
 """
 
+import html
 import logging
 import streamlit as st
 import pandas as pd
@@ -185,17 +186,15 @@ class HomePage:
         # 表示用データの準備
         df_to_show = df.copy()
         
-        # YouTubeリンクをHTML形式に変換
-        df_to_show["YouTubeリンク"] = df_to_show.apply(
-            lambda row: f'<a href="{row["YouTubeタイムスタンプ付きURL"]}" target="_blank">YouTubeへ👻</a>',
-            axis=1,
+        # YouTubeリンクをHTML形式に変換(URL はデータ由来なのでエスケープする。欠損は空)
+        df_to_show["YouTubeリンク"] = df_to_show["YouTubeタイムスタンプ付きURL"].map(
+            lambda url: f'<a href="{html.escape(str(url), quote=True)}" target="_blank" rel="noopener">YouTubeへ👻</a>'
+            if pd.notna(url) else ""
         )
-        
-        # アーティスト列にカスタムCSSクラスを適用
-        df_to_show["アーティスト"] = (
-            df_to_show["アーティスト"]
-            .astype(str)
-            .apply(lambda x: f'<div class="artist-cell">{x}</div>')
+
+        # アーティスト列にカスタムCSSクラスを適用(名前はエスケープする。欠損は空)
+        df_to_show["アーティスト"] = df_to_show["アーティスト"].map(
+            lambda x: f'<div class="artist-cell">{html.escape(str(x)) if pd.notna(x) else ""}</div>'
         )
         
         # 表示件数を制限
@@ -218,7 +217,12 @@ class HomePage:
         }
         
         # 結果テーブルの表示
-        render_results_table(df_limited_display, display_columns, column_headers)
+        render_results_table(
+            df_limited_display,
+            display_columns,
+            column_headers,
+            html_columns={"アーティスト", "YouTubeリンク"},
+        )
         
         # ページネーションの表示
         new_limit = render_pagination(
