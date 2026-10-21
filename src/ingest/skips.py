@@ -36,6 +36,21 @@ def add_skip(content_id: str, reason: str, path: Path = SKIPPED_PATH) -> None:
     rows = pd.concat([rows, pd.DataFrame([{
         "content_id": content_id, "reason": reason.strip(), "date": datetime.now(JST).strftime("%Y-%m-%d"),
     }])], ignore_index=True).sort_values("content_id")
+    _save(rows, path)
+
+
+def remove_skip(content_id: str, path: Path = SKIPPED_PATH) -> str:
+    """記録を外す(曲なしにしていたものを登録するとき)。外した記録の理由を返す。記録が無ければ KeyError"""
+    path = Path(path)
+    skips = load_skips(path)
+    if content_id not in skips:
+        raise KeyError(content_id)
+    rows = pd.read_csv(path, sep="\t", dtype=str, keep_default_na=False, encoding="utf-8")
+    _save(rows[rows["content_id"] != content_id], path)
+    return skips[content_id]
+
+
+def _save(rows: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         rows[COLUMNS].to_csv(f, sep="\t", index=False, lineterminator="\n")

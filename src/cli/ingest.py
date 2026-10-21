@@ -12,6 +12,7 @@
   python -m src.cli.ingest prepare <content_id> [--comment N]     # 下書きを作る(コメントが無ければタイトルから)
   python -m src.cli.ingest apply <content_id> [--dry-run] [--replace]
   python -m src.cli.ingest skip <content_id> "<理由>"             # 曲の無いコンテンツとして記録する
+  python -m src.cli.ingest unskip <content_id>                    # 曲なしの記録を外す(登録し直すとき)
   python -m src.cli.ingest status [--month 2025-04]
 
 API キーは環境変数 YOUTUBE_API_KEY(.env から docker-compose で渡す)。複数のキーは YOUTUBE_API_KEYS(カンマ区切り)に書く。
@@ -29,7 +30,7 @@ from src.core.validation import has_errors, validate_dataset
 from src.ingest.capture import CACHE_DIR, cache_path, from_ytdlp_info, load_capture, save_capture
 from src.ingest.parser import (build_content_row, build_rows_from_title, build_staged_rows, choose_comment,
                                extract_timestamp_lines, rank_timestamp_comments)
-from src.ingest.skips import add_skip, load_skips
+from src.ingest.skips import add_skip, load_skips, remove_skip
 from src.ingest.staging import STAGED_DIR, apply_staged, load_staged, save_staged, staged_paths
 from src.repositories.table_repository import TableRepository, sort_table
 
@@ -177,6 +178,16 @@ def cmd_skip(args) -> int:
     return 0
 
 
+def cmd_unskip(args) -> int:
+    try:
+        reason = remove_skip(args.content_id)
+    except KeyError:
+        print(f"{args.content_id} は曲なしとして記録されていません")
+        return 1
+    print(f"曲なしの記録を外しました: {args.content_id}({reason})")
+    return 0
+
+
 def cmd_status(args) -> int:
     registered = set(TableRepository(args.dir).load()["contents"]["content_id"])
     skips = load_skips()
@@ -231,6 +242,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("content_id")
     p.add_argument("reason")
     p.set_defaults(func=cmd_skip)
+
+    p = sub.add_parser("unskip", help="曲なしの記録を外す(曲なしにしていたものを登録するとき)")
+    p.add_argument("content_id")
+    p.set_defaults(func=cmd_unskip)
 
     p = sub.add_parser("check", help="取得結果 JSON の形を確かめる")
     p.add_argument("path")

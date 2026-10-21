@@ -10,7 +10,7 @@ from src.ingest.capture import Capture, Comment, from_ytdlp_info, load_capture, 
 from src.ingest.parser import (build_content_row, build_rows_from_title, build_staged_rows, choose_comment,
                                extract_timestamp_lines, match_song, song_from_title, split_feat,
                                split_song_text, style_hint)
-from src.ingest.skips import add_skip, load_skips
+from src.ingest.skips import add_skip, load_skips, remove_skip
 from src.ingest.staging import apply_staged, load_staged, save_staged
 from src.ingest.youtube_api import YouTubeApiClient, YouTubeApiError, load_api_keys, parse_duration
 from tests.unit.v2.conftest import make_dataset
@@ -283,6 +283,20 @@ class TestSkips:
 
     def test_missing_file_is_empty(self, tmp_path):
         assert load_skips(tmp_path / "none.tsv") == {}
+
+    def test_remove(self, tmp_path):
+        path = tmp_path / "skipped.tsv"
+        add_skip("yt:AAAAAAAAAAA", "雑談(曲なし)", path)
+        add_skip("yt:BBBBBBBBBBB", "ティザー", path)
+        assert remove_skip("yt:AAAAAAAAAAA", path) == "雑談(曲なし)"
+        assert load_skips(path) == {"yt:BBBBBBBBBBB": "ティザー"}
+
+    def test_remove_missing(self, tmp_path):
+        path = tmp_path / "skipped.tsv"
+        add_skip("yt:AAAAAAAAAAA", "雑談(曲なし)", path)
+        with pytest.raises(KeyError):
+            remove_skip("yt:CCCCCCCCCCC", path)
+        assert load_skips(path) == {"yt:AAAAAAAAAAA": "雑談(曲なし)"}
 
 
 class TestYouTubeApi:

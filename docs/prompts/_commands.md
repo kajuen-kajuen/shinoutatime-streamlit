@@ -35,6 +35,7 @@
 | 取得結果の確認 | `docker compose exec shinouta-time python -m src.cli.ingest check data/ingest/cache/<ファイル>.json` | ブラウザで作った取得結果の形を確かめる |
 | コメントの候補 | `docker compose exec shinouta-time python -m src.cli.ingest comments <content_id>` | 職人さんのコメントの候補を、番号つきで表示する。`prepare --comment <番号>` で選び直せる |
 | 曲なしの記録 | `docker compose exec shinouta-time python -m src.cli.ingest skip <content_id> "<理由>"` | `data/ingest/skipped.tsv` に記録する。ユーザーに確かめてから |
+| 曲なしの記録を外す | `docker compose exec shinouta-time python -m src.cli.ingest unskip <content_id>` | 曲なしにしていたものを登録し直すとき(取り込み直しなど)。外してから `apply` する |
 | 取り込みの状況 | `docker compose exec shinouta-time python -m src.cli.ingest status --month 2025-04` | 登録済み / 曲なし / 下書きあり / 未処理 |
 | 取り込み(下書き → 追記) | `docker compose exec shinouta-time python -m src.cli.ingest prepare <content_id>` → 判断 → `… ingest apply <content_id> --dry-run` → `… ingest apply <content_id>` | 手順と判断の決まりは `docs/prompts/update-data.md` |
 | コンテナの停止 | `docker compose down` | |
