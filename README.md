@@ -226,6 +226,7 @@ pip install -r requirements-dev.txt
 
 依存は用途ごとに3つのファイルに分け、版を `==` で固定しています:
 - `requirements.txt` - 本番（Streamlit Community Cloud）で使うもの。`streamlit`、`pandas` など
+  - Cloud のビルドのたびに版が変わらないよう、間接の依存(`numpy`・`pyarrow` など)まで固定しています。直接の依存を上げたら、ファイルの中の手順で間接の依存も取り直してください
 - `requirements-tools.txt` - データ生成の CLI で使うもの。`pykakasi`（読み）、`python-Levenshtein`（類似曲の検出）
 - `requirements-dev.txt` - テストで使うもの。`pytest`、`hypothesis` など（上の2つも含む）
 
