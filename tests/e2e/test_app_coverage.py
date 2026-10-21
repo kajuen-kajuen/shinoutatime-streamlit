@@ -25,6 +25,23 @@ class TestAppCoverage:
         assert not at.exception
         assert "しのうたタイム" in at.title[0].value
 
+    @pytest.mark.parametrize("script, page_header", [
+        ("Home.py", None),
+        ("pages/01_Information.py", "📢 Information"),
+        ("pages/02_About_Us.py", "👻 このサイトについて"),
+        ("pages/99_Song_List_beta.py", "🎵 歌唱楽曲リスト(β版)"),
+    ])
+    def test_pages_share_heading_and_css(self, script, page_header):
+        """全ページで、サイト名の見出し・(Home 以外は)絵文字付きのページ名・共通の CSS(style.css)がそろう"""
+        at = AppTest.from_file(app_path(script), default_timeout=30)
+        at.run()
+
+        assert not at.exception
+        assert at.title[0].value == "しのうたタイム👻🫧"
+        assert [h.value for h in at.header][:1] == ([page_header] if page_header else [])
+        # 共通の CSS が読み込まれている(本文の幅を 1200px で止める指定は style.css にだけある)
+        assert any(m.value.startswith("<style>") and ".block-container" in m.value for m in at.markdown)
+
     def test_home_page_search_no_hit(self):
         """Home.py: 当たらない検索語でも例外を出さず、0件と表示する"""
         at = AppTest.from_file(app_path("Home.py"), default_timeout=30)

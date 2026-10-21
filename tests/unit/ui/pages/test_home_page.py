@@ -117,13 +117,13 @@ class TestHomePage:
         """正常系の実行テスト"""
         mock_st.session_state = MockSessionState()
         mock_load.return_value = view
-        home_page._load_css = MagicMock()
         home_page._render_header = MagicMock()
         home_page._handle_search_and_display = MagicMock()
 
         home_page.run()
 
-        home_page._load_css.assert_called_once()
+        # CSS とサイト名の見出しは Home.py の setup_page が出すので、ここでは出さない
+        mock_st.title.assert_not_called()
         home_page._render_header.assert_called_once()
         home_page._handle_search_and_display.assert_called_once_with(view)
         mock_footer.assert_called_once()
@@ -135,7 +135,6 @@ class TestHomePage:
         """データ読み込み失敗時は、エラーを出して検索と表は出さない"""
         mock_st.session_state = MockSessionState()
         mock_load.side_effect = DataLoadError("data/v2", "読み込めません")
-        home_page._load_css = MagicMock()
         home_page._render_header = MagicMock()
         home_page._handle_error = MagicMock()
         home_page._handle_search_and_display = MagicMock()
@@ -145,20 +144,6 @@ class TestHomePage:
         home_page._handle_error.assert_called_once()
         home_page._handle_search_and_display.assert_not_called()
         mock_footer.assert_called_once()
-
-    @patch('builtins.open')
-    @patch('src.ui.pages.home_page.st')
-    def test_load_css_success(self, mock_st, mock_open, home_page):
-        """CSS読み込み成功テスト"""
-        mock_file = MagicMock()
-        mock_file.__enter__.return_value.read.return_value = "body { color: red; }"
-        mock_open.return_value = mock_file
-
-        home_page._load_css()
-
-        mock_st.markdown.assert_called_once()
-        args, kwargs = mock_st.markdown.call_args
-        assert "<style>body { color: red; }</style>" in args[0]
 
     @patch('src.ui.pages.home_page.render_search_form')
     @patch('src.ui.pages.home_page.st')

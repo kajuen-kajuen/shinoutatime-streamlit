@@ -17,7 +17,7 @@ VTuber「幽音しの」さんの配信で歌唱された楽曲を検索・閲�
 
 import streamlit as st
 from src.config import setup_logging
-from src.config.settings import Config
+from src.ui.page_setup import setup_page
 from src.ui.pages.home_page import HomePage
 
 # ロギングの初期化（アプリケーション起動時に一度だけ実行）
@@ -25,15 +25,8 @@ if "logging_initialized" not in st.session_state:
     setup_logging()
     st.session_state.logging_initialized = True
 
-# 設定の読み込み
-config = Config.from_env()
-
-# ページ設定
-st.set_page_config(
-    page_title=config.page_title,
-    page_icon=config.page_icon,
-    layout=config.layout,
-)
+# ページの準備(ページ設定・共通の CSS・サイト名の見出し。全ページで共通)
+setup_page()
 
 if __name__ == "__main__":
     home_page = HomePage()

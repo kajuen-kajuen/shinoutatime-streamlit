@@ -90,8 +90,9 @@ class HomePage:
     def run(self):
         """
         ホーム画面を実行・表示する
+
+        ページ設定・共通の CSS・サイト名の見出しは、Home.py が先に setup_page() で出している。
         """
-        self._load_css()
         self._render_header()
 
         # データ読み込み
@@ -105,19 +106,8 @@ class HomePage:
 
         display_footer()
 
-    def _load_css(self):
-        """カスタムCSSの適用"""
-        try:
-            with open(self.config.css_file_path, encoding="utf-8") as f:
-                st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-        except FileNotFoundError:
-            st.error(f"エラー: {self.config.css_file_path} が見つかりません。")
-        except Exception as e:
-            st.error(f"エラー: {self.config.css_file_path} の読み込み中に問題が発生しました: {e}")
-
     def _render_header(self):
-        """ヘッダー領域の描画"""
-        st.title("しのうたタイム👻🫧")
+        """ヘッダー領域の描画(サイト名の見出しの下のお知らせと説明)"""
         st.info("左のサイドバーから「Song List beta」を選択して、楽曲リストをご覧ください。")
         st.markdown(
             """

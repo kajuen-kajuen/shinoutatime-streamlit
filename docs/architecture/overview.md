@@ -24,7 +24,7 @@ v1 のデータ・ツール・テストは、比べるための参照として�
 
 ```
 pages/・Home.py           画面の入口(Streamlit のページ)
-  └ src/ui/               画面の部品(components/・pages/home_page.py・v2_data.py・styles/style.css)
+  └ src/ui/               画面の部品(page_setup.py・components/・pages/home_page.py・v2_data.py・styles/style.css)
       └ src/core/         処理の中心(v2: views・validation・dataset_ops・text・links / v1: DataPipeline・utils)
           └ src/repositories/  ファイルの読み書き(v2: TableRepository / v1: Live・Timestamp・SongList など)
               └ src/models/    データの形(v2 のテーブル定義は schema.py)
@@ -55,7 +55,8 @@ src/cli/                  CLI(v2: ingest・data / v1: excel_to_tsv_cli・song_li
   (src/ui/v2_data.py の load_performance_view・load_song_stats。キャッシュ付き)
 ```
 
-- `Home.py` は設定を読み、`HomePage().run()` を呼ぶだけです。検索は `home_page.filter_view`(検索語を `normalize_for_match` してから、一覧の検索用の列に部分一致)。
+- どのページも最初に `src/ui/page_setup.py` の `setup_page()` を呼びます(ページ設定・共通の `style.css`・見出し「しのうたタイム👻🫧」と、Home 以外は絵文字付きのページ名)。CSS をページの中に書かず、`style.css` だけを直します。
+- `Home.py` は `setup_page()` のあと、`HomePage().run()` を呼ぶだけです。検索は `home_page.filter_view`(検索語を `normalize_for_match` してから、一覧の検索用の列に部分一致)。
 - 書き込みは、必ず CLI(`ingest apply`・`data set` など)を通します。保存の前に `validation.validate_dataset` で検査し、`sort_table` で決まった順に並べます。手で TSV を編集しないのはこのためです。
 - 並び順・No. の付け方・メン限を画面に出さない決まりなどは、`data-model.md` の 3.2〜3.3 にあります。
 
@@ -83,10 +84,10 @@ src/cli/                  CLI(v2: ingest・data / v1: excel_to_tsv_cli・song_li
 | ページ | 中身 | データ |
 |---|---|---|
 | `Home.py` | 歌唱の検索(曲名・アーティスト・読み、配信タイトルも)と一覧 | v2(歌唱の一覧) |
-| `pages/01_Information.py` | お知らせ。X の埋め込みはページのコードに直接書いている | — |
+| `pages/01_Information.py` | 予定表置き場(本人のフリーチャットの枠)と、お知らせ・活動の記録の案内(非公式 Wiki・X・公式サイトへのリンク) | — |
 | `pages/02_About_Us.py` | サイトの説明 | — |
 | `pages/99_Song_List_beta.py` | 曲の一覧(β。アーティストの読み → 曲名の読みの順) | v2(曲ごとの集計) |
-| `pages/*_Admin.py` | X の埋め込みの管理 | ローカル専用・Git 管理外 |
+| `pages/*_Admin.py` | X の埋め込みの管理(今は使っていない。Information の週間スケジュールを止めたため) | ローカル専用・Git 管理外 |
 
 ## 8. 設定と秘密の値
 
@@ -97,4 +98,4 @@ src/cli/                  CLI(v2: ingest・data / v1: excel_to_tsv_cli・song_li
 ## 9. 既知の課題(2026-10-21 時点)
 
 - v1 のコード・データ・テスト・CLI が残っている(画面からは使わない)。`src/core/__init__.py`・`src/repositories/__init__.py` が v1 の部品をまとめて import するので、openpyxl・requests を本番の requirements から外せない。フェーズ3で片付ける。
-- Song List はページの中に CSS を直接書いている(`style.css` と共通にするのはフェーズ3)。
+- `style.css` の `.block-container` は Streamlit の内部のクラス名に頼っている(data-testid の指定に置き換えるかは未定)。
