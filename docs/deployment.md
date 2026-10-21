@@ -1,21 +1,19 @@
 # デプロイメントガイド
 
-## 概要
+「しのうたタイム」は Streamlit Community Cloud で公開しています。この文書は、公開の環境・スリープ防止・依存と Python の版・アプリの作り直し・反映の確認をまとめたものです。ブランチとリリースの手順は [ブランチ戦略](development/BRANCH_STRATEGY.md) にあります。
 
-本ドキュメントは、「しのうたタイム」アプリケーションをStreamlit Cloudにデプロイする手順を説明します。Streamlit Cloudは、Streamlitアプリケーションを無料でホスティングできるプラットフォームです。
-
-### 今の環境(2026-10)
+## 今の環境(2026-10)
 
 | ブランチ | 環境 | URL |
 |---|---|---|
 | `main` | 本番 | https://shinoutatime.streamlit.app/ |
 | `develop` | ステージング(stg) | https://stg-shinoutatime.streamlit.app/ |
 
-- どちらも、ブランチに push すると自動で再デプロイされます。
-- 開発の流れは「作業ブランチ(`feature/xxx` など)→ `develop`(stg で確認)→ `main`(本番)」です。`develop`・`main` への統合と push は、持ち主が手で行います([`docs/development/BRANCH_STRATEGY.md`](development/BRANCH_STRATEGY.md))。
+- どちらも、ブランチに push すると自動で再デプロイされます(数分)。
+- 開発の流れは「作業ブランチ(`feature/xxx` など)→ `develop`(stg で確認)→ `main`(本番)」です。`develop`・`main` への統合と push は、持ち主が手で行います。
 - `.github/workflows/wake_up_streamlit.yml` が6時間ごとに本番をブラウザで開き、スリープを防いでいます(stg は対象外。テストの CI はありません)。
 
-### スリープ防止(wake_up_streamlit.yml)
+## スリープ防止(wake_up_streamlit.yml)
 
 Community Cloud のアプリは、しばらくアクセスが無いとスリープします。スリープ中は HTML を取るだけでは起きず、画面の「Yes, get this app back up!」を押す必要があります。
 
@@ -25,513 +23,49 @@ Community Cloud のアプリは、しばらくアクセスが無いとスリー�
 - それでも無効になったとき(Actions の画面に「This scheduled workflow is disabled」と出る)は、`gh workflow enable wake_up_streamlit.yml` か、Actions の画面の「Enable workflow」で戻します。
 - 定期実行は `main` のワークフロー定義だけが使われます。変更を試すときは、作業ブランチを push して `gh workflow run wake_up_streamlit.yml --ref <ブランチ>` で手動実行します。
 
-## 前提条件
+## 依存と Python の版
 
-デプロイを開始する前に、以下の準備が必要です：
+- Cloud が読むのは `requirements.txt` だけです。`requirements-tools.txt`(データの CLI)と `requirements-dev.txt`(テスト)は読みません。
+- 版は `==` で固定し、ビルドのたびに版が変わらないよう、間接の依存(`numpy`・`pyarrow` など)まで固定しています。直接の依存を上げたときの取り直し方は、`requirements.txt` の中のコメントにあります。
+- `pyarrow` は 24.0.0 に固定しています。Cloud は 26.0.0 を「落ちる不具合がある」(apache/arrow#50471)として 25 未満に差し替えるので、Cloud が実際に入れる版に合わせています。
+- 依存を変えたら、先にコンテナでテストと画面を確かめ、stg に出してビルドのログを見てから本番に出します。
+- Python は **3.14**(手元のコンテナは `python:3.14.8-slim-trixie`)。Cloud の Python の版は、アプリを作るときに「Advanced settings」で選び、**あとから変えられません**。変えるときは、次の手順でアプリを作り直します。
 
-1. **GitHubアカウント**: リポジトリをホストするため
-2. **Streamlit Cloudアカウント**: [https://streamlit.io/cloud](https://streamlit.io/cloud) から無料で作成可能
-3. **リポジトリの準備**: アプリケーションコードがGitHubリポジトリにプッシュされていること
+## アプリを作り直す(Python の版を上げるときなど)
 
-## デプロイ手順
+1. 今の設定を控える: カスタムサブドメイン(`shinoutatime` / `stg-shinoutatime`)、リポジトリ、ブランチ、Main file path(`Home.py`)、Secrets(アプリは読まないが、入っていれば控える)
+2. 新しい Python で `requirements.txt` が入り、テストが通ることを、コンテナ(`Dockerfile` の Python を同じ版にしたもの)で確かめる
+3. Cloud のダッシュボードでアプリを削除する(削除すると、サブドメインはすぐに使い直せる)
+4. 「New app」で作り直す: 同じリポジトリ・ブランチ(本番は `main`、stg は `develop`)・`Home.py` を選び、サブドメインを元と同じにし、「Advanced settings」で Python の版を選ぶ
+5. 下の「反映の確認」をする。**stg で先に行い、問題がなければ本番**
 
-### ステップ1: GitHubリポジトリの準備
+## 反映の確認
 
-#### 1.1 リポジトリの作成
+push のあと、Cloud のダッシュボードの「Manage app」→ ログで、ビルドと起動を確かめます。
 
-GitHubで新しいリポジトリを作成するか、既存のリポジトリを使用します。
+- 依存のインストールでエラーや、版の差し替えの警告が出ていない
+- 起動後に例外が出ていない
 
-```bash
-# 新規リポジトリの場合
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/your-username/your-repo-name.git
-git push -u origin main
-```
+画面では次を確かめます。
 
-#### 1.2 必要なファイルの確認
+- [ ] Home の検索欄の上に「データは YYYY/MM/DD の配信まで(歌唱 N 件)」が出て、日付が出したデータに合っている
+- [ ] キーワードを入れて Enter キーで検索でき、件数と表が出る
+- [ ] リンク(「YouTubeへ👻」など)で、歌ったところが開く
+- [ ] 楽曲リスト(Song List beta)が出て、「さらに25件表示」で増える
+- [ ] Information の動画と、Wiki・X・公式サイトへのリンクが出る
+- [ ] どのページにも見出し「しのうたタイム👻🫧」とフッターが出る
 
-リポジトリに以下のファイルが含まれていることを確認してください：
+## ログとエラーのとき
 
-- `Home.py` - メインアプリケーションファイル
-- `requirements.txt` - 依存パッケージリスト
-- `pages/` - ページファイルのディレクトリ
-- `data/` - データファイルのディレクトリ
-- `footer.py` - フッターモジュール
-- `style.css` - カスタムCSSファイル
+- ログは「Manage app」から見られ、ファイルに落とすこともできます。落としたログ(`logs-*.txt`)はリポジトリの直下に置いて読めますが、Git には入れません(`.gitignore` 済み)。
+- 直すときは、手元で直して作業ブランチ → `develop`(stg で確認)→ `main` の順に出します。手元で起きるときの直し方は [TROUBLESHOOTING.md](../TROUBLESHOOTING.md)。
 
-#### 1.3 .gitignoreの設定
+## 秘密の値
 
-機密情報や不要なファイルをリポジトリに含めないよう、`.gitignore`ファイルを設定します：
+- 今の画面は、Cloud の Secrets も環境変数も使いません(`SHINOUTA_*` の設定は既定のまま)。
+- 取り込みの YouTube Data API のキーは手元の `.env` にだけ置き、Cloud には置きません(画面は外部の API を使わない)。
+- 公開リポジトリなので、秘密の値をコミットしません(`sh tools/check-rules.sh` で確かめる)。
 
-```gitignore
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-ENV/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+## データの反映
 
-# Streamlit
-.streamlit/secrets.toml
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# データファイル
-# 注意: データファイルは通常リポジトリに含めますが、
-# 機密情報が含まれる場合は除外してください
-# data/sensitive_data.tsv
-```
-
-### ステップ2: Streamlit Cloudへのデプロイ
-
-#### 2.1 Streamlit Cloudにログイン
-
-1. [https://streamlit.io/cloud](https://streamlit.io/cloud) にアクセス
-2. 「Sign up」または「Sign in」をクリック
-3. GitHubアカウントで認証
-
-#### 2.2 新しいアプリの作成
-
-1. Streamlit Cloudダッシュボードで「New app」ボタンをクリック
-2. 以下の情報を入力：
-   - **Repository**: デプロイするGitHubリポジトリを選択
-   - **Branch**: デプロイするブランチ（本番は`main`、stg は`develop`）
-   - **Main file path**: `Home.py`
-3. 「Advanced settings」をクリックし、**Python version を 3.14** にする（必要に応じて環境変数も設定）
-4. 「Deploy!」ボタンをクリック
-
-> **Python のバージョンについて**: Streamlit Cloud は、デプロイしたあとで Python のバージョンを変えられません。変えるときは、次の「Python のバージョンを上げる」の手順でアプリを作り直します。
-
-#### 2.3 Python のバージョンを上げる
-
-1. 今の設定を控える: カスタムサブドメイン（`shinoutatime` / `stg-shinoutatime`）、リポジトリ、ブランチ、`Home.py`、Secrets
-2. 先に `requirements.txt` の版が新しい Python で動くことを、コンテナ（`Dockerfile` の Python を同じ版にしたもの）で確かめる
-3. ダッシュボードでアプリを削除する（削除するとサブドメインはすぐに再利用できる）
-4. 2.2 の手順でデプロイし直す。同じリポジトリ・ブランチ・`Home.py` を選び、サブドメインを元と同じにし、「Advanced settings」で Python のバージョンを選び、Secrets を入れ直す
-5. 3.1 の確認をする。**stg（`develop`）で先に行い、問題がなければ本番（`main`）**
-
-依存は `requirements.txt` に `==` で固定しています。Streamlit Cloud はこのファイルだけを読み、`requirements-tools.txt`（データ生成の CLI）と `requirements-dev.txt`（テスト）は読みません。
-
-#### 2.4 デプロイの確認
-
-- デプロイプロセスが開始され、ログがリアルタイムで表示されます
-- 通常、数分でデプロイが完了します
-- デプロイが成功すると、アプリのURLが表示されます（例: `https://your-app-name.streamlit.app`）
-
-### ステップ3: デプロイ後の確認
-
-#### 3.1 アプリの動作確認
-
-デプロイされたアプリにアクセスし、以下の項目を確認してください：
-
-- [ ] ホームページが正常に表示される
-- [ ] 検索機能が動作する
-- [ ] データが正しく読み込まれている
-- [ ] YouTubeリンクが正常に機能する
-- [ ] 各ページ（Information、About Us、Song List）が表示される
-- [ ] CSSスタイルが適用されている
-- [ ] フッターが表示されている
-
-#### 3.2 エラーの確認
-
-エラーが発生した場合：
-
-1. Streamlit Cloudダッシュボードで「Manage app」をクリック
-2. 「Logs」タブでエラーログを確認
-3. エラー内容に基づいて修正を行い、GitHubにプッシュ
-4. Streamlit Cloudが自動的に再デプロイを実行
-
-## 環境変数の設定
-
-### 環境変数が必要な場合
-
-現在の「しのうたタイム」アプリケーションは環境変数を使用していませんが、将来的に以下のような情報を環境変数として管理する場合があります：
-
-- API キー（YouTube Data API など）
-- データベース接続情報
-- 外部サービスの認証情報
-
-### Streamlit Cloudでの環境変数設定方法
-
-#### 方法1: Streamlit Cloud UI経由
-
-1. Streamlit Cloudダッシュボードで対象アプリを選択
-2. 「Settings」→「Secrets」をクリック
-3. TOML形式で環境変数を入力：
-
-```toml
-# 例: API キーの設定
-api_key = "your-api-key-here"
-database_url = "your-database-url"
-
-# セクション付きの設定
-[database]
-host = "localhost"
-port = 5432
-username = "user"
-password = "password"
-```
-
-4. 「Save」をクリック
-
-#### 方法2: ローカルでのテスト
-
-ローカル環境でシークレットをテストする場合：
-
-1. `.streamlit/secrets.toml` ファイルを作成（このファイルは`.gitignore`に含める）
-2. 同じTOML形式で環境変数を記述
-3. アプリケーション内で以下のようにアクセス：
-
-```python
-import streamlit as st
-
-# シークレットへのアクセス
-api_key = st.secrets["api_key"]
-
-# セクション付きシークレットへのアクセス
-db_host = st.secrets["database"]["host"]
-```
-
-### セキュリティのベストプラクティス
-
-- **絶対にシークレットをGitHubにコミットしない**
-- `.streamlit/secrets.toml` を `.gitignore` に追加
-- API キーやパスワードは環境変数として管理
-- 定期的にシークレットをローテーション
-
-## デプロイ時の注意事項
-
-### 1. リソース制限
-
-Streamlit Cloudの無料プランには以下の制限があります：
-
-- **メモリ**: 1GB
-- **CPU**: 共有CPU
-- **ストレージ**: リポジトリサイズに依存
-- **同時実行**: 限定的
-
-#### 対策
-
-- データファイルのサイズを最適化
-- `@st.cache_data` デコレータを活用してキャッシュを有効化
-- 不要なデータの読み込みを避ける
-- 大量データの場合は外部データベースの使用を検討
-
-### 2. データファイルの管理
-
-#### 2.1 データファイルのサイズ
-
-- TSVファイルが大きい場合、リポジトリサイズが増大
-- GitHubの推奨リポジトリサイズは1GB未満
-- 大規模データの場合は外部ストレージ（S3、Google Cloud Storageなど）の使用を検討
-
-#### 2.2 データの更新
-
-データファイルを更新する場合：
-
-1. ローカルでデータファイルを更新(v2 のデータは、手で編集せず取り込みの CLI で書く。[`docs/prompts/update-data.md`](prompts/update-data.md))
-2. 作業ブランチにコミットし、持ち主が `develop` → `main` に統合して push する
-3. Streamlit Cloudが自動的に再デプロイ
-4. キャッシュがクリアされ、新しいデータが反映される
-
-本番の画面を v2 に切り替えるまでは、`data/v2/` を更新しても本番の画面は変わりません(確認用のページだけが読む)。
-
-#### 2.3 データのバックアップ
-
-- 定期的にデータファイルをバックアップ
-- GitHubのバージョン管理を活用
-- 重要なデータは複数の場所に保存
-
-### 3. 自動デプロイ
-
-Streamlit Cloudは、GitHubリポジトリの変更を検知して自動的に再デプロイします：
-
-- **トリガー**: `main`ブランチ(本番)・`develop`ブランチ(stg)へのプッシュ
-- **デプロイ時間**: 通常2〜5分
-- **ダウンタイム**: 最小限（数秒程度）
-
-#### 自動デプロイの無効化
-
-必要に応じて自動デプロイを無効化できます：
-
-1. Streamlit Cloudダッシュボードで「Settings」をクリック
-2. 「Auto-deploy」をオフに設定
-3. 手動で「Reboot」ボタンをクリックしてデプロイ
-
-### 4. カスタムドメインの設定
-
-Streamlit Cloudでは、カスタムドメインの設定が可能です（有料プランで利用可能）：
-
-1. ドメインを取得（例: `shinouta-time.com`）
-2. Streamlit Cloudダッシュボードで「Settings」→「Custom domain」をクリック
-3. ドメインプロバイダーでCNAMEレコードを設定
-4. Streamlit Cloudで設定を完了
-
-### 5. パフォーマンス最適化
-
-#### 5.1 キャッシュの活用
-
-```python
-import streamlit as st
-import pandas as pd
-
-@st.cache_data
-def load_data(file_path):
-    """データを読み込み、キャッシュする"""
-    return pd.read_csv(file_path, delimiter="\t")
-
-# キャッシュされたデータの使用
-df = load_data("data/M_YT_LIVE.TSV")
-```
-
-#### 5.2 遅延読み込み
-
-- 必要なデータのみを読み込む
-- ページごとにデータを分割
-- 段階的表示機能を活用
-
-#### 5.3 画像の最適化
-
-- 画像ファイルを圧縮
-- 適切なフォーマット（WebP、JPEG）を使用
-- 不要な画像は削除
-
-### 6. エラーハンドリング
-
-デプロイ環境では、ローカル環境と異なるエラーが発生する可能性があります：
-
-#### 6.1 ファイルパスの問題
-
-```python
-import os
-
-# 相対パスを使用
-data_path = os.path.join(os.path.dirname(__file__), "data", "M_YT_LIVE.TSV")
-
-# または、カレントディレクトリからの相対パス
-data_path = "data/M_YT_LIVE.TSV"
-```
-
-#### 6.2 エンコーディングの問題
-
-```python
-# UTF-8エンコーディングを明示的に指定
-df = pd.read_csv("data/M_YT_LIVE.TSV", delimiter="\t", encoding="utf-8")
-```
-
-#### 6.3 依存関係の問題
-
-- `requirements.txt` にすべての依存パッケージを記載
-- バージョンは `==` で固定する(このリポジトリの決まり)。例(2026-10 時点の `requirements.txt`):
-
-```txt
-streamlit==1.66.0
-pandas==3.0.6
-```
-
-### 7. モニタリングとログ
-
-#### 7.1 アプリケーションログの確認
-
-Streamlit Cloudダッシュボードで：
-
-1. 対象アプリを選択
-2. 「Manage app」→「Logs」をクリック
-3. リアルタイムログを確認
-
-#### 7.2 エラー通知
-
-Streamlit Cloudは、アプリがクラッシュした場合にメール通知を送信します（設定で有効化可能）。
-
-### 8. セキュリティ考慮事項
-
-#### 8.1 認証の追加
-
-公開アプリに認証を追加する場合：
-
-```python
-import streamlit as st
-
-def check_password():
-    """パスワード認証を実装"""
-    def password_entered():
-        if st.session_state["password"] == st.secrets["password"]:
-            st.session_state["password_correct"] = True
-            del st.session_state["password"]
-        else:
-            st.session_state["password_correct"] = False
-
-    if "password_correct" not in st.session_state:
-        st.text_input("Password", type="password", on_change=password_entered, key="password")
-        return False
-    elif not st.session_state["password_correct"]:
-        st.text_input("Password", type="password", on_change=password_entered, key="password")
-        st.error("😕 Password incorrect")
-        return False
-    else:
-        return True
-
-if check_password():
-    # アプリのメインコンテンツ
-    st.write("Welcome!")
-```
-
-#### 8.2 HTTPS
-
-Streamlit Cloudは自動的にHTTPSを提供します。追加の設定は不要です。
-
-#### 8.3 CORS設定
-
-Streamlit Cloudは、デフォルトで適切なCORS設定を行います。
-
-### 9. トラブルシューティング
-
-#### 問題1: アプリが起動しない
-
-**原因**:
-- `requirements.txt` の依存関係の問題
-- メインファイルのパスが間違っている
-- Pythonバージョンの不一致
-
-**解決策**:
-1. ログを確認してエラーメッセージを特定
-2. `requirements.txt` を確認
-3. ローカル環境で動作確認
-4. Pythonバージョンを指定（`.streamlit/config.toml` または `runtime.txt`）
-
-#### 問題2: データが表示されない
-
-**原因**:
-- データファイルのパスが間違っている
-- データファイルがリポジトリに含まれていない
-- エンコーディングの問題
-
-**解決策**:
-1. ファイルパスを確認
-2. GitHubリポジトリにデータファイルが含まれているか確認
-3. エンコーディングを明示的に指定
-
-#### 問題3: メモリ不足エラー
-
-**原因**:
-- データファイルが大きすぎる
-- キャッシュが効いていない
-- メモリリークの可能性
-
-**解決策**:
-1. `@st.cache_data` を使用してキャッシュを有効化
-2. データを分割して読み込む
-3. 不要なデータを削除
-4. 有料プランへのアップグレードを検討
-
-#### 問題4: CSSが適用されない
-
-**原因**:
-- `style.css` ファイルのパスが間違っている
-- ファイルがリポジトリに含まれていない
-
-**解決策**:
-1. ファイルパスを確認
-2. GitHubリポジトリに `style.css` が含まれているか確認
-3. エンコーディングを確認（UTF-8）
-
-## デプロイのベストプラクティス
-
-### 1. 開発フロー
-
-推奨される開発フローは以下の通りです：
-
-1. **ローカル開発**: ローカル環境で機能を開発・テスト
-2. **ブランチ作成**: 新機能用のブランチを作成
-3. **コミット**: 変更をコミット
-4. **プッシュ**: GitHubにプッシュ
-5. **プルリクエスト**: `main` ブランチへのプルリクエストを作成
-6. **レビュー**: コードレビューを実施
-7. **マージ**: `main` ブランチにマージ
-8. **自動デプロイ**: Streamlit Cloudが自動的にデプロイ
-
-### 2. バージョン管理
-
-- セマンティックバージョニングを使用（例: v1.0.0）
-- タグを使用してリリースを管理
-- CHANGELOGを維持
-
-### 3. テスト
-
-デプロイ前に以下のテストを実施：
-
-- [ ] ローカル環境での動作確認
-- [ ] すべてのページが正常に表示される
-- [ ] 検索機能が動作する
-- [ ] データが正しく読み込まれる
-- [ ] エラーハンドリングが機能する
-- [ ] レスポンシブデザインが機能する
-
-### 4. ドキュメント
-
-- README.mdを最新の状態に保つ
-- デプロイ手順を文書化
-- トラブルシューティング情報を追加
-
-## まとめ
-
-Streamlit Cloudへのデプロイは、以下の手順で簡単に実行できます：
-
-1. GitHubリポジトリを準備
-2. Streamlit Cloudでアカウントを作成
-3. 「New app」からアプリをデプロイ
-4. 環境変数を設定（必要に応じて）
-5. デプロイ後の動作確認
-
-デプロイ後は、GitHubへのプッシュで自動的に更新されるため、継続的なメンテナンスが容易です。
-
-## 参考リンク
-
-- [Streamlit Cloud公式ドキュメント](https://docs.streamlit.io/streamlit-community-cloud)
-- [Streamlit公式ドキュメント](https://docs.streamlit.io/)
-- [GitHub公式ドキュメント](https://docs.github.com/)
-- [Streamlit Community Forum](https://discuss.streamlit.io/)
-
-## サポート
-
-デプロイに関する問題が発生した場合：
-
-1. Streamlit Cloudのログを確認
-2. [Streamlit Community Forum](https://discuss.streamlit.io/) で質問
-3. GitHubのIssueを作成
-4. プロジェクト管理者に連絡
-
----
-
-**最終更新日**: 2025年11月18日  
-**対象バージョン**: Streamlit Cloud (2025年11月時点)
+データ v2(`data/v2/`)は本番の画面が読むので、コードと同じく `develop` で確かめてから `main` に出します。取り込みは `update-data` ブランチで行います([ブランチ戦略](development/BRANCH_STRATEGY.md)・[取り込みの手順](prompts/update-data.md))。push すると Cloud が再デプロイし、新しいデータで読み込み直します。

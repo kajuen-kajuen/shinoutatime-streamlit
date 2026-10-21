@@ -4,7 +4,7 @@
 
 ## 今の運用(2026-10)
 
-- 運用は、持ち主1人と AI(Claude Code など)です。PR は使わず、持ち主が手元で merge と push を行います。
+- 運用は、持ち主1人と AI(Claude Code など)です。**PR(GitHub のプルリクエスト)の運用は未定です【要確認】。** 決まるまでは、持ち主が手元で merge と push を行います(下の手順)。
 - **`main`・`develop` への統合(merge)と push は、持ち主が手で行います。** AI は行いません。`.claude/settings.json` で、AI の `git push`・`git merge`・`git rebase`・`git checkout main|develop`・`git switch main|develop` を禁止しています。下の手順の merge・push は、持ち主が打つものです。
 - AI は作業ブランチでコミットまでを行います(持ち主の指示があったときだけ)。コミットの前に `sh tools/check-rules.sh` が自動で流れ、問題があればコミットが止まります。
 

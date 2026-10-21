@@ -23,7 +23,7 @@ URL が無いときは、`python -m src.cli.ingest status` の「未処理」を
 ## 止まって聞く所
 
 1. 職人さんのセットリストのコメントが見つからないとき(下の「取得」の手順を全部やっても無い)
-2. `apply` の前。取り込む行・除外する行・印の付いた行の表を出して、承認を待つ(定期実行のときは、止まる代わりに PR を下書き(draft)にして理由を書く)
+2. `apply` の前。取り込む行・除外する行・印の付いた行の表を出して、承認を待つ(定期実行(自動の取り込み)は未実装で、そのときのブランチと PR の形は未定【要確認】)
 3. 既存の曲との結び付けに迷うとき(`match=similar`)
 
 ## 決めてよいこと・聞くこと
@@ -167,7 +167,7 @@ URL が無いときは、`python -m src.cli.ingest status` の「未処理」を
 
 `sh tools/check-rules.sh` → `data validate` → `_commands.md` のテスト → 差分の要約 → 【要確認】【仮定】の一覧。
 作業ブランチは `update-data`(`origin/develop` から作り直す。[`docs/development/BRANCH_STRATEGY.md`](../development/BRANCH_STRATEGY.md))。
-コミットは私が指示したときだけ行う。push はしない(定期実行は、`data/auto-*` ブランチと PR だけ)。
+コミットは私が指示したときだけ行う。push はしない(定期実行(自動の取り込み)は未実装で、ブランチと PR の形は未定【要確認】)。
 
 ## ブラウザでの取得の依頼文(Claude.ai やブラウザを操作できる Claude に渡す)
 

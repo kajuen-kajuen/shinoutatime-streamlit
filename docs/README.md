@@ -12,11 +12,21 @@
 | 作業の計画・調査のメモ | `plans/`(**手元だけ・Git 管理外**。ブラッシュアップの計画、参考サイト、X の調べ方など) | — |
 | アーキテクチャ | [`architecture/overview.md`](architecture/overview.md)(層・v1 と v2・データの流れ・エラー・キャッシュ) | — |
 | 開発の決まり | [`development/`](development/)(ブランチ戦略) | — |
-| 利用者・運用向けガイド | [`guides/`](guides/)(使い方)、[`deployment.md`](deployment.md)、[`faq.md`](faq.md) | — |
+| サイトの使い方 | [`guides/user-guide.md`](guides/user-guide.md)、[`faq.md`](faq.md) | — |
+| 公開と運用 | [`deployment.md`](deployment.md)(Streamlit Community Cloud・スリープ防止・依存と Python の版) | — |
 | テスト | [`testing/`](testing/) | — |
 | 過去の仕様(要件・設計・タスクの3点セット)、古くなった構成・開発者ガイドなど | [`archive/`](archive/)(一覧は [`archive/README.md`](archive/README.md)) | — |
 
 雛形は `_` で始まるファイル名。新しく書くときは、雛形をコピーして、`_` を外した名前にする。
+
+リポジトリの直下の文書:
+
+| 文書 | 中身 |
+|---|---|
+| [`README.md`](../README.md) | サイトの概要・機能・はじめかた・構成の早見 |
+| [`SETUP.md`](../SETUP.md)・[`TROUBLESHOOTING.md`](../TROUBLESHOOTING.md) | 手元で動かす手順・困ったとき |
+| [`CONTRIBUTING.md`](../CONTRIBUTING.md) | 開発の決まり(書き方・コミット・テスト) |
+| [`CLAUDE.md`](../CLAUDE.md) | AI エージェント向けの入口 |
 
 ## 命名規則
 
@@ -32,7 +42,7 @@
 
 ## 書き方の目安
 
-- データ形式(TSV の列・配信日の書式・文字コード)、本番と stg での確認結果、外部サービス(YouTube・X の埋め込み)への依存など、後から困りやすい点は必ず書く
+- データ形式(TSV の列・配信日の書式・文字コード)、本番と stg での確認結果、外部サービス(YouTube Data API・Streamlit Community Cloud)への依存など、後から困りやすい点は必ず書く
 - コミットや行番号は、変わりやすいので、必要なときだけ書く。コミットは短縮ハッシュで十分
 - ブラウザでしか確認できないことは、確認した日付と方法(環境・ページ・画面幅)を書く
 
