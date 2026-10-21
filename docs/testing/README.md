@@ -44,7 +44,7 @@ docker compose exec shinouta-time pytest --cov=src --cov-report=term-missing
 
 ## 今の状態(2026-10-22)
 
-- 全体: **877 passed / 4 skipped**(失敗なし)
+- 全体: **863 passed / 4 skipped**(失敗なし。v1 のデータを確かめていた環境の確認テスト14件は消した)
 - v1 の部品のテスト(`tests/unit` の DataPipeline・SongListService など、`tests/property`)は、v1 のコードと一緒にフェーズ3で消す。
 - 変更の前後で、**失敗が増えていない**ことを確かめます。
 
