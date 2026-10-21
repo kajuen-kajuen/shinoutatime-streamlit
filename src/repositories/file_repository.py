@@ -124,8 +124,8 @@ class FileRepository:
             # 親ディレクトリが存在しない場合は作成
             self.embed_code_path.parent.mkdir(parents=True, exist_ok=True)
             
-            # ファイルに書き込み
-            with open(self.embed_code_path, 'w', encoding='utf-8') as f:
+            # ファイルに書き込み(改行を変えずに書く。読み込みもバイナリで読むので、内容がそのまま戻る)
+            with open(self.embed_code_path, 'w', encoding='utf-8', newline='') as f:
                 f.write(content)
             
             self.logger.info(

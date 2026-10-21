@@ -14,17 +14,17 @@ from src.repositories.file_repository import FileRepository
 class TestFileRepositoryProperties:
     """File Repositoryのプロパティテスト"""
     
-    @given(st.text(min_size=1, max_size=10000).filter(lambda x: '\r' not in x or '\n' in x))
+    @given(st.text(min_size=1, max_size=10000))
     @settings(max_examples=100)
     def test_property_4_file_write_read_roundtrip(self, content):
         """
         Feature: test-coverage-improvement, Property 4: ファイル読み書きのラウンドトリップ
-        
+
         すべての文字列コンテンツに対して、書き込んでから読み込むと元の内容と一致する
         **検証: 要件2.1, 2.2**
-        
-        注: Pythonのテキストモードでは改行文字が正規化されるため、
-        単独の\rは\nに変換されます。これは正常な動作です。
+
+        注: 書き込みは newline='' で改行を変えず、読み込みはバイナリで読むので、
+        "\r\n" や単独の "\r" もそのまま戻る。
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             embed_path = Path(tmpdir) / "test_embed.html"
@@ -43,11 +43,8 @@ class TestFileRepositoryProperties:
             # 読み込み
             read_content = repo.read_embed_code()
             
-            # ラウンドトリップの検証
-            # Pythonのテキストモードでは改行が正規化されるため、
-            # 書き込み前に正規化した内容と比較
-            normalized_content = content.replace('\r\n', '\n').replace('\r', '\n')
-            assert read_content == normalized_content
+            # ラウンドトリップの検証(改行も含めて元の内容と一致する)
+            assert read_content == content
     
     @given(st.text(min_size=1, max_size=10000).filter(lambda x: '\r' not in x or '\n' in x))
     @settings(max_examples=100)
