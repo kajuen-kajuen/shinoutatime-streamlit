@@ -1,4 +1,8 @@
-name: Wake Up Multiple Streamlit Apps
+name: Wake Up Streamlit App
+
+# 本番(https://shinoutatime.streamlit.app/)をブラウザで開き、スリープしていれば起こす。
+# curl で HTML を取るだけでは起きないので、Playwright で「Yes, get this app back up!」を押す。
+# 定期実行は既定ブランチ(main)の定義だけが使われる。手動実行は --ref で別のブランチも試せる。
 
 on:
   schedule:
@@ -7,22 +11,40 @@ on:
   workflow_dispatch:
     # 手動でワークフローを実行できるようにする
 
+permissions:
+  contents: read
+  actions: write # 最後の手順でこのワークフローを有効にし直すため
+
 jobs:
   wake_up:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Send GET request to App 1
-        run: |
-          # ここに1つ目のStreamlitアプリのURLを記述してください
-          APP_URL_1="https://shinoutatime.streamlit.app/" 
-          echo "Sending GET request to $APP_URL_1"
-          curl -sS --fail $APP_URL_1 || { echo "Failed to reach Streamlit App 1"; exit 1; }
-          echo "Successfully reached Streamlit App 1"
+      - uses: actions/checkout@v7
 
-      - name: Send GET request to App 2
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Install Playwright
         run: |
-          # ここに2つ目のStreamlitアプリのURLを記述してください
-          APP_URL_2="https://stg-shinoutatime.streamlit.app/"
-          echo "Sending GET request to $APP_URL_2"
-          curl -sS --fail $APP_URL_2 || { echo "Failed to reach Streamlit App 2"; exit 1; }
-          echo "Successfully reached Streamlit App 2"
+          pip install playwright==1.64.0
+          python -m playwright install --with-deps chromium
+
+      - name: Wake up the production app
+        run: python tools/wake_up_streamlit.py https://shinoutatime.streamlit.app/
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: wake-up-screenshots
+          path: wake_up_screenshots/
+          if-no-files-found: ignore
+
+      # 公開リポジトリは 60 日活動が無いと定期実行が止まる。毎回有効にし直して数え直す
+      - name: Keep this workflow enabled
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/wake_up_streamlit.yml/enable"

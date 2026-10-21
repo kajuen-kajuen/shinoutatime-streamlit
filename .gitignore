@@ -3,6 +3,10 @@
 # Application logs
 logs/
 *.log
+# Streamlit Community Cloud の「Manage app」から落としたログ(リポジトリの直下に置いて読む)
+logs-*.txt
+# スリープ防止(tools/wake_up_streamlit.py)が失敗したときのスクリーンショット
+wake_up_screenshots/
 
 # Backup files
 data/backups/

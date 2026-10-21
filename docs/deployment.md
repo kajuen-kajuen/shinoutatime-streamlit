@@ -13,7 +13,17 @@
 
 - どちらも、ブランチに push すると自動で再デプロイされます。
 - 開発の流れは「作業ブランチ(`feature/xxx` など)→ `develop`(stg で確認)→ `main`(本番)」です。`develop`・`main` への統合と push は、持ち主が手で行います([`docs/development/BRANCH_STRATEGY.md`](development/BRANCH_STRATEGY.md))。
-- `.github/workflows/wake_up_streamlit.yml` が6時間ごとに両方の環境へアクセスし、スリープを防いでいます(テストの CI はありません)。
+- `.github/workflows/wake_up_streamlit.yml` が6時間ごとに本番をブラウザで開き、スリープを防いでいます(stg は対象外。テストの CI はありません)。
+
+### スリープ防止(wake_up_streamlit.yml)
+
+Community Cloud のアプリは、しばらくアクセスが無いとスリープします。スリープ中は HTML を取るだけでは起きず、画面の「Yes, get this app back up!」を押す必要があります。
+
+- 日本時間 0・6・12・18 時に、GitHub Actions が `tools/wake_up_streamlit.py`(Playwright の Chromium)で本番を開きます。ボタンがあれば押し、見出し「しのうたタイム」が出るまで最大 3 分待ちます。
+- 見出しが出なければ実行が失敗になり、GitHub から失敗の通知が届きます。そのときの画面は、実行の Artifacts の `wake-up-screenshots` で見られます。
+- 公開リポジトリでは、60 日活動が無いと定期実行が自動で無効になります。これを防ぐため、毎回の最後に自分自身を有効にし直しています。
+- それでも無効になったとき(Actions の画面に「This scheduled workflow is disabled」と出る)は、`gh workflow enable wake_up_streamlit.yml` か、Actions の画面の「Enable workflow」で戻します。
+- 定期実行は `main` のワークフロー定義だけが使われます。変更を試すときは、作業ブランチを push して `gh workflow run wake_up_streamlit.yml --ref <ブランチ>` で手動実行します。
 
 ## 前提条件
 
