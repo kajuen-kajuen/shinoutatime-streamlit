@@ -1,13 +1,14 @@
 """
 HomePageクラスの単体テスト(データは v2 の歌唱の一覧。すべて架空)
 """
+import pandas as pd
 import pytest
 from unittest.mock import patch, MagicMock
 
 from src.config.settings import Config
 from src.core.views import build_performance_view
 from src.exceptions.errors import DataLoadError
-from src.ui.pages.home_page import HomePage, TABLE_COLUMNS, build_table, filter_view
+from src.ui.pages.home_page import HomePage, TABLE_COLUMNS, build_table, data_as_of, filter_view
 from tests.unit.v2.conftest import content, make_dataset
 
 
@@ -57,6 +58,18 @@ class TestFilterView:
     def test_live_title_only_when_included(self, view):
         assert len(filter_view(view, "夜のうた", True)) == 3
         assert filter_view(view, "夜のうた", False).empty
+
+
+class TestDataAsOf:
+    def test_latest_date_and_count(self, view):
+        assert data_as_of(view) == "データは 2025/05/01 の配信まで(歌唱 3 件)"
+
+    def test_uses_max_date_not_last_row(self):
+        dates = pd.DataFrame({"date": ["2025-05-01", "2026-10-20", "2025-12-31"] * 400})
+        assert data_as_of(dates) == "データは 2026/10/20 の配信まで(歌唱 1,200 件)"
+
+    def test_empty_view_is_blank(self, view):
+        assert data_as_of(view.iloc[0:0]) == ""
 
 
 class TestBuildTable:

@@ -5,15 +5,14 @@ VTuber「幽音しの」さんの配信で歌唱された楽曲を検索・閲�
 非公式ファンサイトのメインページです。
 
 主な機能:
-- 楽曲データの読み込みと表示
-- キーワード検索（曲名、アーティスト、配信タイトル）
-- YouTubeタイムスタンプ付きリンク生成
+- 歌唱の一覧の表示と、データの時点(いつの配信までか)の表示
+- キーワード検索（曲名、アーティスト、読み、配信タイトル）。Enter キーかボタンで検索
+- YouTubeタイムスタンプ付きリンク
 - 段階的表示（25件ずつ）
-- 曲目番号の自動生成
 
 データソース:
-- data/M_YT_LIVE.TSV: 配信情報
-- data/M_YT_LIVE_TIMESTAMP.TSV: 楽曲タイムスタンプ情報
+- data/v2/: データモデル v2 の5つの TSV(contents・artists・songs・performances・aliases)。
+  表示は src/ui/pages/home_page.py(読み込みは src/ui/v2_data.py)
 """
 
 import streamlit as st

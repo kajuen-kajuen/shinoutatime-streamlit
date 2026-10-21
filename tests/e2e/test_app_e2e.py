@@ -48,6 +48,9 @@ class TestAppE2E:
         for header in ["配信日", "No.", "曲名", "アーティスト", "種類", "リンク"]:
             assert f"<th>{header}</th>" in html
         assert html.count("<tr>") == 25  # 最初は25件
+        # データの時点(本物のデータなので日付と件数は決め打ちしない)
+        assert any(re.fullmatch(r"データは \d{4}/\d{2}/\d{2} の配信まで\(歌唱 [\d,]+ 件\)", c.value)
+                   for c in app.caption)
 
     def test_search_functionality(self, app):
         """曲名で検索すると、全件より少ない1件以上に絞られる"""

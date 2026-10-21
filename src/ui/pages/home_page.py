@@ -42,6 +42,18 @@ def filter_view(view: pd.DataFrame, query: str, include_title: bool) -> pd.DataF
     return view[view[column].str.contains(needle, regex=False)]
 
 
+def data_as_of(view: pd.DataFrame) -> str:
+    """
+    データの時点の表示(「データは YYYY/MM/DD の配信まで(歌唱 N 件)」)
+
+    日付は一覧の配信日の最大値、件数は一覧(画面に出す歌唱)の件数。一覧が空なら空文字。
+    """
+    if view.empty:
+        return ""
+    latest = view["date"].max().replace("-", "/")
+    return f"データは {latest} の配信まで(歌唱 {len(view):,} 件)"
+
+
 def build_table(view: pd.DataFrame) -> pd.DataFrame:
     """
     表に出す形にする(列は TABLE_COLUMNS)
@@ -131,6 +143,11 @@ class HomePage:
             st.session_state.include_live_title = True
         if "display_limit" not in st.session_state:
             st.session_state.display_limit = self.config.initial_display_limit
+
+        # データの時点(いつの配信までのデータか)
+        as_of = data_as_of(view)
+        if as_of:
+            st.caption(as_of)
 
         # 検索フォームの表示
         current_input, current_checkbox_value, search_button = render_search_form(
