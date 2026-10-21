@@ -1,736 +1,92 @@
-# トラブルシューティングガイド
+# トラブルシューティング
 
-このドキュメントでは、「しのうたタイム」アプリケーションのローカル環境構築時によく発生する問題と、その解決方法をまとめています。
+手元で「しのうたタイム」を動かすとき・テストや取り込みをするときに、このプロジェクトで起きやすいことと直し方です。環境の作り方は [SETUP.md](SETUP.md)、本番(Streamlit Community Cloud)のことは [docs/deployment.md](docs/deployment.md) にあります。
 
-## 目次
+コマンドは Git Bash で、リポジトリの直下から打ちます。
 
-1. [Docker関連の問題](#docker関連の問題)
-2. [ポート関連の問題](#ポート関連の問題)
-3. [データファイル関連の問題](#データファイル関連の問題)
-4. [Python環境関連の問題](#python環境関連の問題)
-5. [パッケージインストール関連の問題](#パッケージインストール関連の問題)
-6. [文字エンコーディング関連の問題](#文字エンコーディング関連の問題)
-7. [テスト関連の問題](#テスト関連の問題)
+## Docker
 
----
+### `Cannot connect to the Docker daemon` などで、コマンドが通らない
 
-## Docker関連の問題
+Docker Desktop が起動していません。起動してから、もう一度打ちます。
 
-### 問題1: Dockerがインストールされていない
+### `port is already allocated`(ポート 8501 が使われている)
 
-**症状**:
-```
-'docker' は、内部コマンドまたは外部コマンド、
-操作可能なプログラムまたはバッチ ファイルとして認識されていません。
-```
+ほかの Streamlit や、前に起動したコンテナが 8501 番を使っています。
 
-**原因**: Dockerがシステムにインストールされていません。
+- `docker compose ps` と `docker ps` で動いているコンテナを確かめ、要らないものを止める(`docker compose down`)
+- それでも空かないときは、`docker-compose.yml` の `ports` を `"8502:8501"` などにして、http://localhost:8502 で開く(この変更はコミットしない)
 
-**解決方法**:
+### イメージのビルドに失敗する
 
-1. **Windows/Mac**: Docker Desktopをインストール
-   - [Docker Desktop公式サイト](https://www.docker.com/products/docker-desktop)からダウンロード
-   - インストーラーを実行してインストール
-   - インストール後、システムを再起動
+ネットワークを確かめてから、キャッシュを使わずに作り直します。
 
-2. **Linux**: Docker Engineをインストール
-   ```bash
-   # Ubuntu/Debianの場合
-   sudo apt-get update
-   sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
-   ```
-
-3. インストール確認
-   ```bash
-   docker --version
-   docker-compose --version
-   ```
-
-### 問題2: Dockerが起動していない
-
-**症状**:
-```
-Cannot connect to the Docker daemon at unix:///var/run/docker.sock.
-Is the docker daemon running?
+```bash
+docker compose build --no-cache
+docker compose up -d
 ```
 
-**原因**: Dockerデーモンが起動していません。
+## 画面
 
-**解決方法**:
+### `src/` を直したのに、画面が変わらない
 
-- **Windows/Mac**: Docker Desktopを起動
-  - タスクバー/メニューバーからDocker Desktopアイコンをクリック
-  - 「Docker Desktop is running」と表示されるまで待つ
+起動中のアプリが古いモジュールを読み込んだままのことがあります(Windows・WSL のファイルの監視のため)。再起動します。
 
-- **Linux**: Dockerサービスを起動
-  ```bash
-  sudo systemctl start docker
-  sudo systemctl enable docker  # 自動起動を有効化
-  ```
-
-### 問題3: Dockerコンテナのビルドに失敗する
-
-**症状**:
-```
-ERROR: failed to solve: failed to compute cache key
+```bash
+docker compose restart shinouta-time
 ```
 
-**原因**: ネットワーク接続の問題、またはDockerfileの記述エラー。
+### Home に「データの読み込みまたは処理中にエラーが発生しました。」と出る
 
-**解決方法**:
+その下に理由が出ています。ログにも詳しく残ります(`docker compose logs --tail=100 shinouta-time`)。
 
-1. ネットワーク接続を確認
-   ```bash
-   ping google.com
-   ```
+- 「データのディレクトリがありません」: `data/v2/` が無いか、`SHINOUTA_V2_DATA_DIR` の指定が違う
+- TSV が読めない・列が足りない: `data/v2/*.tsv` を手で編集していないか確かめる(`git diff data/v2`)。検査は次のコマンドで流せます
 
-2. Dockerのキャッシュをクリア
-   ```bash
-   docker-compose down
-   docker system prune -a
-   docker-compose build --no-cache
-   ```
-
-3. Dockerfileの構文を確認
-   - Dockerfileに記述エラーがないか確認
-   - 特にCOPY、RUN命令の記述を確認
-
-### 問題4: コンテナが起動しない
-
-**症状**:
-```
-Error response from daemon: driver failed programming external connectivity
+```bash
+docker compose exec shinouta-time python -m src.cli.data validate
 ```
 
-**原因**: ポートの競合、またはリソース不足。
+楽曲リストの「楽曲リストを読み込めませんでした。」も、原因と確かめ方は同じです。
 
-**解決方法**:
+### データを直したのに、画面が古いまま
 
-1. 既存のコンテナを停止
-   ```bash
-   docker-compose down
-   docker ps -a  # 全てのコンテナを確認
-   docker rm -f <container_id>  # 不要なコンテナを削除
-   ```
+読み込みはキャッシュしていますが、データファイルと集計のコードの更新日時が変わると計算し直します。それでも古いときは、ブラウザを再読み込みするか、`docker compose restart shinouta-time` で確実に読み直します。
 
-2. Dockerのリソース設定を確認
-   - Docker Desktop > Settings > Resources
-   - メモリを4GB以上に設定することを推奨
+## テスト
 
----
+- ホストで `pytest` を打たない。コンテナの中で流します(`docker compose exec shinouta-time pytest`)。ホストの Python とは版や依存が違うため、結果が合いません
+- e2e(`tests/e2e`)は本物の `data/v2/` を読みます。データを取り込んだ直後に落ちたら、まず `data validate` を流します
+- 性能のテスト(`tests/performance`)は `--runslow` を付けたときだけ動きます。付けないと skipped になるのは正常です
 
-## ポート関連の問題
+## データの取り込み(ingest)
 
-### 問題5: ポート8501が既に使用されている
+### 「環境変数 YOUTUBE_API_KEY(または YOUTUBE_API_KEYS)が設定されていません」
 
-**症状**:
-```
-Error starting userland proxy: listen tcp4 0.0.0.0:8501: bind: address already in use
-```
+`.env` に `YOUTUBE_API_KEY` を書き、コンテナを作り直して読み込ませます(`docker compose up -d`)。キーの作り方は `.env.example` のコメントにあります。
 
-**原因**: ポート8501が他のプロセスで使用されています。
+### 「すべての API キーで上限に達しました」
 
-**解決方法**:
+YouTube Data API の1日の上限です。`YOUTUBE_API_KEYS` にほかのキーがあれば、自動で次のキーへ切り替えます。すべて使い切ったら、上限が戻る日本時間の16〜17時以降に流し直します。
 
-**方法1: 使用中のプロセスを停止**
+### メンバー限定の動画のコメントが取れない
 
-- **Windows**:
-  ```cmd
-  netstat -ano | findstr :8501
-  taskkill /PID <PID番号> /F
-  ```
+API キーではメン限の動画のコメントを読めません(403)。取り込みはコメント0件で進むので、セットリストは X の告知などで確かめます(手順は [docs/prompts/update-data.md](docs/prompts/update-data.md))。
 
-- **Mac/Linux**:
-  ```bash
-  lsof -i :8501
-  kill -9 <PID番号>
-  ```
+## Git
 
-**方法2: 別のポートを使用**
+### コミットが止まる(check-rules の NG)
 
-docker-compose.ymlを編集:
-```yaml
-services:
-  shinouta-time:
-    ports:
-      - "8502:8501"  # ホスト側のポートを8502に変更
-```
+コミットの前に `sh tools/check-rules.sh` が流れ、NG があると止まります。出た NG(秘密の値・絶対パス・メールアドレス、`main`・`develop` でのコミット、エスケープしない HTML など)を直してから、もう一度コミットします。
 
-変更後、`http://localhost:8502`でアクセス
+### `.github/workflows/` を変えた push が断られる
 
-### 問題6: ポートにアクセスできない
+GitHub の認証に `workflow` の権限がありません。直し方は [ブランチ戦略のトラブルシューティング](docs/development/BRANCH_STRATEGY.md#トラブルシューティング) にあります。
 
-**症状**: ブラウザで`http://localhost:8501`にアクセスしても接続できない。
+### PowerShell でコマンドが動かない
 
-**原因**: ファイアウォールの設定、またはコンテナが正常に起動していない。
+この文書とほかの文書のコマンドは Git Bash の書き方です(`cp`・`$VAR`・`/` の区切りなど)。Git Bash で打ちます。
 
-**解決方法**:
+## それでも解決しないとき
 
-1. コンテナの状態を確認
-   ```bash
-   docker-compose ps
-   docker-compose logs
-   ```
-
-2. ファイアウォールの設定を確認
-   - **Windows**: Windows Defenderファイアウォールでポート8501を許可
-   - **Mac**: システム環境設定 > セキュリティとプライバシー > ファイアウォール
-
-3. コンテナを再起動
-   ```bash
-   docker-compose restart
-   ```
-
----
-
-## データファイル関連の問題
-
-### 問題7: データファイルが見つからない
-
-**症状**:
-```
-FileNotFoundError: [Errno 2] No such file or directory: 'data/M_YT_LIVE.TSV'
-```
-
-**原因**: 必要なデータファイルが存在しません。
-
-**解決方法**:
-
-1. dataディレクトリの存在を確認
-   ```bash
-   ls -la data/
-   ```
-
-2. 必須ファイルの確認
-   - `data/M_YT_LIVE.TSV`
-   - `data/M_YT_LIVE_TIMESTAMP.TSV`
-   - `data/V_SONG_LIST.TSV`
-
-3. ファイルが存在しない場合
-   - Gitリポジトリを再クローン
-   ```bash
-   cd ..
-   git clone https://github.com/your-repo/shinouta-time.git
-   cd shinouta-time
-   ```
-
-4. ボリュームマウントの確認（Docker使用時）
-   - docker-compose.ymlのvolumes設定を確認
-   ```yaml
-   volumes:
-     - .:/app  # カレントディレクトリを/appにマウント
-   ```
-
-### 問題8: データファイルの読み込みエラー
-
-**症状**:
-```
-UnicodeDecodeError: 'utf-8' codec can't decode byte
-```
-
-**原因**: データファイルの文字エンコーディングが正しくありません。
-
-**解決方法**:
-
-1. ファイルのエンコーディングを確認
-   ```bash
-   file -i data/M_YT_LIVE.TSV
-   ```
-
-2. UTF-8に変換（必要な場合）
-   - テキストエディタで開いて「UTF-8で保存」
-   - またはコマンドで変換:
-   ```bash
-   iconv -f SHIFT-JIS -t UTF-8 data/M_YT_LIVE.TSV > data/M_YT_LIVE_UTF8.TSV
-   mv data/M_YT_LIVE_UTF8.TSV data/M_YT_LIVE.TSV
-   ```
-
-3. Pythonコードでエンコーディングを指定
-   ```python
-   df = pd.read_csv('data/M_YT_LIVE.TSV', sep='\t', encoding='utf-8')
-   ```
-
----
-
-## Python環境関連の問題
-
-### 問題9: Pythonのバージョンが古い
-
-**症状**:
-```
-Python 3.9.x
-```
-
-**原因**: Python 3.14が必要ですが、古いバージョンがインストールされています。
-
-**解決方法**:
-
-1. **推奨**: Docker Composeを使用
-   - Dockerを使用すれば、ローカルのPythonバージョンに依存しません
-   ```bash
-   docker-compose up
-   ```
-
-2. Python 3.14をインストール
-
-   - **Windows**:
-     - [Python公式サイト](https://www.python.org/downloads/)からPython 3.14をダウンロード
-     - インストール時に「Add Python to PATH」をチェック
-
-   - **Mac** (Homebrewを使用):
-     ```bash
-     brew install python@3.14
-     ```
-
-   - **Linux** (Ubuntu/Debian):
-     ```bash
-     sudo apt-get update
-     sudo apt-get install python3.14 python3.14-venv
-     ```
-
-3. バージョン確認
-   ```bash
-   python3.14 --version
-   ```
-
-### 問題10: 仮想環境のアクティベートに失敗
-
-**症状** (Windows):
-```
-このシステムではスクリプトの実行が無効になっているため、
-ファイル venv\Scripts\Activate.ps1 を読み込むことができません。
-```
-
-**原因**: PowerShellの実行ポリシーが制限されています。
-
-**解決方法**:
-
-1. PowerShellを管理者として実行
-
-2. 実行ポリシーを変更
-   ```powershell
-   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-   ```
-
-3. 仮想環境を再度アクティベート
-   ```powershell
-   .\venv\Scripts\Activate.ps1
-   ```
-
-4. または、コマンドプロンプト（cmd）を使用
-   ```cmd
-   venv\Scripts\activate.bat
-   ```
-
----
-
-## パッケージインストール関連の問題
-
-### 問題11: pipのインストールに失敗
-
-**症状**:
-```
-ERROR: Could not install packages due to an OSError
-```
-
-**原因**: ネットワーク接続の問題、権限の問題、またはキャッシュの破損。
-
-**解決方法**:
-
-1. pipをアップグレード
-   ```bash
-   python -m pip install --upgrade pip
-   ```
-
-2. キャッシュをクリア
-   ```bash
-   pip cache purge
-   pip install -r requirements.txt --no-cache-dir
-   ```
-
-3. プロキシ設定（企業ネットワーク内の場合）
-   ```bash
-   pip install -r requirements.txt --proxy=http://proxy.example.com:8080
-   ```
-
-4. タイムアウトを延長
-   ```bash
-   pip install -r requirements.txt --timeout=100
-   ```
-
-### 問題12: 特定のパッケージのインストールに失敗
-
-**症状**:
-```
-ERROR: Could not find a version that satisfies the requirement <package>
-```
-
-**原因**: パッケージ名の誤り、またはPythonバージョンの非互換性。
-
-**解決方法**:
-
-1. パッケージ名を確認
-   - requirements.txtのスペルミスを確認
-
-2. Pythonバージョンを確認
-   ```bash
-   python --version
-   ```
-   - Python 3.14を使用していることを確認
-
-3. パッケージを個別にインストール
-   ```bash
-   pip install streamlit
-   pip install pandas
-   ```
-
-4. 依存関係の問題を解決
-   ```bash
-   pip install -r requirements.txt --use-deprecated=legacy-resolver
-   ```
-
----
-
-## 文字エンコーディング関連の問題
-
-### 問題13: 日本語が文字化けする
-
-**症状**: アプリケーション内で日本語が正しく表示されない。
-
-**原因**: 文字エンコーディングの設定が正しくありません。
-
-**解決方法**:
-
-1. ファイルをUTF-8で保存
-   - すべての.pyファイルと.mdファイルをUTF-8で保存
-
-2. Pythonファイルの先頭にエンコーディング宣言を追加
-   ```python
-   # -*- coding: utf-8 -*-
-   ```
-
-3. データファイルの読み込み時にエンコーディングを指定
-   ```python
-   df = pd.read_csv('data/M_YT_LIVE.TSV', sep='\t', encoding='utf-8')
-   ```
-
-4. 環境変数を設定（Windows）
-   ```cmd
-   set PYTHONIOENCODING=utf-8
-   ```
-
-### 問題14: コンソール出力が文字化けする
-
-**症状** (Windows): コマンドプロンプトで日本語が文字化けする。
-
-**原因**: コンソールの文字コードがUTF-8ではありません。
-
-**解決方法**:
-
-1. コマンドプロンプトの文字コードを変更
-   ```cmd
-   chcp 65001
-   ```
-
-2. PowerShellを使用
-   - PowerShellはデフォルトでUTF-8をサポート
-
-3. Windows Terminalを使用
-   - [Microsoft Store](https://aka.ms/terminal)からインストール
-   - UTF-8を標準でサポート
-
----
-
-## テスト関連の問題
-
-### 問題17: pytestが見つからない
-
-**症状**:
-```
-bash: pytest: command not found
-```
-
-**原因**: pytestがインストールされていません。
-
-**解決方法**:
-
-1. **Docker環境の場合**: コンテナを再ビルド
-   ```bash
-   docker-compose down
-   docker-compose build --no-cache
-   docker-compose up -d
-   ```
-
-2. **ローカル環境の場合**: pytestをインストール
-   ```bash
-   pip install pytest
-   ```
-
-3. インストール確認
-   ```bash
-   pytest --version
-   ```
-
-### 問題18: テストが失敗する - データファイルが見つからない
-
-**症状**:
-```
-AssertionError: 配信データファイルが見つかりません: data/M_YT_LIVE.TSV
-```
-
-**原因**: 必須データファイルが存在しません。
-
-**解決方法**:
-
-1. dataディレクトリの存在を確認
-   ```bash
-   docker-compose exec shinouta-time ls -la data/
-   ```
-
-2. 必須ファイルの確認
-   - `data/M_YT_LIVE.TSV`
-   - `data/M_YT_LIVE_TIMESTAMP.TSV`
-   - `data/V_SONG_LIST.TSV`
-
-3. ファイルが存在しない場合、リポジトリを再クローン
-   ```bash
-   git pull origin main
-   ```
-
-4. ボリュームマウントの確認
-   - docker-compose.ymlのvolumes設定を確認
-   ```yaml
-   volumes:
-     - .:/app
-   ```
-
-### 問題19: テストが失敗する - Pythonバージョンが一致しない
-
-**症状**:
-```
-AssertionError: Pythonマイナーバージョンが14ではありません（本番環境と一致しません）
-```
-
-**原因**: Python 3.14以外のバージョンが使用されています。
-
-**解決方法**:
-
-1. **Docker環境の場合**: Dockerfileを確認
-   ```dockerfile
-   FROM python:3.14.8-slim-trixie
-   ```
-
-2. コンテナを再ビルド
-   ```bash
-   docker-compose down
-   docker-compose build --no-cache
-   docker-compose up -d
-   ```
-
-3. Pythonバージョンを確認
-   ```bash
-   docker-compose exec shinouta-time python --version
-   ```
-
-4. **ローカル環境の場合**: Python 3.14をインストール
-   - [問題9: Pythonのバージョンが古い](#問題9-pythonのバージョンが古い)を参照
-
-### 問題20: テストが失敗する - モジュールが見つからない
-
-**症状**:
-```
-ModuleNotFoundError: No module named 'streamlit'
-```
-
-**原因**: 必要なパッケージがインストールされていません。
-
-**解決方法**:
-
-1. **Docker環境の場合**: コンテナを再ビルド
-   ```bash
-   docker-compose down
-   docker-compose build --no-cache
-   docker-compose up -d
-   ```
-
-2. **ローカル環境の場合**: パッケージをインストール
-   ```bash
-   pip install -r requirements-dev.txt
-   ```
-
-3. インストール確認
-   ```bash
-   pip list | grep streamlit
-   pip list | grep pandas
-   pip list | grep pytest
-   ```
-
-### 問題21: テストが失敗する - 検索結果が空
-
-**症状**:
-```
-AssertionError: 検索結果に検索キーワードが含まれていません
-```
-
-**原因**: データファイルの内容が空、または検索機能に問題があります。
-
-**解決方法**:
-
-1. データファイルの内容を確認
-   ```bash
-   docker-compose exec shinouta-time head -n 5 data/M_YT_LIVE.TSV
-   docker-compose exec shinouta-time head -n 5 data/M_YT_LIVE_TIMESTAMP.TSV
-   ```
-
-2. データファイルが空の場合、正しいデータファイルを配置
-
-3. 検索機能のログを確認
-   ```bash
-   docker-compose logs shinouta-time
-   ```
-
-4. 特定のテストのみ実行して詳細を確認
-   ```bash
-   docker-compose exec shinouta-time pytest tests/test_environment_verification.py::TestEnvironmentVerification::test_search_functionality -v -s
-   ```
-
-### 問題22: テスト実行時にコンテナが起動していない
-
-**症状**:
-```
-Error: No such container: shinouta-time
-```
-
-**原因**: Docker Composeでコンテナが起動していません。
-
-**解決方法**:
-
-1. コンテナの状態を確認
-   ```bash
-   docker-compose ps
-   ```
-
-2. コンテナを起動
-   ```bash
-   docker-compose up -d
-   ```
-
-3. コンテナが起動するまで待つ（数秒）
-   ```bash
-   docker-compose logs -f
-   ```
-
-4. テストを再実行
-   ```bash
-   docker-compose exec shinouta-time pytest tests/test_environment_verification.py -v
-   ```
-
-### 問題23: テストの実行が遅い
-
-**症状**: テストの実行に時間がかかりすぎる。
-
-**原因**: データファイルが大きい、またはシステムリソースが不足。
-
-**解決方法**:
-
-1. 特定のテストクラスのみ実行
-   ```bash
-   # 基本動作確認のみ
-   docker-compose exec shinouta-time pytest tests/test_environment_verification.py::TestEnvironmentVerification -v
-   ```
-
-2. Dockerのリソース設定を増やす
-   - Docker Desktop > Settings > Resources
-   - CPUとメモリを増やす
-
-3. キャッシュを有効化
-   - 設定ファイルで`SHINOUTA_ENABLE_CACHE=true`を設定
-
-4. 並列実行（pytest-xdistを使用）
-   ```bash
-   pip install pytest-xdist
-   pytest tests/test_environment_verification.py -n auto
-   ```
-
----
-
-## その他の問題
-
-### 問題15: Streamlitアプリケーションが自動的にリロードされない
-
-**症状**: コードを変更しても、ブラウザに反映されない。
-
-**原因**: Streamlitの自動リロード機能が無効、またはファイル監視の問題。
-
-**解決方法**:
-
-1. ブラウザを手動でリロード（F5キー）
-
-2. Streamlitの設定を確認
-   - `.streamlit/config.toml`を作成
-   ```toml
-   [server]
-   runOnSave = true
-   ```
-
-3. Dockerの場合、ボリュームマウントを確認
-   ```yaml
-   volumes:
-     - .:/app  # 正しくマウントされているか確認
-   ```
-
-4. Streamlitサーバーを再起動
-   ```bash
-   # Ctrl+C で停止
-   streamlit run Home.py
-   ```
-
-### 問題16: メモリ不足エラー
-
-**症状**:
-```
-MemoryError: Unable to allocate array
-```
-
-**原因**: データファイルが大きすぎる、またはシステムメモリが不足。
-
-**解決方法**:
-
-1. Dockerのメモリ設定を増やす
-   - Docker Desktop > Settings > Resources
-   - メモリを8GB以上に設定
-
-2. データを分割して読み込む
-   ```python
-   # チャンク単位で読み込み
-   for chunk in pd.read_csv('data/M_YT_LIVE.TSV', sep='\t', chunksize=1000):
-       process(chunk)
-   ```
-
-3. 不要なデータをフィルタリング
-   ```python
-   # 必要な列のみ読み込み
-   df = pd.read_csv('data/M_YT_LIVE.TSV', sep='\t', usecols=['col1', 'col2'])
-   ```
-
----
-
-## サポート
-
-上記の解決方法で問題が解決しない場合は、以下の情報を含めてGitHubのIssueを作成してください：
-
-1. 発生した問題の詳細な説明
-2. エラーメッセージの全文
-3. 使用している環境（OS、Pythonバージョン、Dockerバージョン）
-4. 実行したコマンドと結果
-5. 試した解決方法
-
-GitHubリポジトリ: [your-repo-url]
-
----
-
-## 関連ドキュメント
-
-- [環境構築手順（SETUP.md）](SETUP.md)
-- [README.md](README.md)
-- [構成の概要（docs/architecture/overview.md）](docs/architecture/overview.md)
+ログ(`docker compose logs --tail=100 shinouta-time`)と、打ったコマンド・出た文言を添えて、GitHub の [Issue](https://github.com/kajuen-kajuen/shinoutatime-streamlit/issues) でお知らせください。

@@ -1,373 +1,92 @@
 # しのうたタイム - ローカル環境構築ガイド
 
-本ドキュメントでは、「しのうたタイム」アプリケーションをローカル環境で動作させるための手順を説明します。
+手元で「しのうたタイム」を動かし、テストを流せるようにするまでの手順です。開発・テスト・データの取り込みは、すべて Docker のコンテナで行います。
 
-## 目次
+## 前提
 
-1. [前提条件](#前提条件)
-2. [リポジトリの取得](#リポジトリの取得)
-3. [環境変数の設定（オプション）](#環境変数の設定オプション)
-4. [アプリケーションの起動](#アプリケーションの起動)
-5. [動作確認](#動作確認)
-6. [停止方法](#停止方法)
-7. [トラブルシューティング](#トラブルシューティング)
+- **Docker Desktop**(Windows・Mac)または Docker Engine(Linux)。`docker compose version` で確かめます
+- **Git**
+- Windows では、コマンドを **Git Bash** で打ちます(この文書とほかの文書のコマンドは、Git Bash の書き方です)
 
-## 前提条件
-
-ローカル環境で「しのうたタイム」を実行するには、以下のソフトウェアがインストールされている必要があります。
-
-### 必須
-```bash
-# Dockerのバージョン確認
-docker --version
-
-# Docker Composeのバージョン確認
-docker-compose --version
-
-# Gitのバージョン確認
-git --version
-```
-
-## リポジトリの取得
-
-### 1. リポジトリのクローン
-
-ターミナル（コマンドプロンプト、PowerShell、またはbash）を開き、以下のコマンドを実行します：
+## 1. 取得
 
 ```bash
-git clone https://github.com/your-username/shinouta-time.git
-cd shinouta-time
+git clone https://github.com/kajuen-kajuen/shinoutatime-streamlit.git
+cd shinoutatime-streamlit
 ```
 
-### 2. ブランチの確認
-
-現在のブランチを確認します：
+作業は、用件ごとに `origin/develop` から作業ブランチを作って行います(`main`・`develop` では作業しません)。手順は [ブランチ戦略](docs/development/BRANCH_STRATEGY.md) にあります。
 
 ```bash
-git branch
+git switch -c feature/xxx origin/develop
 ```
 
-開発作業を行う場合は、`develop`ブランチに切り替えることを推奨します：
+## 2. 環境変数(任意)
+
+`.env.example` を `.env` にコピーし、必要な値だけ書きます。`.env` は Git に入れません(公開リポジトリなので、値をコミットしない)。
 
 ```bash
-git checkout develop
-```
-
-### 3. ディレクトリ構造の確認
-
-リポジトリには以下のファイルとディレクトリが含まれています：
-
-```
-shinouta-time/
-├── Dockerfile              # Docker設定ファイル
-├── docker-compose.yml      # Docker Compose設定ファイル
-├── requirements.txt        # Python依存パッケージ
-├── Home.py                 # メインアプリケーション
-├── pages/                  # ページコンポーネント
-├── src/                    # ソースコード
-├── data/                   # データファイル（TSV）
-│   ├── M_YT_LIVE.TSV
-│   ├── M_YT_LIVE_TIMESTAMP.TSV
-│   └── V_SONG_LIST.TSV
-└── .env.example            # 環境変数のサンプル
-```
-
-## 環境変数の設定（オプション）
-
-環境変数を設定することで、ログレベルなどの動作をカスタマイズできます。
-
-### 1. .envファイルの作成
-
-`.env.example`をコピーして`.env`ファイルを作成します：
-
-```bash
-# Windows (コマンドプロンプト)
-copy .env.example .env
-
-# Windows (PowerShell)
-Copy-Item .env.example .env
-
-# Mac/Linux
 cp .env.example .env
 ```
 
-### 2. 環境変数の編集
+`docker-compose.yml` がコンテナに渡すのは、次の変数です。
 
-`.env`ファイルをテキストエディタで開き、必要に応じて値を変更します：
+| 変数 | 用途 | 既定 |
+|---|---|---|
+| `SHINOUTA_LOG_LEVEL` | ログの細かさ(DEBUG・INFO・WARNING・ERROR) | INFO |
+| `SHINOUTA_ENABLE_FILE_LOGGING` | ログをファイルにも書く(10MB で回し、5世代残す) | false |
+| `SHINOUTA_LOG_FILE` | ログファイルの場所 | `logs/shinouta.log` |
+| `YOUTUBE_API_KEY` | 取り込み(`ingest`)が使う YouTube Data API v3 のキー。画面だけなら不要 | なし |
+| `YOUTUBE_API_KEYS` | 複数のキー(カンマ区切り)。上限に達したら次のキーへ切り替える | なし |
+| `SHINOUTA_TRUSTED_COMMENTERS` | セットリストのコメントを優先する職人さんの表示名(カンマ区切り) | なし |
 
-```env
-# ログレベル（DEBUG, INFO, WARNING, ERROR）
-SHINOUTA_LOG_LEVEL=DEBUG
+画面の設定(`SHINOUTA_V2_DATA_DIR`・`SHINOUTA_INITIAL_DISPLAY_LIMIT`・`SHINOUTA_DISPLAY_INCREMENT` など。`src/config/settings.py`)は既定のままで動きます。変えるときは `docker-compose.yml` の `environment` にも足します。
 
-# ファイルログの有効化
-SHINOUTA_ENABLE_FILE_LOGGING=true
-
-# ログファイルのパス
-SHINOUTA_LOG_FILE=logs/shinouta.log
-```
-
-**注意**: `.env`ファイルは`.gitignore`に含まれており、Gitリポジトリにコミットされません。
-
-## アプリケーションの起動
-
-### 1. Docker Composeでの起動
-
-リポジトリのルートディレクトリで以下のコマンドを実行します：
+## 3. 起動
 
 ```bash
-docker-compose up
+docker compose up -d                      # 初回はイメージのビルドで数分かかる
+docker compose ps                         # shinouta-time が running なら起動済み
+docker compose logs -f shinouta-time      # ログを見る(Ctrl+C で抜ける)
 ```
 
-初回起動時は、Dockerイメージのビルドに数分かかる場合があります。
+ブラウザで http://localhost:8501 を開きます。
 
-### 2. バックグラウンドでの起動
-
-バックグラウンドで起動する場合は、`-d`オプションを使用します：
+## 4. 確かめる
 
 ```bash
-docker-compose up -d
+docker compose exec shinouta-time pytest tests/e2e -q   # 本物の data/v2/ で、ページの起動・検索・さらに表示を確かめる
+docker compose exec shinouta-time pytest                # 全部(作業の終わりに)
 ```
 
-### 3. ログの確認
+画面でも次を見ます。
 
-バックグラウンドで起動した場合、ログを確認するには：
+- Home の検索欄の上に「データは YYYY/MM/DD の配信まで(歌唱 N 件)」が出る
+- キーワードを入れて Enter キーで検索でき、件数と表が出る
+- リンク(「YouTubeへ👻」など)で、歌ったところが開く
+- サイドバーで Information・About Us・Song List beta に移れる
+
+ほかのコマンド(テストの一部だけ・カバレッジ・データの検査・取り込み)は [コマンド集](docs/prompts/_commands.md) にあります。
+
+## 5. コードを変えたとき
+
+`docker-compose.yml` がリポジトリをコンテナの `/app` にマウントしているので、保存すると Streamlit が読み込み直します。`src/` の変更が画面に出ないときは、コンテナを再起動します。
 
 ```bash
-docker-compose logs -f
+docker compose restart shinouta-time
 ```
 
-ログの表示を停止するには、`Ctrl+C`を押します。
+依存(`requirements*.txt`)を変えたときは、イメージを作り直します(`docker compose up -d --build`)。
 
-### 4. 起動完了の確認
-
-以下のようなメッセージが表示されれば、起動成功です：
-
-```
-shinouta-time_1  | You can now view your Streamlit app in your browser.
-shinouta-time_1  | 
-shinouta-time_1  |   Local URL: http://localhost:8501
-shinouta-time_1  |   Network URL: http://172.18.0.2:8501
-```
-
-## 動作確認
-
-### 1. クイックスタート（推奨）
-
-環境が正しく構築されたことを確認するため、動作確認スクリプトを実行します：
-
-**Mac/Linux:**
-```bash
-bash scripts/verify_environment.sh
-```
-
-**Windows:**
-```cmd
-scripts/verify_environment.bat
-```
-
-このスクリプトは以下を自動的に確認します：
-- Dockerのインストール確認
-- コンテナの起動確認
-- データファイルの存在確認
-- Pythonバージョンの確認
-- 必須パッケージの確認
-- 自動テストの実行
-
-### 2. 手動での自動テスト実行
-
-スクリプトを使用せず、手動でテストを実行する場合：
+## 6. 止める
 
 ```bash
-docker-compose exec shinouta-time pytest tests/integration/test_environment_verification.py -v
+docker compose down
 ```
 
-**テスト内容:**
-- データファイルの存在確認
-- Pythonバージョンの確認（Python 3.14）
-- データ読み込み機能の確認
-- 検索機能の確認
-- データ処理の正確性確認
-- 環境分離の確認
-- 本番環境との整合性確認
+## 補足
 
-**成功例:**
-```
-tests/test_environment_verification.py::TestEnvironmentVerification::test_data_files_exist PASSED
-tests/test_environment_verification.py::TestEnvironmentVerification::test_python_version PASSED
-tests/test_environment_verification.py::TestEnvironmentVerification::test_load_lives_data PASSED
-...
-======================== XX passed in X.XXs ========================
-```
+- **Dev Container**: VS Code の拡張機能「Dev Containers」で `.devcontainer/` を開いて使うこともできます。ただし `docker-compose.yml` とは別のイメージで、`.env` の変数も渡りません。テストや取り込みは上の Docker Compose で行います。
+- **Python の仮想環境**: Python 3.14 で `pip install -r requirements-dev.txt` → `streamlit run Home.py` とすれば画面は見られます。ただし、このリポジトリの開発・テスト・取り込みは Docker で行う決まりです([CONTRIBUTING.md](CONTRIBUTING.md))。
 
-全てのテストが`PASSED`と表示されれば、環境構築は成功です。
-
-**失敗した場合:**
-- エラーメッセージを確認して問題を解決してください
-- 詳細は[トラブルシューティング](#トラブルシューティング)を参照してください
-
-### 2. ブラウザでアクセス
-
-Webブラウザを開き、以下のURLにアクセスします：
-
-```
-http://localhost:8501
-```
-
-### 3. 基本機能の手動確認
-
-以下の項目を確認してください：
-
-- [ ] ホームページが正しく表示される
-- [ ] 検索フォームが表示される
-- [ ] 検索キーワードを入力して検索できる
-- [ ] 検索結果が表示される（配信日、曲名、アーティスト名など）
-- [ ] ページ間の移動ができる（Information、About Usなど）
-
-### 4. データ読み込みの確認
-
-検索結果に以下の情報が含まれていることを確認します：
-
-- 配信日
-- 曲名
-- アーティスト名
-- YouTube配信へのリンク
-
-### 5. エラーがないことの確認
-
-ターミナルのログにエラーメッセージが表示されていないことを確認します。
-
-## 停止方法
-
-### 1. フォアグラウンドで起動した場合
-
-ターミナルで`Ctrl+C`を押してサーバーを停止します。
-
-### 2. バックグラウンドで起動した場合
-
-以下のコマンドでコンテナを停止します：
-
-```bash
-docker-compose stop
-```
-
-### 3. コンテナの削除
-
-コンテナを完全に削除する場合は：
-
-```bash
-docker-compose down
-```
-
-### 4. イメージとボリュームも削除する場合
-
-イメージとボリュームも含めて完全にクリーンアップする場合は：
-
-```bash
-docker-compose down --rmi all --volumes
-```
-
-**注意**: この操作を行うと、次回起動時に再度イメージのビルドが必要になります。
-
-## トラブルシューティング
-
-### ポート8501が既に使用されている
-
-**症状**: `Bind for 0.0.0.0:8501 failed: port is already allocated`というエラーが表示される
-
-**解決方法**:
-
-1. 使用中のプロセスを確認して停止する
-2. または、`docker-compose.yml`のポート番号を変更する
-
-```yaml
-ports:
-  - "8502:8501"  # ホスト側のポートを8502に変更
-```
-
-変更後、`http://localhost:8502`でアクセスします。
-
-### Dockerが起動していない
-
-**症状**: `Cannot connect to the Docker daemon`というエラーが表示される
-
-**解決方法**:
-
-- Docker Desktopを起動してください
-- Linuxの場合は、`sudo systemctl start docker`でDockerサービスを起動してください
-
-### データファイルが見つからない
-
-**症状**: アプリケーション起動時に「データファイルが見つかりません」というエラーが表示される
-
-**解決方法**:
-
-1. `data/`ディレクトリが存在することを確認
-2. 必須ファイルが存在することを確認：
-   - `M_YT_LIVE.TSV`
-   - `M_YT_LIVE_TIMESTAMP.TSV`
-   - `V_SONG_LIST.TSV`
-3. ファイルが欠落している場合は、リポジトリを再クローンしてください
-
-### コンテナのビルドに失敗する
-
-**症状**: `docker-compose up`実行時にビルドエラーが発生する
-
-**解決方法**:
-
-1. インターネット接続を確認
-2. Dockerのキャッシュをクリアして再ビルド：
-
-```bash
-docker-compose build --no-cache
-docker-compose up
-```
-
-### 文字化けが発生する
-
-**症状**: 日本語が正しく表示されない
-
-**解決方法**:
-
-- ブラウザの文字エンコーディング設定を「UTF-8」に変更してください
-- Dockerコンテナは自動的にUTF-8を使用するため、通常は問題ありません
-
-## 開発ワークフロー
-
-### コードの変更
-
-ローカルでコードを変更すると、ボリュームマウントにより自動的にコンテナ内に反映されます。Streamlitは変更を検知して自動的にリロードします。
-
-### ブランチ戦略
-
-- **develop**: ステージング用ブランチ（stg-shinoutatime.streamlit.app）
-- **main**: 本番用ブランチ（本番環境: shinoutatime.streamlit.app）
-- **update-data**: データ v2 の更新(取り込み)用ブランチ
-- **feature/xxx・fix/xxx**: 用件ごとの作業ブランチ(`origin/develop` から作り、develop → main の順に出す)
-
-詳細は [`docs/development/BRANCH_STRATEGY.md`](docs/development/BRANCH_STRATEGY.md) を参照してください。
-
-## 追加情報
-
-### Dev Containerを使用する場合
-
-VS Codeユーザーは、Dev Container機能を使用することもできます：
-
-1. VS Codeで「Remote - Containers」拡張機能をインストール
-2. プロジェクトを開く
-3. コマンドパレット（`Ctrl+Shift+P`）から「Remote-Containers: Reopen in Container」を選択
-
-### Python仮想環境を使用する場合
-
-Dockerを使用せずにPython仮想環境で実行することも可能です。詳細は`README.md`の「方法2: Python 仮想環境を使用する」を参照してください。
-
-## サポート
-
-問題が解決しない場合は、以下を確認してください：
-
-- [トラブルシューティングガイド](TROUBLESHOOTING.md)
-- [FAQ](docs/faq.md)
-- [GitHubのIssue](https://github.com/your-username/shinouta-time/issues)
-
----
-
-**環境構築が完了したら、開発を楽しんでください！** 🎵
+困ったときは [TROUBLESHOOTING.md](TROUBLESHOOTING.md) を見てください。

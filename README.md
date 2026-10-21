@@ -38,202 +38,19 @@ VTuber「幽音しの」さんの配信で歌唱された楽曲を検索・閲�
 
 使い方の詳細は [ユーザーガイド](docs/guides/user-guide.md)、よくある質問は [FAQ](docs/faq.md) にあります。
 
-## セットアップ手順
+## はじめかた(開発する人向け)
 
-本アプリケーションは、以下の2つの方法で環境構築が可能です：
-
-1. **Docker Compose を使用する方法（推奨）** - ローカル環境を汚さず、簡単にセットアップ
-2. **Python 仮想環境を使用する方法** - 従来の方法
-
-### 方法の選択
-
-| 方法 | メリット | デメリット |
-|-----|---------|-----------|
-| **Docker Compose（推奨）** | ・ローカル環境にPythonや依存パッケージをインストール不要<br>・本番環境（Python 3.14）と同じ環境を再現<br>・環境のクリーンアップが容易<br>・`docker compose up`コマンド一つで起動 | ・Dockerのインストールが必要<br>・初回起動時にイメージのビルドが必要 |
-| **Python 仮想環境** | ・Dockerが不要<br>・軽量で高速 | ・ローカル環境にPython 3.14のインストールが必要<br>・依存パッケージの管理が必要<br>・環境の分離が不完全 |
-
-**推奨**: ローカル環境を汚さず、本番環境と同じ構成で動作させるため、**Docker Compose を使用する方法**を推奨します。
-
----
-
-### 方法1: Docker Compose を使用する（推奨）
-
-#### 必要な環境
-- **Docker Desktop** (Windows/Mac) または **Docker Engine** (Linux)
-- **Git**
-
-#### 1. リポジトリのクローン
+Docker Desktop と Git があれば動きます。コマンドは Git Bash で打ちます。
 
 ```bash
-git clone <repository-url>
-cd <repository-directory>
+git clone https://github.com/kajuen-kajuen/shinoutatime-streamlit.git
+cd shinoutatime-streamlit
+docker compose up -d                                  # http://localhost:8501 で開く
+docker compose exec shinouta-time pytest tests/e2e -q # 本物の data/v2/ でページを起動・検索できるか確かめる
 ```
 
-#### 2. Docker Compose で起動
-
-```bash
-docker compose up
-```
-
-初回起動時は、Dockerイメージのビルドが行われるため、数分かかる場合があります。
-
-#### 3. 動作確認
-
-環境が正しく構築されたことを確認するため、動作確認スクリプトを実行します：
-
-**Mac/Linux:**
-```bash
-bash scripts/verify_environment.sh
-```
-
-**Windows:**
-```cmd
-scripts/verify_environment.bat
-```
-
-または、手動でテストを実行：
-
-```bash
-docker compose exec shinouta-time pytest tests/integration/test_environment_verification.py -v
-```
-
-全てのテストが成功すれば、環境構築は完了です。
-
-#### 4. アプリケーションへのアクセス
-
-起動後、ブラウザで `http://localhost:8501` にアクセスしてください。
-
-#### 5. 停止とクリーンアップ
-
-アプリケーションを停止するには、`Ctrl+C` を押してください。
-
-コンテナを完全に削除するには：
-
-```bash
-docker compose down
-```
-
-#### 環境変数の設定（オプション）
-
-`.env.example` ファイルを `.env` にコピーして、必要に応じて環境変数を編集できます：
-
-```bash
-cp .env.example .env
-```
-
-詳細は「ロギング設定（オプション）」セクションを参照してください。
-
-#### トラブルシューティング
-
-Docker Compose使用時の問題については、[TROUBLESHOOTING.md](TROUBLESHOOTING.md) を参照してください。
-
----
-
-### 方法2: Python 仮想環境を使用する
-
-> **注意**: このリポジトリの開発・テスト・データの取り込みは、**方法1(Docker)で行う決まり**です([`CONTRIBUTING.md`](CONTRIBUTING.md)・[`CLAUDE.md`](CLAUDE.md))。方法2は、手元で画面を見るだけのための参考です。AI エージェントは使いません。
-
-#### 必要な環境
-- **Python 3.14** (本番環境と同じバージョンを推奨)
-- **pip** (Pythonパッケージマネージャー)
-
-#### 1. リポジトリのクローン
-
-```bash
-git clone <repository-url>
-cd <repository-directory>
-```
-
-#### 2. Python仮想環境の作成とアクティベート
-
-**Linux/Mac:**
-```bash
-python3.14 -m venv venv
-source venv/bin/activate
-```
-
-**Windows:**
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
-
-#### 3. 依存パッケージのインストール
-
-```bash
-pip install -r requirements-dev.txt
-```
-
-依存は用途ごとに3つのファイルに分け、版を `==` で固定しています:
-- `requirements.txt` - 本番（Streamlit Community Cloud）で使うもの。`streamlit`、`pandas` など
-  - Cloud のビルドのたびに版が変わらないよう、間接の依存(`numpy`・`pyarrow` など)まで固定しています。直接の依存を上げたら、ファイルの中の手順で間接の依存も取り直してください
-- `requirements-tools.txt` - データ生成の CLI で使うもの。`pykakasi`（読み）、`python-Levenshtein`（類似曲の検出）
-- `requirements-dev.txt` - テストで使うもの。`pytest`、`hypothesis` など（上の2つも含む）
-
-#### 4. アプリケーションの起動
-
-```bash
-streamlit run Home.py
-```
-
-起動後、ブラウザで `http://localhost:8501` にアクセスしてください。
-
-#### 5. 仮想環境の終了
-
-作業が終わったら、仮想環境を終了します：
-
-```bash
-deactivate
-```
-
----
-
-### 詳細なセットアップ手順
-
-より詳細なセットアップ手順については、[SETUP.md](SETUP.md) を参照してください。
-
-### 4. ロギング設定（オプション）
-
-アプリケーションは標準でコンソールにログを出力します。環境変数を設定することで、ログレベルやファイル出力を制御できます。
-
-#### 環境変数
-
-| 環境変数名 | 説明 | デフォルト値 | 設定例 |
-|-----------|------|------------|--------|
-| `SHINOUTA_LOG_LEVEL` | ログレベル（DEBUG、INFO、WARNING、ERROR） | INFO | INFO |
-| `SHINOUTA_ENABLE_FILE_LOGGING` | ファイルへのログ出力を有効化 | false | true |
-| `SHINOUTA_LOG_FILE` | ログファイルのパス | logs/shinouta.log | logs/app.log |
-
-#### 使用例
-
-**開発環境（DEBUGレベル、ファイルログ有効）:**
-```bash
-export SHINOUTA_LOG_LEVEL=DEBUG
-export SHINOUTA_ENABLE_FILE_LOGGING=true
-streamlit run Home.py
-```
-
-**本番環境（INFOレベル、ファイルログ有効）:**
-```bash
-export SHINOUTA_LOG_LEVEL=INFO
-export SHINOUTA_ENABLE_FILE_LOGGING=true
-export SHINOUTA_LOG_FILE=logs/production.log
-streamlit run Home.py
-```
-
-#### ログファイルのローテーション
-
-ファイルログが有効な場合、以下の設定で自動的にローテーションされます：
-- **最大ファイルサイズ**: 10MB
-- **保持するバックアップ数**: 5個
-- **ファイル名形式**: `shinouta.log`, `shinouta.log.1`, `shinouta.log.2`, ...
-
-#### ログレベルの説明
-
-- **DEBUG**: 詳細なデバッグ情報（開発時のみ推奨）
-- **INFO**: 一般的な情報メッセージ（本番環境推奨）
-- **WARNING**: 警告メッセージ
-- **ERROR**: エラーメッセージ
+- 環境変数(ログ・取り込みの API キー)、確かめ方、止め方は [SETUP.md](SETUP.md)。困ったときは [TROUBLESHOOTING.md](TROUBLESHOOTING.md)。
+- 開発の決まり(ブランチ・コミット・テスト)は [CONTRIBUTING.md](CONTRIBUTING.md)。AI エージェントは [CLAUDE.md](CLAUDE.md) から読みます。
 
 ## データ
 
@@ -247,165 +64,49 @@ streamlit run Home.py
 
 ```
 .
-├── .devcontainer/          # Dev Container設定
-├── .github/                # GitHub設定
-├── .streamlit/             # Streamlit設定
-├── .claude/skills/         # AI エージェント向けのスキルの入口(本体は docs/prompts/)
-├── data/                   # データファイル
-│   ├── v2/                 # v2 のテーブル(正本。画面が読む)
-│   ├── ingest/             # 取り込み(skipped.tsv。cache/・staged/ は Git 管理外)
-│   ├── backups/            # バックアップ(v1)
-│   ├── data.xlsx           # 入力データ(v1)
-│   └── *.TSV               # 生成されたTSVファイル(v1)
-├── docs/                   # ドキュメント(一覧は docs/README.md)
-│   ├── architecture/       # 構成の概要(overview.md)
-│   ├── development/        # 開発関連ドキュメント
-│   ├── guides/             # ガイド
-│   ├── prompts/            # AI エージェント向けの手順(スキルの本体)
-│   ├── specs/              # 仕様書(data-model.md など)
-│   ├── testing/            # テスト関連
-│   └── archive/            # 古い仕様
-├── pages/                  # Streamlitページ(*_Admin.py・*_Preview.py はローカル専用)
-├── scripts/                # 実行スクリプト
-├── src/                    # ソースコード
-│   ├── cli/                # CLIツール(v2 の ingest・data を含む)
-│   ├── clients/            # 外部APIクライアント
-│   ├── config/             # 設定
-│   ├── core/               # コア機能(v2 の集計 views.py を含む)
-│   ├── exceptions/         # 例外定義
+├── Home.py                 # 入口(Home の本体は src/ui/pages/home_page.py)
+├── pages/                  # ほかのページ(Information・About Us・Song List beta)
+├── src/
+│   ├── ui/                 # 画面の部品・ページの準備・style.css・v2 のデータの読み込み(キャッシュ付き)
+│   ├── core/               # v2 の集計(views.py)・検査・文字列・リンク(ほかは v1)
+│   ├── repositories/       # TSV の読み込み(v2 は table_repository.py)
+│   ├── models/             # v2 のテーブルの定義(schema.py)
 │   ├── ingest/             # v2 の取り込み(YouTube API・コメントの解析・下書き・曲なしの記録)
-│   ├── models/             # データモデル(v2 のテーブル定義 schema.py を含む)
-│   ├── repositories/       # データアクセス層
-│   ├── services/           # ビジネスロジック
-│   ├── ui/                 # UI(components/・pages/・styles/)
-│   └── utils/              # ユーティリティ
-├── tests/                  # テスト
-│   ├── e2e/                # ページの起動(Streamlit の AppTest)
-│   ├── fixtures/           # テストフィクスチャ
-│   ├── integration/        # 統合テスト
-│   ├── performance/        # 性能テスト(--runslow のときだけ)
-│   ├── property/           # プロパティベーステスト
-│   └── unit/               # ユニットテスト(v2 は unit/v2)
-├── tools/check-rules.sh    # 絶対制約の確認(読み取り専用)
-├── .gitignore              # Git除外設定
-├── docker-compose.yml      # Docker Compose設定
-├── Dockerfile              # Dockerイメージ定義
-├── Home.py                 # Streamlitメインページ
-├── README.md               # プロジェクト概要
-├── requirements.txt        # Python依存関係(本番。Streamlit Cloud はこれだけを読む)
-├── requirements-tools.txt  # データ生成の CLI 用
-└── requirements-dev.txt    # テスト用(コンテナはこれを入れる)
+│   ├── cli/                # ingest・data(v2)ほかの CLI
+│   ├── config/             # 設定(環境変数 SHINOUTA_*)とログ
+│   └── services/ clients/ exceptions/ utils/
+├── data/
+│   ├── v2/                 # 画面が読むデータ(正本)
+│   ├── ingest/             # skipped.tsv(cache/・staged/ は Git 管理外)
+│   └── *.TSV・data.xlsx    # v1(参照用。フェーズ3で消す)
+├── tests/                  # unit(v2 は unit/v2、画面は unit/ui)・property・integration・e2e・performance
+├── tools/                  # check-rules.sh(絶対制約の確認)・wake_up_streamlit.py(本番のスリープ防止)
+├── docs/                   # 文書(一覧は docs/README.md)
+├── Dockerfile・docker-compose.yml
+└── requirements.txt・requirements-tools.txt・requirements-dev.txt
 ```
 
-### モジュール構造の説明
-
-本アプリケーションは、保守性とテスト可能性を向上させるため、レイヤー化されたアーキテクチャを採用しています。
-
-#### srcディレクトリ
-
-アプリケーションのコアロジックを格納するディレクトリです。各サブディレクトリは明確な責務を持ちます。
-
-##### services/（ビジネスロジック層）
-
-データ処理と検索機能を提供するサービスクラスを格納します。
-
-- **data_service.py**: TSVファイルからのデータ読み込み、データ結合、エラーハンドリングを担当
-  - `DataService`クラス: 配信データ、楽曲データ、楽曲リストデータの読み込みと結合
-  - エラー発生時の適切なエラーメッセージ管理
-  
-- **search_service.py**: 検索機能を提供
-  - `SearchService`クラス: キーワード検索、複数フィールド検索、大文字小文字を区別しない検索
-  - 複数条件によるフィルタリング機能
-
-- **song_list_service.py**: 楽曲リスト(Song List)の生成
-  - `SongListService`クラス: 配信・楽曲データから `V_SONG_LIST.TSV` を作る(v1)
-
-- **excel_to_tsv_service.py**・**twitter_embed_service.py**: Excel から TSV への変換(v1)と、Twitter 埋め込みコードの取得
-
-##### core/（コア機能層）
-
-データ処理パイプラインとユーティリティ関数を格納します。
-
-- **data_pipeline.py**: データ処理の全体フローを管理
-  - `DataPipeline`クラス: データ読み込み→結合→変換→ソートの一連の処理を実行
-  - キャッシング機能による高速化
-  - 各ステップの結果検証
-  
-- **utils.py**: 汎用的なユーティリティ関数
-  - `convert_timestamp_to_seconds()`: タイムスタンプ文字列を秒数に変換
-  - `generate_youtube_url()`: YouTubeタイムスタンプ付きURL生成
-  - `generate_song_numbers()`: 曲目番号の自動生成
-  - `convert_date_string()`: 日付文字列の変換
-
-- **v2 の部品**(仕様は [`docs/specs/data-model.md`](docs/specs/data-model.md))
-  - **views.py**: 歌唱の一覧と曲ごとの集計を、5つのテーブルから計算する
-  - **validation.py**・**dataset_ops.py**: テーブルの検査と、値の修正・曲順の振り直し・まとめ
-  - **text.py**・**links.py**: 照合用の文字列のならし・読みの並べ方と、リンクの組み立て
-
-##### ingest/（v2 の取り込み）
-
-YouTube などの取得結果から歌唱を読み取り、`data/v2/` に追記するための部品です(`python -m src.cli.ingest`)。
-
-- **youtube_api.py**: YouTube Data API からの取得(月ごとの一覧、1本の取得、本人以外のチャンネルの検索)
-- **parser.py**: 職人さんのコメントの選び方、時刻の行の分け方、既存の曲との照合
-- **staging.py**: 下書き(`data/ingest/staged/`)の読み書きと、`data/v2/` への追記
-- **skips.py**: 曲の無いコンテンツの記録(`data/ingest/skipped.tsv`)
-
-##### ui/（UIコンポーネント層）
-
-再利用可能なUIコンポーネントを格納します。
-
-- **components/**: Streamlit UIコンポーネント(`__init__.py`)とフッター(`footer.py`)
-  - `render_search_form()`: 検索フォームの表示
-  - `render_results_table()`: 検索結果テーブルの表示
-  - `render_pagination()`: ページネーション（段階的表示）
-  - `render_twitter_embed()`: Twitter埋め込み表示
-- **pages/home_page.py**: Home の画面(`HomePage`。`Home.py` から呼ぶ)
-- **styles/style.css**: 画面のスタイル
-
-##### config/（設定管理層）
-
-アプリケーション設定とロギング設定を格納します。
-
-- **settings.py**: アプリケーション設定の一元管理
-  - `Config`クラス: ファイルパス、表示設定、ページ設定、パフォーマンス設定
-  - 環境変数からの設定読み込み
-  - 設定値の検証
-  
-- **logging_config.py**: ロギング設定
-  - ログレベル、フォーマット、ファイル出力、ローテーション設定
-  - 環境変数による制御
-
-##### exceptions/（例外処理層）
-
-カスタム例外クラスを格納します。
-
-- **errors.py**: アプリケーション固有の例外クラス
-  - `ShinoutaTimeError`: 基底例外クラス
-  - `DataLoadError`: データ読み込みエラー
-  - `DataProcessingError`: データ処理エラー
-  - `ConfigurationError`: 設定エラー
-  - `log_error()`: エラーログ記録関数
+層とデータの流れ・エラー・キャッシュは [構成の概要](docs/architecture/overview.md) にあります。
 
 ## 技術スタック
 
-- **フレームワーク**: Streamlit
-- **プログラミング言語**: Python 3.14(Docker イメージ `python:3.14.8-slim-trixie`)
-- **データ処理**: Pandas
-- **データ形式**: TSV (Tab-Separated Values)
-- **スタイリング**: CSS
+- **言語・画面**: Python 3.14、[Streamlit](https://streamlit.io/) 1.66、pandas
+- **データ**: TSV(UTF-8・タブ区切り)。データベースは使わない
+- **取り込み**: YouTube Data API v3(取り込みの CLI だけが使う。画面は外部の API を使わない)
+- **動かす場所**: 手元は Docker(`python:3.14.8-slim-trixie`)、公開は Streamlit Community Cloud(`main` → 本番、`develop` → stg)
+- **依存**: `==` で固定し、`requirements.txt`(本番)・`requirements-tools.txt`(データの CLI)・`requirements-dev.txt`(テスト。コンテナはこれを入れる)に分ける
 
 ## ドキュメント
 
-`docs/` ディレクトリに、より詳細なドキュメントがあります。
-
-- **`docs/README.md`**: ドキュメントの一覧
-- **`docs/specs/`**: 仕様書(データモデル v2 は `data-model.md`)
-- **`docs/prompts/`**: AI エージェント向けの手順(データの取り込みは `update-data.md`)
-- **`docs/guides/`**: ユーザーおよび開発者向けのガイド
-- **`docs/architecture/overview.md`**: 構成の概要(層・データの流れ・エラー・キャッシュ)
-- **`docs/development/`**: 開発プロセスや規約に関するドキュメント
-- **`docs/testing/`**: テストに関するドキュメント
+| 文書 | 中身 |
+|---|---|
+| [ユーザーガイド](docs/guides/user-guide.md)・[FAQ](docs/faq.md) | サイトの使い方 |
+| [SETUP.md](SETUP.md)・[TROUBLESHOOTING.md](TROUBLESHOOTING.md) | 手元で動かす・困ったとき |
+| [CONTRIBUTING.md](CONTRIBUTING.md)・[ブランチ戦略](docs/development/BRANCH_STRATEGY.md) | 開発の決まり・ブランチとリリース |
+| [構成の概要](docs/architecture/overview.md)・[データモデル v2](docs/specs/data-model.md) | 構成とデータの形 |
+| [データの取り込み](docs/prompts/update-data.md)・[コマンド集](docs/prompts/_commands.md) | 取り込みの手順とコマンド |
+| [デプロイ](docs/deployment.md)・[テスト](docs/testing/README.md) | 公開の環境とスリープ防止・テストの流し方 |
+| [docs/README.md](docs/README.md) | 文書の一覧 |
 
 ## 注意事項
 
@@ -436,13 +137,3 @@ YouTube などの取得結果から歌唱を読み取り、`data/v2/` に追記�
 **制作**: ファン有志  
 **対象VTuber**: 幽音しの（[@Shino_Kasukane_](https://x.com/Shino_Kasukane_)）  
 **公式YouTubeチャンネル**: [幽音しの / Shino Kasukane](https://www.youtube.com/@Shino_Kasukane)
-
-
-## 🛠️ ツールとスクリプト
-
-### 環境検証スクリプト
-
-開発環境が正しくセットアップされているか確認するスクリプトです。
-
-- `scripts/verify_environment.bat` (Windows)
-- `scripts/verify_environment.sh` (Linux/Mac)
