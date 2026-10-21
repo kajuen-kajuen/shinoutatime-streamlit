@@ -30,7 +30,7 @@ class TestAppCoverage:
         at = AppTest.from_file(app_path("Home.py"), default_timeout=30)
         at.run()
 
-        at.text_input[0].set_value("存在しない曲名のテスト").run()
+        at.text_input[0].set_value("存在しない曲名のテスト")  # フォームの中なので run は送信ボタンだけ
         [b for b in at.button if b.label == "検索"][0].click().run()
 
         assert not at.exception

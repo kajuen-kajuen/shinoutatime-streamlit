@@ -58,11 +58,12 @@ class TestHomeIntegration:
         assert len(results) == 1
         assert results.iloc[0]['ライブタイトル'] == 'ライブ1'
 
+    @patch('streamlit.form')
     @patch('streamlit.text_input')
     @patch('streamlit.checkbox')
-    @patch('streamlit.button')
-    def test_render_search_form(self, mock_button, mock_checkbox, mock_text_input):
-        """render_search_formのテスト"""
+    @patch('streamlit.form_submit_button')
+    def test_render_search_form(self, mock_button, mock_checkbox, mock_text_input, mock_form):
+        """render_search_formのテスト(st.form の中に置き、Enter キーでも送信される)"""
         mock_text_input.return_value = 'テストクエリ'
         mock_checkbox.return_value = True
         mock_button.return_value = True
@@ -85,6 +86,7 @@ class TestHomeIntegration:
             key="include_live_title_checkbox",
         )
         mock_button.assert_called_once_with("検索")
+        mock_form.assert_called_once_with("search_form", border=False)
 
     @patch('streamlit.write')
     def test_render_results_table(self, mock_write, sample_data):

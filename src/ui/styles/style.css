@@ -64,22 +64,20 @@ div[data-testid="stTextInput"] {
     align-items: stretch;
     margin-bottom: 0rem;
     /* ボタンとの隙間を詰める */
-}
-
-/*
- * 検索ボックスの入力欄の幅
- * パソコンでは最大 600px、それより狭い画面(スマホ)では幅いっぱい。
- */
-div[data-testid="stTextInputRootElement"] {
-    width: 100%;
+    /*
+     * 検索ボックスの幅: パソコンでは最大 600px、それより狭い画面(スマホ)では幅いっぱい。
+     * 入力欄だけでなく入れ物ごと止める。フォームの案内(「Press Enter to submit form」)は
+     * 入れ物の右端に出るので、入力欄だけを止めると案内が離れた右端に出てしまう
+     */
     max-width: 600px;
 }
 
 /**
  * 検索ボタンのマージン調整
  * 
- * 適用対象: Streamlitのボタンコンポーネント（st.button）の親要素
- * 
+ * 適用対象: Streamlitのボタンコンポーネント（検索の st.form_submit_button、さらに表示の st.button）の親要素
+ * 内部のクラス名(.stButton)ではなく data-testid で指定する(Streamlit の版を上げても変わりにくい)
+ *
  * 効果:
  * - 上部のマージンを負の値（-0.5rem）にして、テキスト入力との隙間を詰める
  * - 下部に1remのマージンを追加して、次の要素との適切な間隔を確保
@@ -97,7 +95,8 @@ div[data-testid="stTextInputRootElement"] {
  * - 負のマージンは全ブラウザでサポート
  * - rem単位は IE9+ でサポート
  */
-div.stButton {
+div[data-testid="stFormSubmitButton"],
+div[data-testid="stButton"] {
     margin-top: -0.5rem;
     /* テキスト入力との隙間を詰める */
     margin-bottom: 1rem;

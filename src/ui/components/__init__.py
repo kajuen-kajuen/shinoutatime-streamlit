@@ -21,9 +21,11 @@ def render_search_form(
 ) -> Tuple[str, bool, bool]:
     """
     検索フォームを表示する
-    
+
     テキスト入力、チェックボックス、検索ボタンを含む検索フォームを表示します。
-    
+    st.form の中に置くので、入力欄で Enter キーを押しても検索ボタンと同じく送信される。
+    入力欄とチェックボックスの値は、送信したときにまとめて反映される。
+
     Args:
         default_query: デフォルトの検索クエリ
         include_live_title: ライブタイトル検索のデフォルト値
@@ -41,28 +43,30 @@ def render_search_form(
         ...     pass
     """
     logger.debug("検索フォームを表示中")
-    
-    # テキスト入力ボックス
-    current_input = st.text_input(
-        "キーワード検索（曲名、アーティスト）",
-        value=default_query,
-        key="search_input_box",
-        placeholder="ここにキーワードを入力",
-    )
-    
-    # チェックボックス
-    current_checkbox_value = st.checkbox(
-        "検索対象にライブ配信タイトルを含める",
-        value=include_live_title,
-        key="include_live_title_checkbox",
-    )
-    
-    # 検索ボタン
-    search_button = st.button("検索")
-    
+
+    # フォームの枠線は出さない(見た目は今までの入力欄・チェックボックス・ボタンのまま)
+    with st.form("search_form", border=False):
+        # テキスト入力ボックス
+        current_input = st.text_input(
+            "キーワード検索（曲名、アーティスト）",
+            value=default_query,
+            key="search_input_box",
+            placeholder="ここにキーワードを入力",
+        )
+
+        # チェックボックス
+        current_checkbox_value = st.checkbox(
+            "検索対象にライブ配信タイトルを含める",
+            value=include_live_title,
+            key="include_live_title_checkbox",
+        )
+
+        # 検索ボタン(Enter キーでも押される)
+        search_button = st.form_submit_button("検索")
+
     if search_button:
-        logger.info(f"検索ボタンがクリックされました: クエリ='{current_input}', ライブタイトル検索={current_checkbox_value}")
-    
+        logger.info(f"検索が実行されました: クエリ='{current_input}', ライブタイトル検索={current_checkbox_value}")
+
     return current_input, current_checkbox_value, search_button
 
 

@@ -37,7 +37,8 @@ class TestAppE2E:
         return at
 
     def search(self, app, query: str):
-        app.text_input[0].set_value(query).run()
+        # 検索欄はフォームの中なので、入力のあとに run すると送信前に値が消える。送信ボタンの run だけにする
+        app.text_input[0].set_value(query)
         [b for b in app.button if b.label == "検索"][0].click().run()
 
     def test_app_startup(self, app):
