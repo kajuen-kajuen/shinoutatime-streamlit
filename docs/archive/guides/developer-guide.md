@@ -1,5 +1,7 @@
 # 開発者ガイド
 
+> 【古い】この文書は 2025年11月時点(v1。2026年10月に Python の版だけ直した)の内容で、今の構成とは合いません。読み物として残しています。今の構成は [`docs/architecture/overview.md`](../../architecture/overview.md)、データの取り込みは [`docs/prompts/update-data.md`](../../prompts/update-data.md) を見てください。
+
 ## 目次
 
 1. [はじめに](#はじめに)
@@ -194,7 +196,7 @@ Streamlitの設定ファイル。
 
 ### 必要な環境
 
-- **Python**: 3.8以上（推奨: 3.10以上）
+- **Python**: 3.14（本番環境と同じ）
 - **pip**: Pythonパッケージマネージャー
 - **Git**: バージョン管理システム
 
@@ -222,7 +224,7 @@ source venv/bin/activate
 #### 3. 依存パッケージのインストール
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 #### 4. アプリケーションの起動
@@ -852,9 +854,9 @@ feat: 楽曲検索機能に配信タイトル検索を追加
 - 仮想環境がアクティブになっているか確認
 - 依存パッケージが正しくインストールされているか確認
   ```bash
-  pip install -r requirements.txt
+  pip install -r requirements-dev.txt
   ```
-- Pythonのバージョンを確認（3.8以上が必要）
+- Pythonのバージョンを確認（3.14）
   ```bash
   python --version
   ```

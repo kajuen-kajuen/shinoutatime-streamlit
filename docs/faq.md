@@ -357,7 +357,7 @@
 - **データ形式**: TSV (Tab-Separated Values)
 - **スタイリング**: CSS
 
-詳細は、[開発者ガイド](guides/developer-guide.md)をご覧ください。
+詳細は、[構成の概要](architecture/overview.md)をご覧ください。
 
 ### Q32: ソースコードは公開されていますか？
 
@@ -368,23 +368,26 @@
 **A:** はい、可能です。以下の手順で動かすことができます：
 
 1. **必要な環境**
-   - Python 3.8以上
+   - Python 3.14
    - pip（Pythonパッケージマネージャー）
 
 2. **セットアップ手順**
    ```bash
    # 依存パッケージのインストール
-   pip install -r requirements.txt
+   pip install -r requirements-dev.txt
    
    # アプリケーションの起動
    streamlit run Home.py
    ```
 
-詳細は、[README.md](../README.md)および[開発者ガイド](guides/developer-guide.md)をご覧ください。
+詳細は、[README.md](../README.md)および[構成の概要](architecture/overview.md)をご覧ください。
 
 ### Q34: データファイルの形式は何ですか？
 
-**A:** データファイルはTSV（Tab-Separated Values）形式です。タブ区切りのテキストファイルで、Excelやテキストエディタで編集できます。
+**A:** データファイルはTSV（Tab-Separated Values）形式です。タブ区切りのテキストファイルです。
+
+- 画面が読む v2 のデータ(`data/v2/`)は、YouTube などから取り込みの CLI で作ります。手で編集はしません([データモデル v2](specs/data-model.md))。
+- 参照用に残している v1 のデータ(`data/*.TSV`)は、Excel(`data/data.xlsx`)から生成していました(フェーズ3で消す予定)。
 
 データファイルの詳細は、[README.md](../README.md)の「データファイル構造」セクションをご覧ください。
 
@@ -445,7 +448,7 @@
 
 - [ユーザーガイド](guides/user-guide.md): 各機能の詳しい使い方
 - [README.md](../README.md): プロジェクト概要とセットアップ手順
-- [開発者ガイド](guides/developer-guide.md): 開発者向けの技術情報
+- [構成の概要](architecture/overview.md): 開発者向けの技術情報(アプリの層・データの流れ)
 - **About Us**: サイトの「About Us」ページをご覧ください。
 
 ---

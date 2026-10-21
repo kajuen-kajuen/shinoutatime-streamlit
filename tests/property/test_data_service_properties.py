@@ -8,12 +8,14 @@ import pytest
 import tempfile
 import os
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, MagicMock
 import pandas as pd
 from hypothesis import given, strategies as st, settings
 
 from src.services.data_service import DataService
+from src.repositories.live_repository import LiveRepository
 from src.config.settings import Config
+from src.exceptions.errors import DataLoadError
 
 
 # カスタム戦略：有効なDataFrame生成
@@ -96,15 +98,16 @@ class TestDataServiceProperties:
             config = Mock(spec=Config)
             config.lives_file_path = temp_file
             
-            # DataServiceを初期化してデータを読み込む
-            service = DataService(config)
-            result = service.load_lives_data()
-            
-            # プロパティ検証：読み込みが成功した場合、DataFrameが返され、エラーメッセージがNone
-            if result is not None:
-                assert isinstance(result, pd.DataFrame)
-                assert service.get_last_error() is None
-                assert len(result) == len(df)
+            # DataServiceを初期化してデータを読み込む(本物のリポジトリで一時ファイルを読む)
+            service = DataService(config, LiveRepository(temp_file), MagicMock(), MagicMock())
+            try:
+                result = service.load_lives_data()
+            except DataLoadError:
+                return  # 読み込みの失敗は例外で伝わる(このプロパティは成功した場合だけを見る)
+
+            # プロパティ検証：読み込みが成功した場合、DataFrameが返され、件数が元と同じ
+            assert isinstance(result, pd.DataFrame)
+            assert len(result) == len(df)
         finally:
             # クリーンアップ
             if os.path.exists(temp_file):
@@ -125,7 +128,7 @@ class TestDataServiceProperties:
         config = Mock(spec=Config)
         
         # DataServiceを初期化してデータを結合
-        service = DataService(config)
+        service = DataService(config, MagicMock(), MagicMock(), MagicMock())
         result = service.merge_data(lives_df, songs_df)
         
         # プロパティ検証：結合後のデータ件数は楽曲データの件数と一致
@@ -146,23 +149,21 @@ class TestDataServiceProperties:
         Feature: test-coverage-improvement, Property 19: エラー処理の一貫性
         
         すべてのエラー状況（ファイル不存在、読み込みエラー）に対して、
-        Noneが返され、error_messageが空でない
-        
+        DataLoadError が投げられ、メッセージが空でない
+
         **検証: 要件8.3**
         """
         # Configをモック（存在しないファイルパス）
         config = Mock(spec=Config)
         config.lives_file_path = f"/nonexistent/{invalid_path}/M_YT_LIVE.TSV"
-        
-        # DataServiceを初期化してデータを読み込む
-        service = DataService(config)
-        result = service.load_lives_data()
-        
-        # プロパティ検証：エラー時はNoneが返され、エラーメッセージが設定される
-        assert result is None
-        assert service.get_last_error() is not None
-        assert isinstance(service.get_last_error(), str)
-        assert len(service.get_last_error()) > 0
+
+        # DataServiceを初期化してデータを読み込む(本物のリポジトリで存在しないファイルを読む)
+        service = DataService(config, LiveRepository(config.lives_file_path), MagicMock(), MagicMock())
+
+        # プロパティ検証：エラー時は DataLoadError が投げられ、メッセージが設定される
+        with pytest.raises(DataLoadError) as excinfo:
+            service.load_lives_data()
+        assert len(str(excinfo.value)) > 0
     
     @given(valid_dataframe_strategy())
     @settings(max_examples=100, deadline=5000)
@@ -198,14 +199,12 @@ class TestDataServiceProperties:
             config = Mock(spec=Config)
             config.lives_file_path = temp_file
             
-            # DataServiceを初期化してデータを読み込む
-            service = DataService(config)
+            # DataServiceを初期化してデータを読み込む(本物のリポジトリで一時ファイルを読む)
+            service = DataService(config, LiveRepository(temp_file), MagicMock(), MagicMock())
             result = service.load_lives_data()
-            
-            # プロパティ検証：欠損値があっても読み込みが成功する
-            assert result is not None
+
+            # プロパティ検証：欠損値があっても読み込みが成功する(失敗なら DataLoadError で落ちる)
             assert isinstance(result, pd.DataFrame)
-            assert service.get_last_error() is None
             
             # プロパティ検証：データ件数は元のデータと同じ
             assert len(result) == len(df_with_nan)

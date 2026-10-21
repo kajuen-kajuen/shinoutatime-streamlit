@@ -32,29 +32,12 @@
 /* 特定のStreamlit要素のスタイリング */
 /* ================================================= */
 
-/**
- * ページタイトルの中央寄せスタイル
- * 
- * 適用対象: h1要素およびStreamlitが生成する特定のクラス
- * 
- * 効果:
- * - タイトルを中央揃えにして視覚的な統一感を演出
- * - 下部に1.5remのマージンを追加してコンテンツとの間隔を確保
- * 
- * 注意事項:
- * - Streamlitのバージョンアップにより、クラス名（st-emotion-cache-*）が変更される可能性がある
- * - クラス名が変更された場合は、ブラウザの開発者ツールで新しいクラス名を確認して更新が必要
- * - emotion-cacheのハッシュ値は動的に生成されるため、環境によって異なる場合がある
- * 
- * ブラウザ互換性:
- * - text-align: center は全ブラウザでサポート
- * - rem単位は IE9+ でサポート
+/*
+ * ページタイトルは Streamlit の既定(左寄せ)のまま。
+ * 以前は中央寄せを Streamlit の内部クラス名(st-emotion-cache-*)で指定していたが、
+ * 版を上げて効かなくなっていたので消した。寄せ方を変えるときは
+ * data-testid="stHeading" の中の h1 を指定する(内部クラス名は版ごとに変わるので使わない)
  */
-h1.st-emotion-cache-nahz7x,
-.st-emotion-cache-nahz7x {
-    text-align: center;
-    margin-bottom: 1.5rem;
-}
 
 /**
  * 検索ボックスのレイアウト調整
@@ -77,16 +60,24 @@ h1.st-emotion-cache-nahz7x,
 div[data-testid="stTextInput"] {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    /* 中身(ラベルと、入力欄を包む要素)を幅いっぱいに伸ばす。flex-start だと入力欄が縮む。ラベルの文字は左寄せのまま */
+    align-items: stretch;
     margin-bottom: 0rem;
     /* ボタンとの隙間を詰める */
+    /*
+     * 検索ボックスの幅: パソコンでは最大 600px、それより狭い画面(スマホ)では幅いっぱい。
+     * 入力欄だけでなく入れ物ごと止める。フォームの案内(「Press Enter to submit form」)は
+     * 入れ物の右端に出るので、入力欄だけを止めると案内が離れた右端に出てしまう
+     */
+    max-width: 600px;
 }
 
 /**
  * 検索ボタンのマージン調整
  * 
- * 適用対象: Streamlitのボタンコンポーネント（st.button）の親要素
- * 
+ * 適用対象: Streamlitのボタンコンポーネント（検索の st.form_submit_button、さらに表示の st.button）の親要素
+ * 内部のクラス名(.stButton)ではなく data-testid で指定する(Streamlit の版を上げても変わりにくい)
+ *
  * 効果:
  * - 上部のマージンを負の値（-0.5rem）にして、テキスト入力との隙間を詰める
  * - 下部に1remのマージンを追加して、次の要素との適切な間隔を確保
@@ -104,7 +95,8 @@ div[data-testid="stTextInput"] {
  * - 負のマージンは全ブラウザでサポート
  * - rem単位は IE9+ でサポート
  */
-div.stButton {
+div[data-testid="stFormSubmitButton"],
+div[data-testid="stButton"] {
     margin-top: -0.5rem;
     /* テキスト入力との隙間を詰める */
     margin-bottom: 1rem;

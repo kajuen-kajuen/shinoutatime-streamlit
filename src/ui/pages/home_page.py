@@ -2,114 +2,119 @@
 ホーム画面ページ
 
 アプリケーションのメインページ（ホーム画面）の表示ロジックを担当します。
+データはデータモデル v2(data/v2/)の歌唱の一覧(views.build_performance_view)を読みます。
 """
 
+import html
 import logging
-import streamlit as st
-import pandas as pd
 from typing import Optional
 
+import streamlit as st
+import pandas as pd
+
 from src.config.settings import Config
-from src.services.data_service import DataService
-from src.core.data_pipeline import DataPipeline
-from src.services.search_service import SearchService
+from src.core.text import normalize_for_match
 from src.ui.components.footer import display_footer
 from src.ui.components import (
     render_search_form,
     render_results_table,
     render_pagination,
 )
+from src.ui.v2_data import load_performance_view
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
 
+# 表の列(表示の見出し)
+TABLE_COLUMNS = ["配信日", "No.", "曲名", "アーティスト", "種類", "リンク"]
 
-@st.cache_data(ttl=3600, show_spinner="データを読み込み中...")
-def load_and_process_data(
-    lives_path: str,
-    songs_path: str,
-    enable_cache: bool
-) -> Optional[pd.DataFrame]:
+
+def filter_view(view: pd.DataFrame, query: str, include_title: bool) -> pd.DataFrame:
     """
-    データを読み込み、処理する
-    
-    DataPipelineを使用してデータの読み込み、結合、変換、ソートを実行します。
-    Streamlitのキャッシュ機能により、同じパラメータでの再実行を防ぎます。
-    
-    Args:
-        lives_path: 配信データファイルのパス
-        songs_path: 楽曲データファイルのパス
-        enable_cache: キャッシュを有効にするかどうか
-    
-    Returns:
-        処理済みDataFrame。エラー時はNone
-        
-    Note:
-        - TTL（Time To Live）は3600秒（1時間）
-        - データファイルのパスが変更された場合、自動的に再読み込みされる
-        - キャッシュにより初期表示時間を3秒以内に保つ
-        
-    要件: 12.1, 12.2, 12.6
+    検索語で歌唱の一覧を絞る
+
+    曲名・アーティスト(読みを含む)、include_title のときは配信のタイトルも対象にする。
+    検索語も一覧の検索用の列と同じく normalize_for_match してから部分一致で照合する。
+    空(空白だけを含む)の検索語なら全件を返す。
     """
-    # キャッシュされた関数内でConfigを再作成するのは避けたいため、
-    # パスなどのプリミティブな引数を受け取る設計を維持する
-    # しかし、内部でDataService/Pipelineを初期化するためにConfigが必要
-    # ここでは都度Configを作成するか、引数で必要な情報だけ渡すが、
-    # Config.from_env()は軽量なので許容する
-    config = Config.from_env()
-    
-    data_service = DataService(config)
-    pipeline = DataPipeline(data_service, config)
-    return pipeline.execute()
+    needle = normalize_for_match(query)
+    if not needle:
+        return view
+    column = "search" if include_title else "search_song"
+    return view[view[column].str.contains(needle, regex=False)]
+
+
+def data_as_of(view: pd.DataFrame) -> str:
+    """
+    データの時点の表示(「データは YYYY/MM/DD の配信まで(歌唱 N 件)」)
+
+    日付は一覧の配信日の最大値、件数は一覧(画面に出す歌唱)の件数。一覧が空なら空文字。
+    """
+    if view.empty:
+        return ""
+    latest = view["date"].max().replace("-", "/")
+    return f"データは {latest} の配信まで(歌唱 {len(view):,} 件)"
+
+
+def build_table(view: pd.DataFrame) -> pd.DataFrame:
+    """
+    表に出す形にする(列は TABLE_COLUMNS)
+
+    アーティストとリンクは HTML に組み立てる(データ由来の文字列はエスケープする)。
+    ほかの列は render_results_table がエスケープする。
+    """
+    return pd.DataFrame({
+        "配信日": view["date"].str.replace("-", "/"),
+        "No.": view["no"],
+        "曲名": view["display_title"],
+        "アーティスト": view["artist"].map(lambda a: f'<div class="artist-cell">{html.escape(a)}</div>'),
+        "種類": view["type_label"],
+        "リンク": [
+            f'<a href="{html.escape(u, quote=True)}" target="_blank" rel="noopener">{html.escape(label)}</a>'
+            if u else ""
+            for u, label in zip(view["link"], view["link_label"])
+        ],
+    })
 
 
 class HomePage:
     """
     ホーム画面クラス
-    
+
     ホーム画面の描画とインタラクションを管理します。
     """
-    
-    def __init__(self):
-        """初期化"""
-        self.config = Config.from_env()
-        self.search_service = SearchService()
+
+    def __init__(self, config: Optional[Config] = None):
+        """
+        初期化
+
+        Args:
+            config: 設定(Home.py の setup_page() が読んだもの)。渡されなければ環境変数から読む
+        """
+        self.config = config or Config.from_env()
         logger.info("HomePage initialized")
 
     def run(self):
         """
         ホーム画面を実行・表示する
+
+        ページ設定・共通の CSS・サイト名の見出しは、Home.py が先に setup_page() で出している。
         """
-        self._load_css()
         self._render_header()
-        
+
         # データ読み込み
-        df_full = load_and_process_data(
-            self.config.lives_file_path,
-            self.config.songs_file_path,
-            self.config.enable_cache
-        )
-        
-        if df_full is not None:
-            self._handle_search_and_display(df_full)
+        try:
+            view = load_performance_view()
+        except Exception as e:  # DataLoadError のほか、集計中の想定外の失敗も画面に出して止める
+            logger.error(f"データの読み込み中にエラーが発生しました: {e}", exc_info=True)
+            self._handle_error(str(e))
         else:
-            self._handle_error()
-            
+            self._handle_search_and_display(view)
+
         display_footer()
 
-    def _load_css(self):
-        """カスタムCSSの適用"""
-        try:
-            with open(self.config.css_file_path, encoding="utf-8") as f:
-                st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-        except FileNotFoundError:
-            st.error(f"エラー: {self.config.css_file_path} が見つかりません。")
-        except Exception as e:
-            st.error(f"エラー: {self.config.css_file_path} の読み込み中に問題が発生しました: {e}")
-
     def _render_header(self):
-        """ヘッダー領域の描画"""
-        st.title("しのうたタイム👻🫧")
+        """ヘッダー領域の描画(サイト名の見出しの下のお知らせと説明)"""
         st.info("左のサイドバーから「Song List beta」を選択して、楽曲リストをご覧ください。")
         st.markdown(
             """
@@ -119,130 +124,74 @@ class HomePage:
         )
         st.markdown("---")
 
-    def _handle_search_and_display(self, df_full: pd.DataFrame):
+    def _handle_search_and_display(self, view: pd.DataFrame):
         """
         検索処理と結果表示の制御
-        
+
+        session_state には検索語・チェックボックス・表示件数だけを持ち、結果は毎回 view から絞る。
+
         Args:
-            df_full: 全データ
+            view: 歌唱の一覧(全件)
         """
         # セッション状態の初期化
         if "search_query" not in st.session_state:
             st.session_state.search_query = ""
-        if "filtered_df" not in st.session_state:
-            st.session_state.filtered_df = df_full.copy()
         if "include_live_title" not in st.session_state:
             st.session_state.include_live_title = True
         if "display_limit" not in st.session_state:
             st.session_state.display_limit = self.config.initial_display_limit
-        
+
+        # データの時点(いつの配信までのデータか)
+        as_of = data_as_of(view)
+        if as_of:
+            st.caption(as_of)
+
         # 検索フォームの表示
         current_input, current_checkbox_value, search_button = render_search_form(
             default_query=st.session_state.search_query,
             include_live_title=st.session_state.include_live_title
         )
-        
-        # 検索ロジック
+
+        # 検索ボタンが押されたら、検索条件を保存して表示件数を戻す
         if search_button:
-            self._perform_search(df_full, current_input, current_checkbox_value)
-        elif st.session_state.search_query:
-            # 既に検索済みの状態の表示更新（リロード時など）
-            st.write(
-                f"「{st.session_state.search_query}」で検索した結果: "
-                f"{len(st.session_state.filtered_df)}件"
-            )
+            st.session_state.search_query = current_input
+            st.session_state.include_live_title = current_checkbox_value
+            st.session_state.display_limit = self.config.initial_display_limit
+
+        query = st.session_state.search_query
+        filtered = filter_view(view, query, st.session_state.include_live_title)
+        if normalize_for_match(query):
+            st.write(f"「{query}」で検索した結果: {len(filtered)}件")
         else:
-            # 未検索（全件）
-            st.session_state.filtered_df = df_full.copy()
             st.write("検索キーワードが入力されていません。全件表示します。")
-        
+
         # 結果テーブル表示
-        self._render_results(st.session_state.filtered_df)
+        self._render_results(filtered)
 
-    def _perform_search(self, df_full: pd.DataFrame, query: str, include_title: bool):
-        """
-        検索を実行し、セッション状態を更新する
-        """
-        st.session_state.search_query = query
-        st.session_state.include_live_title = include_title
-        st.session_state.display_limit = self.config.initial_display_limit
-        
-        if query:
-            search_fields = ["曲名", "アーティスト"]
-            if include_title:
-                search_fields.append("ライブタイトル")
-            
-            st.session_state.filtered_df = self.search_service.search(
-                df_full,
-                query,
-                search_fields,
-                case_sensitive=False
-            )
-            st.write(
-                f"「{query}」で検索した結果: "
-                f"{len(st.session_state.filtered_df)}件"
-            )
-        else:
-            st.session_state.filtered_df = df_full.copy()
-            st.write("検索キーワードが入力されていません。全件表示します。")
-
-    def _render_results(self, df: pd.DataFrame):
+    def _render_results(self, view: pd.DataFrame):
         """結果テーブルとページネーションの表示"""
-        # 表示用データの準備
-        df_to_show = df.copy()
-        
-        # YouTubeリンクをHTML形式に変換
-        df_to_show["YouTubeリンク"] = df_to_show.apply(
-            lambda row: f'<a href="{row["YouTubeタイムスタンプ付きURL"]}" target="_blank">YouTubeへ👻</a>',
-            axis=1,
+        shown = view.head(st.session_state.display_limit)
+        render_results_table(
+            build_table(shown),
+            TABLE_COLUMNS,
+            {c: c for c in TABLE_COLUMNS},
+            html_columns={"アーティスト", "リンク"},
         )
-        
-        # アーティスト列にカスタムCSSクラスを適用
-        df_to_show["アーティスト"] = (
-            df_to_show["アーティスト"]
-            .astype(str)
-            .apply(lambda x: f'<div class="artist-cell">{x}</div>')
-        )
-        
-        # 表示件数を制限
-        df_limited_display = df_to_show.head(st.session_state.display_limit)
-        
-        # 表示する列とヘッダーの定義
-        display_columns = [
-            "ライブ配信日",
-            "曲目",
-            "曲名",
-            "アーティスト",
-            "YouTubeリンク",
-        ]
-        column_headers = {
-            "ライブ配信日": "配信日",
-            "曲目": "No.",
-            "曲名": "曲名",
-            "アーティスト": "アーティスト",
-            "YouTubeリンク": "リンク",
-        }
-        
-        # 結果テーブルの表示
-        render_results_table(df_limited_display, display_columns, column_headers)
-        
-        # ページネーションの表示
-        new_limit = render_pagination(
-            total_count=len(df),
-            current_limit=st.session_state.display_limit,
-            increment=self.config.display_increment
-        )
-        
-        if new_limit:
-            st.session_state.display_limit = new_limit
-            st.rerun()
 
-    def _handle_error(self):
-        """エラー時の表示"""
-        st.warning(
-            "必要なTSVファイルがすべて読み込めなかったため、結合データは表示できません。"
+        # ページネーションの表示(ボタンの on_click で display_limit を増やす。st.rerun は要らない)
+        render_pagination(
+            total_count=len(view),
+            state_key="display_limit",
+            increment=self.config.display_increment,
         )
-        # エラー情報を表示するためにDataServiceのインスタンスを作成
-        data_service = DataService(self.config)
-        if data_service.get_last_error():
-            st.error(data_service.get_last_error())
+
+    def _handle_error(self, error_msg: str):
+        """
+        エラー時の表示
+
+        Args:
+            error_msg: 表示するエラーメッセージ
+        """
+        st.error("データの読み込みまたは処理中にエラーが発生しました。")
+        st.warning(error_msg)
+        st.info("データファイル（TSV）の形式や存在を確認してください。")

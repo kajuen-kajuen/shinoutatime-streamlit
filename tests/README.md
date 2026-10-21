@@ -243,7 +243,7 @@ AssertionError: Pythonマイナーバージョンが11ではありません（�
 
 **解決方法:**
 - Docker Compose環境を使用している場合、Dockerfileが正しくビルドされているか確認
-- ローカル環境の場合、Python 3.11をインストール
+- ローカル環境の場合、Python 3.14をインストール
 
 ### モジュールが見つからない
 
@@ -254,7 +254,7 @@ ModuleNotFoundError: No module named 'streamlit'
 
 **解決方法:**
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 ## テスト結果の確認

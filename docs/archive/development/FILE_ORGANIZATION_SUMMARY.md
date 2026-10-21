@@ -1,5 +1,7 @@
 # ファイル整理完了サマリー
 
+> 【古い】この文書は 2025年11月時点(ファイルを整理したときの記録)の内容で、今の構成とは合いません。読み物として残しています。今の構成は [`docs/architecture/overview.md`](../../architecture/overview.md)、データの取り込みは [`docs/prompts/update-data.md`](../../prompts/update-data.md) を見てください。
+
 ## 実施日時
 2025年11月19日
 

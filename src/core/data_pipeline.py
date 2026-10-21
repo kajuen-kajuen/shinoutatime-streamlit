@@ -18,7 +18,7 @@ from src.core.utils import (
     generate_song_numbers,
     convert_date_string,
 )
-from src.exceptions.errors import DataProcessingError, log_error
+from src.exceptions.errors import DataProcessingError, DataLoadError, log_error
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
@@ -62,30 +62,23 @@ class DataPipeline:
         """
         self.data_service = data_service
         self.config = config
-        self._cache = {}
         logger.info("DataPipelineを初期化しました")
     
-    def execute(self) -> Optional[pd.DataFrame]:
+    def execute(self) -> pd.DataFrame:
         """
         パイプライン全体を実行する
         
         データの読み込みから最終的な表示用データの生成までの
         全ての処理ステップを順次実行します。
-        キャッシュが有効な場合、2回目以降はキャッシュから結果を返します。
         
         Returns:
-            処理済みDataFrame。エラー時はNone
+            処理済みDataFrame
             
-        Note:
-            各ステップでエラーが発生した場合、適切なエラーメッセージを
-            ログに記録し、Noneを返します。
+        Raises:
+            DataProcessingError: データ処理中にエラーが発生した場合
+            DataLoadError: データ読み込み中にエラーが発生した場合
         """
         import time
-        
-        # キャッシュチェック
-        if self.config.enable_cache and "final_data" in self._cache:
-            logger.info("キャッシュからデータを返します")
-            return self._cache["final_data"]
         
         start_time = time.time()
         logger.info("データパイプラインを実行開始")
@@ -93,34 +86,21 @@ class DataPipeline:
         try:
             # ステップ1: データ読み込み
             lives_df, songs_df = self._load_data()
-            if lives_df is None or songs_df is None:
-                logger.error("データ読み込みに失敗しました")
-                return None
             
-            if not self._validate_step_result(lives_df, "load_lives"):
-                return None
-            if not self._validate_step_result(songs_df, "load_songs"):
-                return None
+            self._validate_step_result(lives_df, "load_lives")
+            self._validate_step_result(songs_df, "load_songs")
             
             # ステップ2: データ結合
             merged_df = self._merge_data(lives_df, songs_df)
-            if not self._validate_step_result(merged_df, "merge"):
-                return None
+            self._validate_step_result(merged_df, "merge")
             
             # ステップ3: データ変換
             transformed_df = self._transform_data(merged_df)
-            if not self._validate_step_result(transformed_df, "transform"):
-                return None
+            self._validate_step_result(transformed_df, "transform")
             
             # ステップ4: データソート
             sorted_df = self._sort_data(transformed_df)
-            if not self._validate_step_result(sorted_df, "sort"):
-                return None
-            
-            # キャッシュに保存
-            if self.config.enable_cache:
-                self._cache["final_data"] = sorted_df
-                logger.info("処理結果をキャッシュに保存しました")
+            self._validate_step_result(sorted_df, "sort")
             
             # パフォーマンス情報をログに記録
             elapsed_time = time.time() - start_time
@@ -130,33 +110,30 @@ class DataPipeline:
             )
             return sorted_df
             
+        except (DataProcessingError, DataLoadError):
+            # 既に適切にラップされている例外はそのまま送出
+            raise
         except Exception as e:
-            error_msg = f"データパイプライン実行中にエラーが発生しました: {e}"
+            error_msg = f"データパイプライン実行中に予期しないエラーが発生しました: {e}"
             logger.error(error_msg, exc_info=True)
-            log_error(DataProcessingError("execute", str(e)))
-            return None
+            raise DataProcessingError("execute", str(e))
     
-    def _load_data(self) -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
+    def _load_data(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         データ読み込みステップ
         
-        配信データと楽曲データをTSVファイルから読み込みます。
+        配信データと楽曲データをリポジトリから読み込みます。
         
         Returns:
-            (配信データ, 楽曲データ)のタプル。エラー時は(None, None)
+            (配信データ, 楽曲データ)のタプル
+            
+        Raises:
+            DataLoadError: データの読み込みに失敗した場合
         """
         logger.info("ステップ1: データ読み込み開始")
         
         lives_df = self.data_service.load_lives_data()
         songs_df = self.data_service.load_songs_data()
-        
-        if lives_df is None:
-            logger.error(f"配信データの読み込みに失敗: {self.data_service.get_last_error()}")
-            return None, None
-        
-        if songs_df is None:
-            logger.error(f"楽曲データの読み込みに失敗: {self.data_service.get_last_error()}")
-            return None, None
         
         logger.info(f"データ読み込み完了: 配信{len(lives_df)}件、楽曲{len(songs_df)}件")
         return lives_df, songs_df
@@ -245,6 +222,15 @@ class DataPipeline:
                 axis=1,
             )
             
+            # 表示用に配信日をフォーマット（時刻を省く）
+            logger.debug("表示用に配信日をフォーマット中")
+            # ライブ配信日_sortableを使用して、有効な日付のみフォーマット
+            df_result["ライブ配信日"] = df_result["ライブ配信日_sortable"].dt.strftime('%Y/%m/%d')
+            # 変換に失敗した（NaT）場合は元の値を保持（念のため）
+            mask_nat = df_result["ライブ配信日"].isna()
+            if mask_nat.any():
+                df_result.loc[mask_nat, "ライブ配信日"] = df_result.loc[mask_nat, "ライブ配信日_original"]
+            
             logger.info("データ変換完了")
             return df_result
             
@@ -287,7 +273,7 @@ class DataPipeline:
             logger.error(error_msg, exc_info=True)
             raise DataProcessingError("sort", str(e))
     
-    def _validate_step_result(self, df: pd.DataFrame, step_name: str) -> bool:
+    def _validate_step_result(self, df: pd.DataFrame, step_name: str) -> None:
         """
         ステップ結果を検証する
         
@@ -296,30 +282,21 @@ class DataPipeline:
         Args:
             df: 検証対象のDataFrame
             step_name: ステップ名
-        
-        Returns:
-            検証成功時True、失敗時False
+            
+        Raises:
+            DataProcessingError: 検証に失敗した場合
         """
         if df is None:
-            logger.error(f"ステップ '{step_name}' の結果がNoneです")
-            return False
+            error_msg = f"ステップ '{step_name}' の結果がNoneです"
+            logger.error(error_msg)
+            raise DataProcessingError(step_name, error_msg)
         
         if not isinstance(df, pd.DataFrame):
-            logger.error(f"ステップ '{step_name}' の結果がDataFrameではありません")
-            return False
+            error_msg = f"ステップ '{step_name}' の結果がDataFrameではありません"
+            logger.error(error_msg)
+            raise DataProcessingError(step_name, error_msg)
         
         if len(df) == 0:
             logger.warning(f"ステップ '{step_name}' の結果が空のDataFrameです")
             # 空のDataFrameは警告のみで処理を継続
-        
-        return True
     
-    def clear_cache(self):
-        """
-        キャッシュをクリアする
-        
-        パイプラインの処理結果キャッシュをクリアします。
-        データファイルが更新された場合などに使用します。
-        """
-        self._cache.clear()
-        logger.info("キャッシュをクリアしました")

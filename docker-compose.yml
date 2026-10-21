@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   shinouta-time:
     build: .
@@ -11,4 +9,8 @@ services:
       - SHINOUTA_LOG_LEVEL=${SHINOUTA_LOG_LEVEL:-INFO}
       - SHINOUTA_ENABLE_FILE_LOGGING=${SHINOUTA_ENABLE_FILE_LOGGING:-false}
       - SHINOUTA_LOG_FILE=${SHINOUTA_LOG_FILE:-logs/shinouta.log}
+      # 取り込み用(値はリポジトリに書かない。Git 管理外の .env に書く)
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY:-}
+      - YOUTUBE_API_KEYS=${YOUTUBE_API_KEYS:-}
+      - SHINOUTA_TRUSTED_COMMENTERS=${SHINOUTA_TRUSTED_COMMENTERS:-}
     command: streamlit run Home.py --server.address 0.0.0.0

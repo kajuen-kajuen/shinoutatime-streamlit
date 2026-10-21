@@ -1,0 +1,4 @@
+# データ生成の CLI(song_list_generator など)で使う依存。本番には入れない
+-r requirements.txt
+pykakasi==2.3.0
+python-Levenshtein==0.27.5

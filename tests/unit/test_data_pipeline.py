@@ -156,14 +156,11 @@ class TestDataPipelineExecution:
         assert "曲目" in result.columns
 
 
-class TestDataPipelineCaching:
-    """キャッシュ機能のテスト"""
-    
-    def test_cache_usage(self):
-        """キャッシュの使用をテスト"""
+    def test_cache_is_not_used(self):
+        """キャッシュが使用されないこと（ステートレス性）をテスト"""
         # モックの設定
         config = Mock(spec=Config)
-        config.enable_cache = True
+        config.enable_cache = True  # 有効でも使用されないはず
         
         data_service = Mock(spec=DataService)
         
@@ -186,60 +183,15 @@ class TestDataPipelineCaching:
         result1 = pipeline.execute()
         assert result1 is not None
         
-        # キャッシュが保存されていることを確認
-        assert "final_data" in pipeline._cache
-        
-        # 2回目の実行（キャッシュから取得）
+        # 2回目の実行
         result2 = pipeline.execute()
         assert result2 is not None
         
-        # DataServiceのメソッドが1回しか呼ばれていないことを確認
-        assert data_service.load_lives_data.call_count == 1
-        assert data_service.load_songs_data.call_count == 1
-        assert data_service.merge_data.call_count == 1
-        
-        # 結果が同じであることを確認（同じオブジェクトが返される）
-        assert result1 is result2
-        pd.testing.assert_frame_equal(result1, result2)
-    
-    def test_cache_clear(self):
-        """キャッシュのクリアをテスト"""
-        # モックの設定
-        config = Mock(spec=Config)
-        config.enable_cache = True
-        
-        data_service = Mock(spec=DataService)
-        
-        # サンプルデータを作成
-        lives_df = create_sample_dataframe(SAMPLE_LIVES_DATA)
-        songs_df = create_sample_dataframe(SAMPLE_SONGS_DATA)
-        
-        # DataServiceのモックメソッドを設定
-        data_service.load_lives_data.return_value = lives_df
-        data_service.load_songs_data.return_value = songs_df
-        
-        # merge_dataの戻り値を設定
-        merged_df = create_merged_dataframe(lives_df, songs_df)
-        data_service.merge_data.return_value = merged_df
-        
-        # DataPipelineを初期化
-        pipeline = DataPipeline(data_service, config)
-        
-        # 1回目の実行
-        result1 = pipeline.execute()
-        assert result1 is not None
-        
-        # キャッシュをクリア
-        pipeline.clear_cache()
-        
-        # 2回目の実行（キャッシュがクリアされているので再実行）
-        result2 = pipeline.execute()
-        assert result2 is not None
-        
-        # DataServiceのメソッドが2回呼ばれていることを確認
+        # DataServiceのメソッドが2回呼ばれていることを確認（キャッシュされていない）
         assert data_service.load_lives_data.call_count == 2
         assert data_service.load_songs_data.call_count == 2
         assert data_service.merge_data.call_count == 2
+    
 
 
 class TestDataPipelineErrorHandling:
@@ -305,17 +257,16 @@ class TestDataPipelineErrorHandling:
         
         data_service = Mock(spec=DataService)
         
-        # DataServiceのモックメソッドを設定（読み込み失敗）
-        data_service.load_lives_data.return_value = None
-        data_service.load_songs_data.return_value = None
-        data_service.get_last_error.return_value = "ファイルが見つかりません"
+        # DataServiceのモックメソッドを設定（例外を送出）
+        from src.exceptions.errors import DataLoadError
+        data_service.load_lives_data.side_effect = DataLoadError("lives.tsv", "ファイルが見つかりません")
         
         # DataPipelineを初期化して実行
         pipeline = DataPipeline(data_service, config)
-        result = pipeline.execute()
         
-        # 検証：Noneが返される
-        assert result is None
+        # 検証：例外が発生すること
+        with pytest.raises(DataLoadError):
+            pipeline.execute()
     
     def test_data_transformation_error(self):
         """データ変換エラー時の処理をテスト"""
@@ -376,11 +327,11 @@ class TestDataPipelineErrorHandling:
         
         # DataPipelineを初期化して実行
         pipeline = DataPipeline(data_service, config)
-        result = pipeline.execute()
         
-        # 検証：空のDataFrameの場合、generate_song_numbersでエラーが発生してNoneが返される
+        # 空のDataFrameの場合、generate_song_numbersでエラーが発生して例外が投げられる
         # これは期待される動作
-        assert result is None
+        with pytest.raises(DataProcessingError):
+            pipeline.execute()
     
     def test_validate_step_result_empty_dataframe(self):
         """_validate_step_resultが空のDataFrameを処理することをテスト"""
@@ -399,11 +350,9 @@ class TestDataPipelineErrorHandling:
         # ログをキャプチャするためにロガーをモック
         with patch('src.core.data_pipeline.logger') as mock_logger:
             # _validate_step_resultを呼び出し
-            result = pipeline._validate_step_result(empty_df, "test_step")
+            pipeline._validate_step_result(empty_df, "test_step")
             
-            # 検証：Trueが返される（警告のみで処理は継続）
-            assert result is True
-            
+            # 検証：正常終了（警告のみで処理は継続）
             # 警告ログが記録されたことを確認
             mock_logger.warning.assert_called_once()
             warning_call = mock_logger.warning.call_args[0][0]

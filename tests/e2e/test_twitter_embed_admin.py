@@ -4,15 +4,32 @@ src/ui/twitter_embed_admin.py のテスト
 """
 import pytest
 from streamlit.testing.v1 import AppTest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+# AppTest.from_file の相対パスは、呼び出したファイル(このテスト)からの位置になるので絶対パスで渡す
+APP_SCRIPT = str(Path(__file__).resolve().parents[2] / "src" / "ui" / "twitter_embed_admin.py")
 
 class TestTwitterEmbedAdmin:
     """Twitter埋め込み管理者画面のテスト"""
 
-    def test_auth_failure(self):
+    def test_auth_refused_without_password_env(self, monkeypatch):
+        """ADMIN_PASSWORD が未設定なら、ログインのフォームを出さない(既定値でログインできない)"""
+        monkeypatch.delenv("ADMIN_PASSWORD", raising=False)
+        at = AppTest.from_file(APP_SCRIPT, default_timeout=10)
+        at.run()
+
+        assert "管理者認証" in at.subheader[0].value
+        assert any("ADMIN_PASSWORD" in e.value for e in at.error)
+        assert len(at.text_input) == 0
+        assert len(at.button) == 0
+        assert not at.session_state.authenticated
+
+    def test_auth_failure(self, monkeypatch):
         """認証失敗時の動作確認"""
+        monkeypatch.setenv("ADMIN_PASSWORD", "test-password")
         # アプリの初期化
-        at = AppTest.from_file("src/ui/twitter_embed_admin.py", default_timeout=10)
+        at = AppTest.from_file(APP_SCRIPT, default_timeout=10)
         at.run()
         
         # タイトル確認（管理者認証）
@@ -28,16 +45,14 @@ class TestTwitterEmbedAdmin:
         # 認証状態がFalseのままであること
         assert not at.session_state.authenticated
 
-    def test_auth_success(self):
+    def test_auth_success(self, monkeypatch):
         """認証成功時の動作確認"""
-        at = AppTest.from_file("src/ui/twitter_embed_admin.py", default_timeout=10)
+        monkeypatch.setenv("ADMIN_PASSWORD", "test-password")
+        at = AppTest.from_file(APP_SCRIPT, default_timeout=10)
         at.run()
-        
-        # 正しいパスワードを入力 (デフォルトは 'admin')
-        # 環境変数 ADMIN_PASSWORD が設定されている場合はそれに従うが、
-        # テスト環境ではデフォルト値または設定値を考慮する必要がある。
-        # ここではデフォルトの "admin" を使用
-        at.text_input[0].set_value("admin").run()
+
+        # 正しいパスワード(テストで設定した ADMIN_PASSWORD)を入力
+        at.text_input[0].set_value("test-password").run()
         at.button[0].click().run()
         
         # 成功メッセージ確認
@@ -60,7 +75,7 @@ class TestTwitterEmbedAdmin:
         mock_result.failed_urls = []
         mock_fetch.return_value = mock_result
         
-        at = AppTest.from_file("src/ui/twitter_embed_admin.py", default_timeout=10)
+        at = AppTest.from_file(APP_SCRIPT, default_timeout=10)
         
         # 認証済み状態にする
         at.session_state.authenticated = True
@@ -69,7 +84,8 @@ class TestTwitterEmbedAdmin:
         # 入力フォームへの入力
         test_url = "https://twitter.com/user/status/1234567890"
         # at.text_area[0] は "ツイートURL" 入力欄を想定
-        at.text_area[0].set_value(test_url).run()
+        # フォームの中の欄は、ここで run すると送信前に値が消えるので、送信ボタンの run だけにする
+        at.text_area[0].set_value(test_url)
         
         # 取得ボタン押下 (フォームの送信ボタン)
         # フォーム内のボタンは通常、識別が難しい場合があるが、
@@ -110,14 +126,14 @@ class TestTwitterEmbedAdmin:
         
         mock_save.return_value = True
         
-        at = AppTest.from_file("src/ui/twitter_embed_admin.py", default_timeout=10)
+        at = AppTest.from_file(APP_SCRIPT, default_timeout=10)
         
         # 認証済み状態かつ取得完了状態にする
         at.session_state.authenticated = True
         at.run()
         
         # URL入力と取得実行 (stateを手動設定する代わりに操作をシミュレート)
-        at.text_area[0].set_value("https://twitter.com/test").run()
+        at.text_area[0].set_value("https://twitter.com/test")  # フォームの中の欄なので run しない
         [b for b in at.button if b.label == "🔍 取得"][0].click().run()
         
         # 保存ボタン押下

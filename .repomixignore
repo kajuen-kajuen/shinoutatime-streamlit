@@ -1,0 +1,9 @@
+# データファイルの除外
+data/*.TSV
+data/*.tsv
+data/*.csv
+
+# AIのコード解析に不要なバイナリやキャッシュ（念のため）
+__pycache__/
+*.pyc
+.streamlit/

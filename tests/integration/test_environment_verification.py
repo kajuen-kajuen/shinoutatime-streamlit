@@ -22,6 +22,9 @@ sys.path.insert(0, str(project_root))
 
 from src.config.settings import Config
 from src.services.data_service import DataService
+from src.repositories.live_repository import LiveRepository
+from src.repositories.timestamp_repository import TimestampRepository
+from src.repositories.song_list_repository import SongListRepository
 from src.core.data_pipeline import DataPipeline
 from src.services.search_service import SearchService
 
@@ -54,8 +57,13 @@ class TestEnvironmentVerification:
     
     @pytest.fixture
     def data_service(self, config):
-        """データサービスを提供するフィクスチャ"""
-        return DataService(config)
+        """データサービスを提供するフィクスチャ(本物のデータを読むため、本物のリポジトリを渡す)"""
+        return DataService(
+            config,
+            LiveRepository(config.lives_file_path),
+            TimestampRepository(config.songs_file_path),
+            SongListRepository(config.song_list_file_path),
+        )
     
     @pytest.fixture
     def data_pipeline(self, data_service, config):
@@ -91,12 +99,12 @@ class TestEnvironmentVerification:
     
     def test_python_version(self):
         """
-        Pythonバージョンが3.11であることを確認
-        
-        要件13.1, 14.1: 本番環境と同じPython 3.11を使用
+        Pythonバージョンが3.14であることを確認
+
+        要件13.1, 14.1: 本番環境と同じPython 3.14を使用
         """
         assert sys.version_info.major == 3, "Pythonメジャーバージョンが3ではありません"
-        assert sys.version_info.minor == 11, "Pythonマイナーバージョンが11ではありません（本番環境と一致しません）"
+        assert sys.version_info.minor == 14, "Pythonマイナーバージョンが14ではありません（本番環境と一致しません）"
     
     # ========================================
     # 要件10.2: データ読み込みが正常に動作すること
@@ -255,10 +263,10 @@ class TestEnvironmentVerification:
         # 全ての行に曲目番号が生成されていることを確認
         assert df["曲目"].notna().all(), "一部の行で曲目番号が生成されていません"
         
-        # 曲目番号の形式確認（"N曲目" または "N-M曲目" の形式）
+        # 曲目番号の形式確認（"N" または、同じ日に複数の枠があるときの "M-N"。src/core/utils.py の generate_song_numbers）
         sample_song_number = df["曲目"].iloc[0]
         assert isinstance(sample_song_number, str), "曲目番号が文字列ではありません"
-        assert "曲目" in sample_song_number, "曲目番号に「曲目」が含まれていません"
+        assert df["曲目"].str.fullmatch(r"\d+(-\d+)?").all(), "曲目番号が「N」か「M-N」の形ではありません"
         
         # 曲順列が存在し、正の整数であることを確認
         assert "曲順" in df.columns, "曲順列が存在しません"

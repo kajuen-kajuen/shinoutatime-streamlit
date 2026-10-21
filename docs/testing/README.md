@@ -1,87 +1,55 @@
 # テストドキュメント
 
-このディレクトリには、「しのうたタイム」プロジェクトのテスト関連ドキュメントが含まれています。
+しのうたタイムのテストの置き場所・流し方・今の状態です。テストの書き方の詳細は [`tests/README.md`](../../tests/README.md)。
 
-## ドキュメント一覧
+## 流し方
 
-### coverage_report_summary.md
-
-最新のテストカバレッジレポートのサマリーです。
-
-**内容:**
-- 総合テスト結果（84件のテスト）
-- テストファイル別の内訳
-- 各テストクラスの詳細結果
-- 修正内容
-- データ統計
-- テストカバレッジ
-
-**最終更新**: 2025年11月19日
-
-### `docs/archive/TESTING_COMPLETE.md`
-
-テスト完了報告書（アーカイブ）です。
-
-**内容:**
-- 実施内容のサマリー
-- 新規追加されたテストケース
-- 修正内容
-- 検証された機能
-- テスト実行コマンド
-- 更新されたドキュメント
-- 今後の推奨事項
-
-**最終更新**: 2025年11月19日
-
-## テストの実行
-
-テストの実行方法については、`tests/README.md` を参照してください。
-
-### クイックスタート
+コマンドはすべて Docker のコンテナで流します(ホストで `pytest` を打たない)。先に `docker compose up -d` でコンテナを起動しておきます。
 
 ```bash
-# 全テストの実行
-docker-compose exec shinouta-time pytest tests/ -v
+# 全部
+docker compose exec shinouta-time pytest
 
-# 特定のテストファイルの実行
-docker-compose exec shinouta-time pytest tests/test_utils.py -v
+# 一部(ディレクトリやファイル名に替えてよい)
+docker compose exec shinouta-time pytest tests/unit/v2 -q
+
+# 性能のテストも(時間がかかるので、--runslow のときだけ動く)
+docker compose exec shinouta-time pytest --runslow
+
+# カバレッジ
+docker compose exec shinouta-time pytest --cov=src --cov-report=term-missing
 ```
 
-## テスト結果の確認
+ほかのコマンドは [`docs/prompts/_commands.md`](../prompts/_commands.md)。
 
-最新のテスト結果は [カバレッジレポートサマリー](coverage_report_summary.md) で確認できます。
+## 置き場所
 
-### 最新の結果（2025年11月19日）
+| ディレクトリ | 中身 |
+|---|---|
+| `tests/unit/` | ユニットテスト(v1 のサービス・リポジトリ・CLI など) |
+| `tests/unit/v2/` | データモデル v2 のテスト(文字列とリンク、読み書きと検査、操作と集計、取り込み・YouTube API) |
+| `tests/property/` | hypothesis を使ったプロパティベーステスト(v1) |
+| `tests/integration/` | 統合テスト(画面の部品・v2 の読み込みのキャッシュ、v1 の部品) |
+| `tests/e2e/` | ページの起動・検索・さらに表示(Streamlit の `AppTest`)。本物の `data/v2/` を読むので、件数は「1件以上」などで確かめる |
+| `tests/performance/` | 性能テスト。架空の2万件で、読み込みから集計までを約0.5秒で終えることを確かめる(`--runslow`) |
+| `tests/fixtures/` | テスト用のデータ |
 
-- **総テスト件数**: 84件
-- **成功**: 84件 ✅
-- **失敗**: 0件
-- **実行時間**: 約2秒
+## 今の状態(2026-10-21)
 
-## テストカバレッジ
+- 全体: **859 passed / 4 skipped**(失敗なし)
+- v2(`tests/unit/v2`): **172 passed**
+- 画面のテスト(`tests/unit/ui`・`tests/e2e`)は、フェーズ2(画面を v2 に切り替えた)で v2 の形に書き直した。
+- v1 の部品のテスト(`tests/unit` の DataPipeline・SongListService など、`tests/property`)は、v1 のコードと一緒にフェーズ3で消す。
+- 変更の前後で、**失敗が増えていない**ことを確かめます。
 
-現在のテストカバレッジ:
+## 古い記録
 
-| モジュール | カバレッジ |
-|-----------|----------|
-| src/core/utils.py | 100% |
-| src/services/search_service.py | 95%以上 |
-| src/config/settings.py | 90%以上 |
-| src/exceptions/errors.py | 100% |
-| src/services/data_service.py | 80%以上 |
-| src/core/data_pipeline.py | 85%以上 |
+2025年11月時点の記録は `docs/archive/` に移しました。v2 のテストを含みません。
+
+- [カバレッジレポートのサマリー](../archive/testing/coverage_report_summary.md)(84件、2025年11月)
+- [`docs/archive/TESTING_COMPLETE.md`](../archive/TESTING_COMPLETE.md)(テスト完了報告)
 
 ## 関連ドキュメント
 
-- [テストガイド](../../tests/README.md) - テストの実行方法と拡張方法
-- [開発者ガイド](../developer-guide.md) - 開発環境のセットアップ
-
-## 継続的な改善
-
-テストは継続的に改善されています。以下のタイミングでテストを実行することを推奨します：
-
-1. コード変更後
-2. プルリクエスト作成前
-3. 依存パッケージ更新後
-4. データファイル更新後
-5. 定期的な動作確認（週次など）
+- [テストガイド](../../tests/README.md) - テストの書き方と拡張方法
+- [構成の概要](../architecture/overview.md) - アプリの層とデータの流れ、既知の課題

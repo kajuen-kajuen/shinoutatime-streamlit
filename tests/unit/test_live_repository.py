@@ -122,3 +122,25 @@ class TestLiveRepository:
         with pytest.raises(ValueError) as excinfo:
             repository._parse_date("2023/2/30")  # invalid date
         assert "日付の解析に失敗しました" in str(excinfo.value)
+
+    def test_load_as_dataframe_success(self, repository, tmp_path):
+        """正常系: DataFrameとして正しく読み込めること"""
+        # Setup
+        file_path = tmp_path / "test_live.tsv"
+        content = (
+            "ID\t配信日\tタイトル\tURL\n"
+            "1\t2023/1/1\tTitle1\thttps://example.com/1\n"
+            "2\t2023/12/31\tTitle2\thttps://example.com/2"
+        )
+        file_path.write_text(content, encoding='utf-8')
+
+        # Execute
+        df = repository.load_as_dataframe()
+
+        # Verify
+        import pandas as pd
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == 2
+        assert list(df.columns) == ["ID", "配信日", "タイトル", "URL"]
+        assert df.iloc[0]["ID"] == 1
+        assert df.iloc[1]["タイトル"] == "Title2"

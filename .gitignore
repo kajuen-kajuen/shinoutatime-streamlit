@@ -9,6 +9,7 @@ data/backups/
 
 # Local-only admin pages (not for production/staging)
 pages/*_Admin.py
+pages/*_Preview.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -172,3 +173,15 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+# Claude Code / AI エージェントの個人設定とローカルの計画(公開リポジトリに入れない)
+.claude/settings.local.json
+CLAUDE.local.md
+docs/plans/
+
+# repomix の出力(必要なときに手元で生成する。リポジトリには入れない)
+repomix-output.xml
+
+# 取り込みのキャッシュと下書き(コメント本文や投稿者名を含むので、公開リポジトリに入れない)
+data/ingest/cache/
+data/ingest/staged/

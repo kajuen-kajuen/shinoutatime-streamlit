@@ -11,6 +11,9 @@ import pandas as pd
 
 from src.config.settings import Config
 from src.exceptions.errors import DataLoadError
+from src.repositories.live_repository import LiveRepository
+from src.repositories.timestamp_repository import TimestampRepository
+from src.repositories.song_list_repository import SongListRepository
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
@@ -35,121 +38,63 @@ class DataService:
         ...     print(f"配信データ: {len(lives_df)}件")
     """
     
-    def __init__(self, config: Config):
+    def __init__(
+        self, 
+        config: Config,
+        live_repo: LiveRepository,
+        timestamp_repo: TimestampRepository,
+        song_list_repo: SongListRepository
+    ):
         """
         DataServiceを初期化する
         
         Args:
             config: 設定オブジェクト
+            live_repo: 配信情報リポジトリ
+            timestamp_repo: タイムスタンプ情報リポジトリ
+            song_list_repo: 曲リストリポジトリ
         """
         self.config = config
-        self.error_message: Optional[str] = None
+        self.live_repo = live_repo
+        self.timestamp_repo = timestamp_repo
+        self.song_list_repo = song_list_repo
         logger.info("DataServiceを初期化しました")
     
-    def load_lives_data(self) -> Optional[pd.DataFrame]:
+    def load_lives_data(self) -> pd.DataFrame:
         """
         配信データを読み込む
         
-        M_YT_LIVE.TSVファイルから配信情報を読み込みます。
-        ファイルが存在しない場合や読み込みに失敗した場合は、
-        エラーメッセージを保持してNoneを返します。
-        
         Returns:
-            配信データのDataFrame。エラー時はNone
+            配信データのDataFrame
             
-        Note:
-            エラーが発生した場合、get_last_error()でエラーメッセージを取得できます
+        Raises:
+            DataLoadError: ファイルの読み込みに失敗した場合
         """
-        file_path = self.config.lives_file_path
-        
-        try:
-            logger.info(f"配信データを読み込み中: {file_path}")
-            df = pd.read_csv(file_path, delimiter="\t")
-            logger.info(f"配信データを読み込みました: {len(df)}件")
-            self.error_message = None
-            return df
-            
-        except FileNotFoundError:
-            error_msg = f'配信情報ファイル "{file_path}" が見つかりません'
-            self.error_message = error_msg
-            logger.error(error_msg)
-            return None
-            
-        except Exception as e:
-            error_msg = f'配信情報ファイル "{file_path}" の読み込み中にエラーが発生しました: {e}'
-            self.error_message = error_msg
-            logger.error(error_msg, exc_info=True)
-            return None
+        return self.live_repo.load_as_dataframe()
     
-    def load_songs_data(self) -> Optional[pd.DataFrame]:
+    def load_songs_data(self) -> pd.DataFrame:
         """
         楽曲データを読み込む
         
-        M_YT_LIVE_TIMESTAMP.TSVファイルから楽曲タイムスタンプ情報を読み込みます。
-        ファイルが存在しない場合や読み込みに失敗した場合は、
-        エラーメッセージを保持してNoneを返します。
-        
         Returns:
-            楽曲データのDataFrame。エラー時はNone
+            楽曲データのDataFrame
             
-        Note:
-            エラーが発生した場合、get_last_error()でエラーメッセージを取得できます
+        Raises:
+            DataLoadError: ファイルの読み込みに失敗した場合
         """
-        file_path = self.config.songs_file_path
-        
-        try:
-            logger.info(f"楽曲データを読み込み中: {file_path}")
-            df = pd.read_csv(file_path, delimiter="\t")
-            logger.info(f"楽曲データを読み込みました: {len(df)}件")
-            self.error_message = None
-            return df
-            
-        except FileNotFoundError:
-            error_msg = f'楽曲情報ファイル "{file_path}" が見つかりません'
-            self.error_message = error_msg
-            logger.error(error_msg)
-            return None
-            
-        except Exception as e:
-            error_msg = f'楽曲情報ファイル "{file_path}" の読み込み中にエラーが発生しました: {e}'
-            self.error_message = error_msg
-            logger.error(error_msg, exc_info=True)
-            return None
+        return self.timestamp_repo.load_as_dataframe()
     
-    def load_song_list_data(self) -> Optional[pd.DataFrame]:
+    def load_song_list_data(self) -> pd.DataFrame:
         """
         楽曲リストデータを読み込む
         
-        V_SONG_LIST.TSVファイルから楽曲リスト情報を読み込みます。
-        ファイルが存在しない場合や読み込みに失敗した場合は、
-        エラーメッセージを保持してNoneを返します。
-        
         Returns:
-            楽曲リストデータのDataFrame。エラー時はNone
+            楽曲リストデータのDataFrame
             
-        Note:
-            エラーが発生した場合、get_last_error()でエラーメッセージを取得できます
+        Raises:
+            DataLoadError: ファイルの読み込みに失敗した場合
         """
-        file_path = self.config.song_list_file_path
-        
-        try:
-            logger.info(f"楽曲リストデータを読み込み中: {file_path}")
-            df = pd.read_csv(file_path, delimiter="\t")
-            logger.info(f"楽曲リストデータを読み込みました: {len(df)}件")
-            self.error_message = None
-            return df
-            
-        except FileNotFoundError:
-            error_msg = f'楽曲リストファイル "{file_path}" が見つかりません'
-            self.error_message = error_msg
-            logger.error(error_msg)
-            return None
-            
-        except Exception as e:
-            error_msg = f'楽曲リストファイル "{file_path}" の読み込み中にエラーが発生しました: {e}'
-            self.error_message = error_msg
-            logger.error(error_msg, exc_info=True)
-            return None
+        return self.song_list_repo.load_as_dataframe()
     
     def merge_data(
         self, 
@@ -207,25 +152,10 @@ class DataService:
             )
             
             logger.info(f"データ結合が完了しました: {len(df_merged)}件")
-            self.error_message = None
             return df_merged
             
         except Exception as e:
             error_msg = f"データ結合中にエラーが発生しました: {e}"
-            self.error_message = error_msg
             logger.error(error_msg, exc_info=True)
             raise DataLoadError("merge_data", error_msg)
     
-    def get_last_error(self) -> Optional[str]:
-        """
-        最後に発生したエラーメッセージを取得
-        
-        Returns:
-            エラーメッセージ。エラーがない場合はNone
-            
-        Examples:
-            >>> lives_df = service.load_lives_data()
-            >>> if lives_df is None:
-            ...     print(service.get_last_error())
-        """
-        return self.error_message

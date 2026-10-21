@@ -5,10 +5,11 @@ UIコンポーネント
 各コンポーネントは独立して動作し、パラメータでカスタマイズ可能です。
 """
 
+import html
 import logging
 import streamlit as st
 import pandas as pd
-from typing import Tuple, List, Dict, Optional
+from typing import Tuple, List, Dict, Collection
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
@@ -20,9 +21,11 @@ def render_search_form(
 ) -> Tuple[str, bool, bool]:
     """
     検索フォームを表示する
-    
+
     テキスト入力、チェックボックス、検索ボタンを含む検索フォームを表示します。
-    
+    st.form の中に置くので、入力欄で Enter キーを押しても検索ボタンと同じく送信される。
+    入力欄とチェックボックスの値は、送信したときにまとめて反映される。
+
     Args:
         default_query: デフォルトの検索クエリ
         include_live_title: ライブタイトル検索のデフォルト値
@@ -40,81 +43,102 @@ def render_search_form(
         ...     pass
     """
     logger.debug("検索フォームを表示中")
-    
-    # テキスト入力ボックス
-    current_input = st.text_input(
-        "キーワード検索（曲名、アーティスト）",
-        value=default_query,
-        key="search_input_box",
-        placeholder="ここにキーワードを入力",
-    )
-    
-    # チェックボックス
-    current_checkbox_value = st.checkbox(
-        "検索対象にライブ配信タイトルを含める",
-        value=include_live_title,
-        key="include_live_title_checkbox",
-    )
-    
-    # 検索ボタン
-    search_button = st.button("検索")
-    
+
+    # フォームの枠線は出さない(見た目は今までの入力欄・チェックボックス・ボタンのまま)
+    with st.form("search_form", border=False):
+        # テキスト入力ボックス
+        current_input = st.text_input(
+            "キーワード検索（曲名、アーティスト）",
+            value=default_query,
+            key="search_input_box",
+            placeholder="ここにキーワードを入力",
+        )
+
+        # チェックボックス
+        current_checkbox_value = st.checkbox(
+            "検索対象にライブ配信タイトルを含める",
+            value=include_live_title,
+            key="include_live_title_checkbox",
+        )
+
+        # 検索ボタン(Enter キーでも押される)
+        search_button = st.form_submit_button("検索")
+
     if search_button:
-        logger.info(f"検索ボタンがクリックされました: クエリ='{current_input}', ライブタイトル検索={current_checkbox_value}")
-    
+        logger.info(f"検索が実行されました: クエリ='{current_input}', ライブタイトル検索={current_checkbox_value}")
+
     return current_input, current_checkbox_value, search_button
 
+
+
+def build_results_table_html(
+    df: pd.DataFrame,
+    columns: List[str],
+    column_headers: Dict[str, str],
+    html_columns: Collection[str] = (),
+) -> str:
+    """
+    結果テーブルの HTML を組み立てる
+
+    html_columns 以外のセルと見出しはエスケープする。欠損は空。
+    クラス名と見出しの左寄せは、以前の DataFrame.to_html(justify="left", classes="dataframe") と同じ。
+    """
+    def cell(value, raw: bool) -> str:
+        if pd.isna(value):
+            return ""
+        return str(value) if raw else html.escape(str(value))
+
+    header = "".join(
+        f"<th>{html.escape(column_headers.get(col, col))}</th>" for col in columns
+    )
+    raw_flags = [col in html_columns for col in columns]
+    rows = [
+        "<tr>" + "".join(
+            f"<td>{cell(value, raw)}</td>" for value, raw in zip(values, raw_flags)
+        ) + "</tr>"
+        for values in df[columns].itertuples(index=False, name=None)
+    ]
+    return (
+        '<table border="1" class="dataframe">'
+        f'<thead><tr style="text-align: left;">{header}</tr></thead>'
+        f"<tbody>{''.join(rows)}</tbody></table>"
+    )
 
 
 def render_results_table(
     df: pd.DataFrame,
     columns: List[str],
-    column_headers: Dict[str, str]
+    column_headers: Dict[str, str],
+    html_columns: Collection[str] = (),
 ) -> None:
     """
     結果テーブルを表示する
-    
+
     DataFrameをHTMLテーブルとして表示します。
     カスタムヘッダーに対応し、スクロール可能なテーブルを生成します。
-    
+
     Args:
         df: 表示するDataFrame
         columns: 表示する列のリスト
         column_headers: 列名のマッピング（元の列名 -> 表示用ヘッダー名）
-    
+        html_columns: 呼び出し側で組み立て済みの HTML の列(リンクなど)。
+            中のデータ由来の文字列は、呼び出し側でエスケープしておく
+
     Examples:
         >>> df = pd.DataFrame({'曲名': ['曲A', '曲B'], 'アーティスト': ['歌手A', '歌手B']})
         >>> columns = ['曲名', 'アーティスト']
         >>> headers = {'曲名': '曲名', 'アーティスト': 'アーティスト'}
         >>> render_results_table(df, columns, headers)
-    
+
     Notes:
-        - HTMLタグを含む列（リンクなど）はそのまま表示されます
+        - html_columns の列だけそのまま出し、ほかの列と見出しはエスケープします
+          (データ中の < や & で表が壊れないように)。欠損は空にします
         - テーブルは横スクロール可能です
-        - アーティスト列には自動的にartist-cellクラスが適用されます
     """
     logger.debug(f"結果テーブルを表示中: {len(df)}件、列={columns}")
-    
-    # 表示する列のみを選択
-    df_display = df[columns].copy()
-    
-    # DataFrameをHTMLテーブルに変換
-    # escape=False: HTMLタグをそのまま表示（リンクとCSSクラスを有効化）
-    # index=False: 行番号を非表示
-    html_table = df_display.to_html(
-        escape=False, 
-        index=False, 
-        justify="left", 
-        classes="dataframe"
-    )
-    
-    # テーブルヘッダーをカスタムヘッダーに置き換え
-    for original, custom in column_headers.items():
-        html_table = html_table.replace(
-            f"<th>{original}</th>", 
-            f"<th>{custom}</th>"
-        )
-    
+
+    html_table = build_results_table_html(df, columns, column_headers, html_columns)
+
     # テーブルをスクロール可能なdivで囲む
     scrollable_html = f"""
     <div style="overflow-x: auto; max-width: 100%;">
@@ -129,56 +153,50 @@ def render_results_table(
 
 
 
+def _show_more(state_key: str, increment: int) -> None:
+    """「さらに表示」ボタンの on_click: 表示件数を増やす(この後の1回の作り直しで、増えた件数で表が出る)"""
+    st.session_state[state_key] += increment
+    logger.info(f"「さらに表示」ボタンがクリックされました: 新しい表示件数={st.session_state[state_key]}")
+
+
 def render_pagination(
     total_count: int,
-    current_limit: int,
+    state_key: str,
     increment: int = 25
-) -> Optional[int]:
+) -> None:
     """
     ページネーションを表示する
-    
+
     「さらに表示」ボタンと件数表示を提供します。
     全件表示済みの場合は情報メッセージを表示します。
-    
+    ボタンの on_click で session_state の表示件数を増やすので、押したあとの作り直しは1回で済む
+    (ボタンの戻り値を見て st.rerun() すると、1回の操作で2回作り直すことになる)。
+
     Args:
         total_count: 総件数
-        current_limit: 現在の表示件数
+        state_key: 表示件数を持つ session_state のキー(Home は "display_limit"、楽曲リストは "song_list_limit")
         increment: 増分（デフォルト: 25）
-    
-    Returns:
-        Optional[int]: 新しい表示件数。変更がない場合はNone
-            - ボタンがクリックされた場合: current_limit + increment
-            - ボタンがクリックされなかった場合: None
-    
+
     Examples:
-        >>> new_limit = render_pagination(total_count=100, current_limit=25)
-        >>> if new_limit:
-        ...     # 表示件数を更新
-        ...     st.session_state.display_limit = new_limit
-        ...     st.rerun()
-    
+        >>> # 表は st.session_state.display_limit 件まで出し、その下でボタンを出す
+        >>> render_pagination(total_count=len(view), state_key="display_limit")
+
     Notes:
         - 表示件数が総件数より少ない場合のみボタンを表示します
         - 全件表示済みの場合は情報メッセージを表示します
     """
+    current_limit = st.session_state[state_key]
     logger.debug(f"ページネーションを表示中: 総件数={total_count}, 現在の表示件数={current_limit}")
-    
+
     if current_limit < total_count:
         # まだ表示していないデータがある場合
         displayed_count = min(current_limit, total_count)
         button_text = f"さらに{increment}件表示（現在の表示: {displayed_count}/{total_count}件）"
-        
-        if st.button(button_text):
-            # ボタンがクリックされたら新しい表示件数を返す
-            new_limit = current_limit + increment
-            logger.info(f"「さらに表示」ボタンがクリックされました: 新しい表示件数={new_limit}")
-            return new_limit
+        st.button(button_text, on_click=_show_more, args=(state_key, increment))
     else:
         # 全件表示済みの場合
         st.info(f"全ての{total_count}件が表示されています。")
         logger.debug("全件表示済み")
-    
-    return None
 
 
 

@@ -9,6 +9,7 @@ import logging
 from pathlib import Path
 from typing import List, Optional
 import chardet
+import pandas as pd
 
 from src.models.song_list_models import TimestampInfo
 from src.exceptions.errors import DataLoadError
@@ -184,3 +185,46 @@ class TimestampRepository:
             raise ValueError(f"必須フィールドが見つかりません: {e}")
         except ValueError as e:
             raise ValueError(f"データ形式が不正です: {e}")
+
+    def load_as_dataframe(self) -> pd.DataFrame:
+        """
+        すべてのタイムスタンプ情報をDataFrameとして読み込む
+        
+        Returns:
+            タイムスタンプ情報のDataFrame
+            
+        Raises:
+            DataLoadError: ファイルの読み込みに失敗した場合
+        """
+        if not self.file_path.exists():
+            error_msg = f"ファイルが存在しません: {self.file_path}"
+            self.logger.error(error_msg)
+            raise DataLoadError(file_path=str(self.file_path), message=error_msg)
+            
+        try:
+            # エンコーディングを検出
+            encoding = self._detect_encoding()
+            
+            # DataFrameとして読み込み
+            df = pd.read_csv(self.file_path, delimiter="\t", encoding=encoding)
+            
+            # ヘッダーの検証
+            expected_headers = ['ID', 'LIVE_ID', 'タイムスタンプ', '曲名', 'アーティスト']
+            if not all(col in df.columns for col in expected_headers):
+                error_msg = (
+                    f"ファイル形式が不正です。"
+                    f"期待されるヘッダー: {expected_headers}, "
+                    f"実際のヘッダー: {list(df.columns)}"
+                )
+                self.logger.error(error_msg)
+                raise DataLoadError(file_path=str(self.file_path), message=error_msg)
+                
+            self.logger.info(f"タイムスタンプ情報を読み込みました: {len(df)}件 ({self.file_path})")
+            return df
+            
+        except DataLoadError:
+            raise
+        except Exception as e:
+            error_msg = f"ファイルの読み込みに失敗しました: {e}"
+            self.logger.error(error_msg, exc_info=True)
+            raise DataLoadError(file_path=str(self.file_path), message=error_msg)

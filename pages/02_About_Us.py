@@ -16,18 +16,11 @@ About Usページ
 
 import streamlit as st
 from PIL import Image
-from src.ui.components.footer import display_footer  # ★ここを追加★
+from src.ui.components.footer import display_footer
+from src.ui.page_setup import setup_page
 
-# ページ設定
-# ページタイトル、アイコン、レイアウトを設定
-st.set_page_config(
-    page_title="このサイトについて - しのうたタイム",
-    page_icon="👻",
-    layout="wide",
-)
-
-# ページタイトル
-st.title("このサイトについて")
+# ページの準備(ページ設定・共通の CSS・見出し。全ページで共通)
+setup_page("このサイトについて", "👻")
 
 # サイトの目的説明セクション
 # 要件10.1: サイトの目的説明を表示する
