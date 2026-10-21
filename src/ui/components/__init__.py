@@ -9,7 +9,7 @@ import html
 import logging
 import streamlit as st
 import pandas as pd
-from typing import Tuple, List, Dict, Optional, Collection
+from typing import Tuple, List, Dict, Collection
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
@@ -153,56 +153,50 @@ def render_results_table(
 
 
 
+def _show_more(state_key: str, increment: int) -> None:
+    """「さらに表示」ボタンの on_click: 表示件数を増やす(この後の1回の作り直しで、増えた件数で表が出る)"""
+    st.session_state[state_key] += increment
+    logger.info(f"「さらに表示」ボタンがクリックされました: 新しい表示件数={st.session_state[state_key]}")
+
+
 def render_pagination(
     total_count: int,
-    current_limit: int,
+    state_key: str,
     increment: int = 25
-) -> Optional[int]:
+) -> None:
     """
     ページネーションを表示する
-    
+
     「さらに表示」ボタンと件数表示を提供します。
     全件表示済みの場合は情報メッセージを表示します。
-    
+    ボタンの on_click で session_state の表示件数を増やすので、押したあとの作り直しは1回で済む
+    (ボタンの戻り値を見て st.rerun() すると、1回の操作で2回作り直すことになる)。
+
     Args:
         total_count: 総件数
-        current_limit: 現在の表示件数
+        state_key: 表示件数を持つ session_state のキー(Home は "display_limit"、楽曲リストは "song_list_limit")
         increment: 増分（デフォルト: 25）
-    
-    Returns:
-        Optional[int]: 新しい表示件数。変更がない場合はNone
-            - ボタンがクリックされた場合: current_limit + increment
-            - ボタンがクリックされなかった場合: None
-    
+
     Examples:
-        >>> new_limit = render_pagination(total_count=100, current_limit=25)
-        >>> if new_limit:
-        ...     # 表示件数を更新
-        ...     st.session_state.display_limit = new_limit
-        ...     st.rerun()
-    
+        >>> # 表は st.session_state.display_limit 件まで出し、その下でボタンを出す
+        >>> render_pagination(total_count=len(view), state_key="display_limit")
+
     Notes:
         - 表示件数が総件数より少ない場合のみボタンを表示します
         - 全件表示済みの場合は情報メッセージを表示します
     """
+    current_limit = st.session_state[state_key]
     logger.debug(f"ページネーションを表示中: 総件数={total_count}, 現在の表示件数={current_limit}")
-    
+
     if current_limit < total_count:
         # まだ表示していないデータがある場合
         displayed_count = min(current_limit, total_count)
         button_text = f"さらに{increment}件表示（現在の表示: {displayed_count}/{total_count}件）"
-        
-        if st.button(button_text):
-            # ボタンがクリックされたら新しい表示件数を返す
-            new_limit = current_limit + increment
-            logger.info(f"「さらに表示」ボタンがクリックされました: 新しい表示件数={new_limit}")
-            return new_limit
+        st.button(button_text, on_click=_show_more, args=(state_key, increment))
     else:
         # 全件表示済みの場合
         st.info(f"全ての{total_count}件が表示されています。")
         logger.debug("全件表示済み")
-    
-    return None
 
 
 

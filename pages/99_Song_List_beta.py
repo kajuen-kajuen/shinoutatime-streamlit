@@ -100,14 +100,12 @@ if stats is not None and not stats.empty:
     # アーティスト(長い名前は改行を許す artist-cell)・曲名・最新の歌唱へのリンク(新しいタブで開く)
     st.write(build_table_html(stats.head(st.session_state.song_list_limit)), unsafe_allow_html=True)
 
-    new_limit = render_pagination(
+    # ボタンの on_click で song_list_limit を増やす(st.rerun は要らない)
+    render_pagination(
         total_count=len(stats),
-        current_limit=st.session_state.song_list_limit,
+        state_key="song_list_limit",
         increment=config.display_increment,
     )
-    if new_limit:
-        st.session_state.song_list_limit = new_limit
-        st.rerun()
 
 else:
     st.warning("楽曲データが読み込めませんでした。")

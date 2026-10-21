@@ -194,7 +194,6 @@ class TestHomePage:
     def test_render_results(self, mock_st, mock_pagination, mock_results_table, home_page, view):
         """表示件数だけ表に出し、html_columns でアーティストとリンクを渡す"""
         mock_st.session_state = MockSessionState(display_limit=2)
-        mock_pagination.return_value = None
 
         home_page._render_results(view)
 
@@ -208,15 +207,15 @@ class TestHomePage:
     @patch('src.ui.pages.home_page.render_results_table')
     @patch('src.ui.pages.home_page.render_pagination')
     @patch('src.ui.pages.home_page.st')
-    def test_render_results_pagination_click(self, mock_st, mock_pagination, mock_results_table, home_page, view):
-        """ページネーションボタン押下時のテスト"""
+    def test_render_results_pagination_uses_display_limit_key(self, mock_st, mock_pagination, mock_results_table,
+                                                              home_page, view):
+        """「さらに表示」は session_state の display_limit を on_click で増やす(ここで st.rerun しない)"""
         mock_st.session_state = MockSessionState(display_limit=25)
-        mock_pagination.return_value = 50  # ボタン押下で新しいリミットが返る
 
         home_page._render_results(view)
 
-        assert mock_st.session_state.display_limit == 50
-        mock_st.rerun.assert_called_once()
+        assert mock_pagination.call_args.kwargs == {'total_count': 3, 'state_key': 'display_limit', 'increment': 25}
+        mock_st.rerun.assert_not_called()
 
     def test_uses_given_config_without_reading_env(self, mock_config):
         """Home.py の setup_page が読んだ設定を渡せば、環境変数を読み直さない"""

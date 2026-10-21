@@ -123,20 +123,26 @@ class TestHomeIntegration:
         assert '<table border="1" class="dataframe">' in html_out
         assert '<tr style="text-align: left;">' in html_out
 
-    @patch('streamlit.button')
-    @patch('streamlit.info')
-    def test_render_pagination(self, mock_info, mock_button):
-        """render_paginationのテスト"""
-        # さらに表示する場合
-        mock_button.return_value = True
-        new_limit = render_pagination(100, 25, 25)
-        assert new_limit == 50
+    @patch('src.ui.components.st')
+    def test_render_pagination(self, mock_st):
+        """render_pagination: ボタンの on_click で session_state の表示件数を増やす(st.rerun は使わない)"""
+        mock_st.session_state = {"display_limit": 25}
 
-        # 全件表示済みの場合
-        mock_button.return_value = False
-        new_limit = render_pagination(25, 25, 25)
-        assert new_limit is None
-        mock_info.assert_called_with("全ての25件が表示されています。")
+        # まだ残りがある: ボタンを出し、on_click で 25 → 50
+        render_pagination(100, "display_limit", 25)
+        label = mock_st.button.call_args.args[0]
+        assert label == "さらに25件表示（現在の表示: 25/100件）"
+        kwargs = mock_st.button.call_args.kwargs
+        kwargs["on_click"](*kwargs["args"])
+        assert mock_st.session_state["display_limit"] == 50
+        mock_st.rerun.assert_not_called()
+
+        # 全件表示済み: ボタンは出さず info
+        mock_st.button.reset_mock()
+        mock_st.session_state = {"display_limit": 25}
+        render_pagination(25, "display_limit", 25)
+        mock_st.button.assert_not_called()
+        mock_st.info.assert_called_with("全ての25件が表示されています。")
 
     def test_v2_data_is_cached(self, tmp_path, monkeypatch):
         """画面のデータは st.cache_data で、2回読んでも集計は1回だけ動く(データが変わらない限り)"""

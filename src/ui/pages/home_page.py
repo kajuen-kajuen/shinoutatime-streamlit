@@ -178,16 +178,12 @@ class HomePage:
             html_columns={"アーティスト", "リンク"},
         )
 
-        # ページネーションの表示
-        new_limit = render_pagination(
+        # ページネーションの表示(ボタンの on_click で display_limit を増やす。st.rerun は要らない)
+        render_pagination(
             total_count=len(view),
-            current_limit=st.session_state.display_limit,
-            increment=self.config.display_increment
+            state_key="display_limit",
+            increment=self.config.display_increment,
         )
-
-        if new_limit:
-            st.session_state.display_limit = new_limit
-            st.rerun()
 
     def _handle_error(self, error_msg: str):
         """
