@@ -2,77 +2,77 @@
 ホーム画面ページ
 
 アプリケーションのメインページ（ホーム画面）の表示ロジックを担当します。
+データはデータモデル v2(data/v2/)の歌唱の一覧(views.build_performance_view)を読みます。
 """
 
 import html
 import logging
 import streamlit as st
 import pandas as pd
-from typing import Optional
 
 from src.config.settings import Config
-from src.repositories.live_repository import LiveRepository
-from src.repositories.timestamp_repository import TimestampRepository
-from src.repositories.song_list_repository import SongListRepository
-from src.services.data_service import DataService
-from src.core.data_pipeline import DataPipeline
-from src.services.search_service import SearchService
+from src.core.text import normalize_for_match
 from src.ui.components.footer import display_footer
 from src.ui.components import (
     render_search_form,
     render_results_table,
     render_pagination,
 )
+from src.ui.v2_data import load_performance_view
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
 
+# 表の列(表示の見出し)
+TABLE_COLUMNS = ["配信日", "No.", "曲名", "アーティスト", "種類", "リンク"]
 
-@st.cache_data(ttl=3600, show_spinner="データを読み込み中...")
-def load_and_process_data() -> pd.DataFrame:
+
+def filter_view(view: pd.DataFrame, query: str, include_title: bool) -> pd.DataFrame:
     """
-    データを読み込み、処理する
-    
-    DataPipelineを使用してデータの読み込み、結合、変換、ソートを実行します。
-    Streamlitのキャッシュ機能により、同じパラメータでの再実行を防ぎます。
-    
-    Returns:
-        処理済みDataFrame
-        
-    Raises:
-        Exception: データ処理中にエラーが発生した場合
+    検索語で歌唱の一覧を絞る
+
+    曲名・アーティスト(読みを含む)、include_title のときは配信のタイトルも対象にする。
+    検索語も一覧の検索用の列と同じく normalize_for_match してから部分一致で照合する。
+    空(空白だけを含む)の検索語なら全件を返す。
     """
-    config = Config.from_env()
-    
-    # リポジトリの初期化
-    live_repo = LiveRepository(config.lives_file_path)
-    timestamp_repo = TimestampRepository(config.songs_file_path)
-    song_list_repo = SongListRepository(config.song_list_file_path)
-    
-    # サービスの初期化
-    data_service = DataService(
-        config, 
-        live_repo, 
-        timestamp_repo, 
-        song_list_repo
-    )
-    
-    # パイプラインの実行
-    pipeline = DataPipeline(data_service, config)
-    return pipeline.execute()
+    needle = normalize_for_match(query)
+    if not needle:
+        return view
+    column = "search" if include_title else "search_song"
+    return view[view[column].str.contains(needle, regex=False)]
+
+
+def build_table(view: pd.DataFrame) -> pd.DataFrame:
+    """
+    表に出す形にする(列は TABLE_COLUMNS)
+
+    アーティストとリンクは HTML に組み立てる(データ由来の文字列はエスケープする)。
+    ほかの列は render_results_table がエスケープする。
+    """
+    return pd.DataFrame({
+        "配信日": view["date"].str.replace("-", "/"),
+        "No.": view["no"],
+        "曲名": view["display_title"],
+        "アーティスト": view["artist"].map(lambda a: f'<div class="artist-cell">{html.escape(a)}</div>'),
+        "種類": view["type_label"],
+        "リンク": [
+            f'<a href="{html.escape(u, quote=True)}" target="_blank" rel="noopener">{html.escape(label)}</a>'
+            if u else ""
+            for u, label in zip(view["link"], view["link_label"])
+        ],
+    })
 
 
 class HomePage:
     """
     ホーム画面クラス
-    
+
     ホーム画面の描画とインタラクションを管理します。
     """
-    
+
     def __init__(self):
         """初期化"""
         self.config = Config.from_env()
-        self.search_service = SearchService()
         logger.info("HomePage initialized")
 
     def run(self):
@@ -81,15 +81,16 @@ class HomePage:
         """
         self._load_css()
         self._render_header()
-        
+
         # データ読み込み
         try:
-            df_full = load_and_process_data()
-            self._handle_search_and_display(df_full)
-        except Exception as e:
-            logger.error(f"データの読み込みまたは処理中にエラーが発生しました: {e}", exc_info=True)
+            view = load_performance_view()
+        except Exception as e:  # DataLoadError のほか、集計中の想定外の失敗も画面に出して止める
+            logger.error(f"データの読み込み中にエラーが発生しました: {e}", exc_info=True)
             self._handle_error(str(e))
-            
+        else:
+            self._handle_search_and_display(view)
+
         display_footer()
 
     def _load_css(self):
@@ -114,123 +115,62 @@ class HomePage:
         )
         st.markdown("---")
 
-    def _handle_search_and_display(self, df_full: pd.DataFrame):
+    def _handle_search_and_display(self, view: pd.DataFrame):
         """
         検索処理と結果表示の制御
-        
+
+        session_state には検索語・チェックボックス・表示件数だけを持ち、結果は毎回 view から絞る。
+
         Args:
-            df_full: 全データ
+            view: 歌唱の一覧(全件)
         """
         # セッション状態の初期化
         if "search_query" not in st.session_state:
             st.session_state.search_query = ""
-        if "filtered_df" not in st.session_state:
-            st.session_state.filtered_df = df_full.copy()
         if "include_live_title" not in st.session_state:
             st.session_state.include_live_title = True
         if "display_limit" not in st.session_state:
             st.session_state.display_limit = self.config.initial_display_limit
-        
+
         # 検索フォームの表示
         current_input, current_checkbox_value, search_button = render_search_form(
             default_query=st.session_state.search_query,
             include_live_title=st.session_state.include_live_title
         )
-        
-        # 検索ロジック
+
+        # 検索ボタンが押されたら、検索条件を保存して表示件数を戻す
         if search_button:
-            self._perform_search(df_full, current_input, current_checkbox_value)
-        elif st.session_state.search_query:
-            # 既に検索済みの状態の表示更新（リロード時など）
-            st.write(
-                f"「{st.session_state.search_query}」で検索した結果: "
-                f"{len(st.session_state.filtered_df)}件"
-            )
+            st.session_state.search_query = current_input
+            st.session_state.include_live_title = current_checkbox_value
+            st.session_state.display_limit = self.config.initial_display_limit
+
+        query = st.session_state.search_query
+        filtered = filter_view(view, query, st.session_state.include_live_title)
+        if normalize_for_match(query):
+            st.write(f"「{query}」で検索した結果: {len(filtered)}件")
         else:
-            # 未検索（全件）
-            st.session_state.filtered_df = df_full.copy()
             st.write("検索キーワードが入力されていません。全件表示します。")
-        
+
         # 結果テーブル表示
-        self._render_results(st.session_state.filtered_df)
+        self._render_results(filtered)
 
-    def _perform_search(self, df_full: pd.DataFrame, query: str, include_title: bool):
-        """
-        検索を実行し、セッション状態を更新する
-        """
-        st.session_state.search_query = query
-        st.session_state.include_live_title = include_title
-        st.session_state.display_limit = self.config.initial_display_limit
-        
-        if query:
-            search_fields = ["曲名", "アーティスト"]
-            if include_title:
-                search_fields.append("ライブタイトル")
-            
-            st.session_state.filtered_df = self.search_service.search(
-                df_full,
-                query,
-                search_fields,
-                case_sensitive=False
-            )
-            st.write(
-                f"「{query}」で検索した結果: "
-                f"{len(st.session_state.filtered_df)}件"
-            )
-        else:
-            st.session_state.filtered_df = df_full.copy()
-            st.write("検索キーワードが入力されていません。全件表示します。")
-
-    def _render_results(self, df: pd.DataFrame):
+    def _render_results(self, view: pd.DataFrame):
         """結果テーブルとページネーションの表示"""
-        # 表示用データの準備
-        df_to_show = df.copy()
-        
-        # YouTubeリンクをHTML形式に変換(URL はデータ由来なのでエスケープする。欠損は空)
-        df_to_show["YouTubeリンク"] = df_to_show["YouTubeタイムスタンプ付きURL"].map(
-            lambda url: f'<a href="{html.escape(str(url), quote=True)}" target="_blank" rel="noopener">YouTubeへ👻</a>'
-            if pd.notna(url) else ""
+        shown = view.head(st.session_state.display_limit)
+        render_results_table(
+            build_table(shown),
+            TABLE_COLUMNS,
+            {c: c for c in TABLE_COLUMNS},
+            html_columns={"アーティスト", "リンク"},
         )
 
-        # アーティスト列にカスタムCSSクラスを適用(名前はエスケープする。欠損は空)
-        df_to_show["アーティスト"] = df_to_show["アーティスト"].map(
-            lambda x: f'<div class="artist-cell">{html.escape(str(x)) if pd.notna(x) else ""}</div>'
-        )
-        
-        # 表示件数を制限
-        df_limited_display = df_to_show.head(st.session_state.display_limit)
-        
-        # 表示する列とヘッダーの定義
-        display_columns = [
-            "ライブ配信日",
-            "曲目",
-            "曲名",
-            "アーティスト",
-            "YouTubeリンク",
-        ]
-        column_headers = {
-            "ライブ配信日": "配信日",
-            "曲目": "No.",
-            "曲名": "曲名",
-            "アーティスト": "アーティスト",
-            "YouTubeリンク": "リンク",
-        }
-        
-        # 結果テーブルの表示
-        render_results_table(
-            df_limited_display,
-            display_columns,
-            column_headers,
-            html_columns={"アーティスト", "YouTubeリンク"},
-        )
-        
         # ページネーションの表示
         new_limit = render_pagination(
-            total_count=len(df),
+            total_count=len(view),
             current_limit=st.session_state.display_limit,
             increment=self.config.display_increment
         )
-        
+
         if new_limit:
             st.session_state.display_limit = new_limit
             st.rerun()
@@ -238,7 +178,7 @@ class HomePage:
     def _handle_error(self, error_msg: str):
         """
         エラー時の表示
-        
+
         Args:
             error_msg: 表示するエラーメッセージ
         """

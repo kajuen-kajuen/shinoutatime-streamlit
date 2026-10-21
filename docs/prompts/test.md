@@ -10,18 +10,17 @@
 
 - テスト基盤: pytest + hypothesis(`_commands.md`「テスト(全部)」)。`tests/unit`(v2 は `tests/unit/v2`)・`property`・`integration`・`e2e`(`AppTest`)・`performance`(`--runslow` のときだけ)・`fixtures`。置き場所と今の状態は `docs/testing/README.md`
 - テストの CI は無い。テストは手元のコンテナで流す
-- 2026-10-20 時点: 全体は 792 passed / 21 failed / 11 errors。失敗は v1 の古いテストだけで、v2(`tests/unit/v2`)は全部通る
-- リファクタ(リポジトリ・サービスが例外を投げる形に統一)のあと、削除済みの `DataService.get_last_error()` を前提にしたテストが残っている(2026-10-20 に確認): `tests/unit/test_error_cases.py`・`tests/property/test_data_service_properties.py`・`tests/property/test_data_pipeline_properties.py`。ページ `pages/99_Song_List_beta.py` も同じ関数を呼んでいる。直すかどうかは持ち主に聞く
+- 2026-10-21 時点: 全体は 859 passed / 4 skipped(失敗なし)。画面(Home・Song List)は v2 を読む。v1 の部品のテストはフェーズ3で v1 のコードと一緒に消すので、穴を埋める対象にしない
 
 ## 守るべきものの優先順位
 
-1. データの読み込みと結合 — TSV のヘッダー・配信日の書式(時刻付きを含む)・文字コード、`LIVE_ID` での結合で行が落ちないこと、壊れたファイルで例外(`DataLoadError`)になること
-2. 表示用の加工 — No. の番号付け(同じ日に複数配信があるときの `1-3` 形式)、配信日の表示形式、YouTube のタイムスタンプ付き URL
-3. 検索 — 大文字小文字・部分一致・配信タイトルを含めるかどうか・空の検索語
-4. 楽曲一覧の生成(`song_list_generator`)— 最新の歌唱の選び方、アーティストの読み、類似曲の検出
-5. ページ — 各ページが例外なく起動すること、データが読めないときにエラー表示で止まること(e2e)
+1. データの読み込みと結合 — `data/v2/` の TSV の列・文字コード、外部キーの結合で行が落ちないこと、壊れたファイルで例外(`DataLoadError`)になること(`TableRepository`・`src/ui/v2_data.py`)
+2. 表示用の加工 — No. の番号付け(同じ日に複数配信があるときの `1-3` 形式、1曲だけのショートは空欄)、配信日の表示形式、YouTube のタイムスタンプ付き URL、尺付きの曲名、メン限を出さないこと(`src/core/views.py`)
+3. 検索 — 正規化(全角・カタカナ・見えない文字)・読みで当たること・配信タイトルを含めるかどうか・空の検索語(`home_page.filter_view`)
+4. 曲ごとの集計(`build_song_stats`)— 切り抜きを数えないこと、最新の歌唱の選び方、アーティストの読みの順
+5. ページ — 各ページが例外なく起動すること、データが読めないときにエラー表示で止まること、さらに表示(e2e)
 
-v2(今後の正本。`tests/unit/v2`)で守るもの:
+v2 のデータと取り込み(`tests/unit/v2`)で守るもの:
 
 1. 検査と読み書き — 主キー・外部キー・値の形・並び順の検査(`src/core/validation.py`)、検査を通ったときだけ保存すること、任意の列が無い古いファイルも読めること(`TableRepository`)
 2. 集計 — `views.build_performance_view`(No. と枝番、メン限を出さない、演奏の形、リンク、検索用の列)と `build_song_stats`(切り抜きを数えない)

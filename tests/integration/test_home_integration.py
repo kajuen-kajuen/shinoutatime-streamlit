@@ -136,23 +136,29 @@ class TestHomeIntegration:
         assert new_limit is None
         mock_info.assert_called_with("全ての25件が表示されています。")
 
-    def test_load_and_process_data_caching(self, sample_data):
-        """load_and_process_data は st.cache_data で、2回呼んでもパイプラインは1回だけ動く"""
-        from src.ui.pages.home_page import load_and_process_data
+    def test_v2_data_is_cached(self, tmp_path, monkeypatch):
+        """画面のデータは st.cache_data で、2回読んでも集計は1回だけ動く(データが変わらない限り)"""
+        from src.repositories.table_repository import TableRepository
+        from src.ui import v2_data
+        from tests.unit.v2.conftest import content, make_dataset
 
-        # home_page が import した名前にパッチを当てる(src.core.data_pipeline 側では効かない)
-        with patch('src.ui.pages.home_page.DataPipeline') as mock_pipeline_class:
-            mock_pipeline = MagicMock()
-            mock_pipeline_class.return_value = mock_pipeline
-            mock_pipeline.execute.return_value = sample_data
+        TableRepository(str(tmp_path)).save(make_dataset(
+            contents=[content("yt:AAAAAAAAAAA", "2025-05-01")],
+            artists=[{"artist_id": "a0001", "name": "テストバンド"}],
+            songs=[{"song_id": "s0001", "title": "曲A", "artist_id": "a0001"}],
+            performances=[{"content_id": "yt:AAAAAAAAAAA", "seq": "10", "song_id": "s0001"}],
+        ))
+        monkeypatch.setenv("SHINOUTA_V2_DATA_DIR", str(tmp_path))
 
-            load_and_process_data.clear()
+        # v2_data が import した名前にパッチを当てる(src.core.views 側では効かない)
+        with patch('src.ui.v2_data.build_performance_view', wraps=v2_data.build_performance_view) as spy:
+            v2_data._load.clear()
             try:
-                result1 = load_and_process_data()
-                result2 = load_and_process_data()
+                view = v2_data.load_performance_view()
+                stats = v2_data.load_song_stats()
             finally:
-                load_and_process_data.clear()  # ほかのテストにモックの結果を残さない
+                v2_data._load.clear()  # ほかのテストに結果を残さない
 
-            assert len(result1) == len(sample_data)
-            assert len(result2) == len(sample_data)
-            mock_pipeline.execute.assert_called_once()
+        assert len(view) == 1
+        assert list(stats["title"]) == ["曲A"]
+        spy.assert_called_once()

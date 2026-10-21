@@ -5,12 +5,12 @@
 ## プロジェクト前提
 
 - **公開リポジトリ**。コミットしたものは push した時点で誰でも読める。秘密の値・ローカルの絶対パス・個人情報は書かない
-- Streamlit のマルチページ構成。入口は `Home.py`(本体は `src/ui/pages/home_page.py` の `HomePage`)、ほかのページは `pages/NN_Name.py`(番号順にサイドバーへ並ぶ)。`pages/*_Admin.py` と `pages/*_Preview.py`(v2 の確認用ページ)はローカル専用で Git 管理外
-- 層(v1。今の画面): `src/repositories/`(TSV 読み込み) → `src/services/`(DataService ほか) → `src/core/data_pipeline.py`(結合・変換・ソート) → `src/ui/`。DI フレームワークは使わず、コンストラクタで依存を渡す
-- 層(v2。今後の正本): `src/repositories/table_repository.py`(`data/v2/` の5テーブル。定義は `src/models/schema.py`) → `src/core/views.py`(歌唱の一覧・曲ごとの集計を、その場で計算する)→ ページ。ページは `views` を直接呼ぶ(services を通さない)。取り込みは `src/ingest/` と CLI(`src/cli/ingest.py`・`src/cli/data.py`)。仕様は `docs/specs/data-model.md`。本番の画面を v2 に切り替えるのはこれから(フェーズ2)
+- Streamlit のマルチページ構成。入口は `Home.py`(本体は `src/ui/pages/home_page.py` の `HomePage`)、ほかのページは `pages/NN_Name.py`(番号順にサイドバーへ並ぶ)。`pages/*_Admin.py` と `pages/*_Preview.py` はローカル専用で Git 管理外
+- 層(v2。正本で、画面が読む): `src/repositories/table_repository.py`(`data/v2/` の5テーブル。定義は `src/models/schema.py`) → `src/core/views.py`(歌唱の一覧・曲ごとの集計を、その場で計算する)→ `src/ui/v2_data.py`(キャッシュ付きの読み込み)→ ページ。ページは services を通さない。取り込みは `src/ingest/` と CLI(`src/cli/ingest.py`・`src/cli/data.py`)。仕様は `docs/specs/data-model.md`。2026-10-21 のフェーズ2で本番の画面を v2 に切り替えた
+- 層(v1。参照用で、画面はもう読まない。フェーズ3で消す): `src/repositories/`(TSV 読み込み) → `src/services/`(DataService ほか) → `src/core/data_pipeline.py`(結合・変換・ソート)。DI フレームワークは使わず、コンストラクタで依存を渡す
 - エラー: リポジトリとサービスは失敗時に例外(`src/exceptions/errors.py` の `DataLoadError`・`DataProcessingError` ほか)を投げる。`None` を返したり、エラーを状態として持ったりしない(2026-05 のリファクタ dd4b385 で統一)。例外はページ側で捕まえて `st.error` で表示する
 - キャッシュ: 読み込みは `@st.cache_data` の関数で行う。キャッシュ関数の中では `st.*` で表示しない(キャッシュが効いた実行では表示されなくなる)
-- データ(v1): `data/` の TSV は UTF-8・タブ区切り。配信日の形式は `YYYY/M/D`(時刻付き `YYYY/M/D HH:MM` が混ざることがある【要確認】)。`V_SONG_LIST.TSV` は `song_list_generator` の生成物なので手で直さない。アーティストの読みは `ARTIST_SORT_MAPPING.TSV`(`artist_sort_cli`)で補正する
+- データ(v1。参照用): `data/` の TSV は UTF-8・タブ区切り。配信日の形式は `YYYY/M/D`(時刻付き `YYYY/M/D HH:MM` が混ざることがある【要確認】)。`V_SONG_LIST.TSV` は `song_list_generator` の生成物なので手で直さない。アーティストの読みは `ARTIST_SORT_MAPPING.TSV`(`artist_sort_cli`)で補正する
 - データ(v2): `data/v2/*.tsv` は UTF-8・LF・タブ区切り。日付は `YYYY-MM-DD`。手で編集せず、`ingest apply` か `data set` などの CLI を通す(保存のたびに並べ直して検査する)。曲の無いコンテンツは `data/ingest/skipped.tsv` に記録する。取得したコメントと下書き(`data/ingest/cache/`・`staged/`)は Git 管理外で、コメント本文・投稿者名はコミットに書かない
 - 環境変数: `YOUTUBE_API_KEY`(取り込みの YouTube Data API。`.env` から docker-compose で渡す)、`YOUTUBE_API_KEYS`(任意。複数のキーをカンマ区切りで。上限に達したら次のキーへ切り替える)、`SHINOUTA_TRUSTED_COMMENTERS`(セットリストを書く職人さんの名前。カンマ区切り)、`ADMIN_PASSWORD`(管理ページ。既定値は無く、未設定ならログインできない)、ほかは `SHINOUTA_*`(`src/config/`)。値はリポジトリに書かない
 - デプロイ: Streamlit Community Cloud がブランチを見て自動デプロイする(`main` → 本番、`develop` → stg)。`requirements.txt` がそのまま本番に入る

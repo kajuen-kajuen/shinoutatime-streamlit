@@ -29,20 +29,18 @@ docker compose exec shinouta-time pytest --cov=src --cov-report=term-missing
 | `tests/unit/` | ユニットテスト(v1 のサービス・リポジトリ・CLI など) |
 | `tests/unit/v2/` | データモデル v2 のテスト(文字列とリンク、読み書きと検査、操作と集計、取り込み・YouTube API) |
 | `tests/property/` | hypothesis を使ったプロパティベーステスト(v1) |
-| `tests/integration/` | 統合テスト(v1) |
-| `tests/e2e/` | ページの起動(Streamlit の `AppTest`)。`data/` の本物の TSV を読む |
+| `tests/integration/` | 統合テスト(画面の部品・v2 の読み込みのキャッシュ、v1 の部品) |
+| `tests/e2e/` | ページの起動・検索・さらに表示(Streamlit の `AppTest`)。本物の `data/v2/` を読むので、件数は「1件以上」などで確かめる |
 | `tests/performance/` | 性能テスト。架空の2万件で、読み込みから集計までを約0.5秒で終えることを確かめる(`--runslow`) |
 | `tests/fixtures/` | テスト用のデータ |
 
-## 今の状態(2026-10-20)
+## 今の状態(2026-10-21)
 
-- 全体: **792 passed / 21 failed / 11 errors / 4 skipped**
-- v2(`tests/unit/v2`): **146 passed**(失敗なし)
-- 失敗しているのは v1 の古いテストだけです(既知の課題)。
-  - テストファイルで `MagicMock` を import し忘れているもの(`tests/integration/test_environment_verification.py`)
-  - 前提が今のコードと合わなくなったもの(`tests/unit/test_error_cases.py`・`tests/e2e/test_app_coverage.py` など)
-  - `tests/property/test_file_repository_properties.py`: hypothesis が `"\r\n"` が `"\n"` に変わる食い違いを見つけ、`.hypothesis` に保存したので、以後は毎回失敗する(v1 の `FileRepository` の穴)
-- 変更の前後で、**失敗が増えていない**ことを確かめます。v1 の古いテストは、本番の画面を v2 に切り替える(フェーズ2)ときに、まとめて見直す予定です。
+- 全体: **859 passed / 4 skipped**(失敗なし)
+- v2(`tests/unit/v2`): **172 passed**
+- 画面のテスト(`tests/unit/ui`・`tests/e2e`)は、フェーズ2(画面を v2 に切り替えた)で v2 の形に書き直した。
+- v1 の部品のテスト(`tests/unit` の DataPipeline・SongListService など、`tests/property`)は、v1 のコードと一緒にフェーズ3で消す。
+- 変更の前後で、**失敗が増えていない**ことを確かめます。
 
 ## 古い記録
 

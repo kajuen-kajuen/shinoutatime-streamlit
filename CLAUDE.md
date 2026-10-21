@@ -40,14 +40,14 @@ VTuber「幽音しの」さんの配信で歌われた楽曲を検索し、YouTu
 ```
 Home.py                 入口。HomePage(src/ui/pages/home_page.py)を呼ぶ
 pages/                  01_Information / 02_About_Us / 99_Song_List_beta
-                        (*_Admin.py・*_Preview.py はローカル専用・Git 管理外。9x_V2_*_Preview.py は v2 の確認用ページ)
+                        (*_Admin.py・*_Preview.py はローカル専用・Git 管理外)
 src/config/             設定(Config、環境変数 SHINOUTA_*)、ログ
 src/repositories/       TSV の読み込み(失敗は DataLoadError を投げる)。table_repository.py は v2 の5テーブル
 src/models/schema.py    v2 のテーブルの定義(列・主キー・値の形)
 src/services/           DataService・SearchService・SongListService ほか(v1)
 src/core/               DataPipeline(v1)、views.py(v2 の歌唱の一覧・曲ごとの集計)、validation・dataset_ops・text・links
 src/ingest/             取り込み(YouTube API・コメントの解析・下書き・曲なしの記録)
-src/ui/                 コンポーネント、フッター、style.css
+src/ui/                 コンポーネント、フッター、style.css、v2_data.py(画面が読む v2 のデータ。キャッシュ付き)
 src/cli/                ingest・data(v2 の取り込みと修正)、excel_to_tsv_cli・song_list_generator・artist_sort_cli(v1)、twitter_embed_cli
 data/                   v1: M_YT_LIVE.TSV(配信)・M_YT_LIVE_TIMESTAMP.TSV(歌唱)・V_SONG_LIST.TSV(生成物)・ARTIST_SORT_MAPPING.TSV・data.xlsx
 data/v2/                v2: contents・artists・songs・performances・aliases(仕様は docs/specs/data-model.md)
@@ -58,8 +58,8 @@ docs/                   仕様書・レビュー記録・プロンプト(一覧�
 ```
 
 データの流れ(2つが並んでいる):
-- **v1(今の画面が読む)**: `data.xlsx` →(`excel_to_tsv_cli`)→ `M_YT_LIVE*.TSV` →(`song_list_generator`)→ `V_SONG_LIST.TSV` → アプリが読み込んで表示
-- **v2(今後の正本)**: YouTube の取得 →(`ingest`: 下書き → 判断 → 追記)→ `data/v2/*.tsv` →(`src/core/views.py` で集計)→ 画面。本番の画面を v2 に切り替えるのはこれから(フェーズ2)。今は確認用ページだけが v2 を読む
+- **v2(正本。画面が読む)**: YouTube の取得 →(`ingest`: 下書き → 判断 → 追記)→ `data/v2/*.tsv` →(`src/core/views.py` で集計。`src/ui/v2_data.py` がキャッシュ)→ Home・Song List。2026-10-21 のフェーズ2で切り替えた
+- **v1(参照用。フェーズ3で消す)**: `data.xlsx` →(`excel_to_tsv_cli`)→ `M_YT_LIVE*.TSV` →(`song_list_generator`)→ `V_SONG_LIST.TSV`。画面はもう読まない
 
 ## 書き方
 

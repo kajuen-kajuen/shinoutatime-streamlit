@@ -75,11 +75,11 @@ sh tools/check-rules.sh                                # 絶対制約の確認(�
 
 データは2つの仕組みが並んでいます(詳しくは [`docs/architecture/overview.md`](docs/architecture/overview.md))。
 
-- **v2(今後の正本)**: `data/v2/` の5つのテーブル。
+- **v2(正本。画面が読む)**: `data/v2/` の5つのテーブル。
   - **TSV を手で編集しません。** 追加は取り込みの CLI(`python -m src.cli.ingest`)、修正は `python -m src.cli.data` を通します(保存の前に検査し、決まった順に並べるため)。
   - 取り込みの手順と判断の決まりは [`docs/prompts/update-data.md`](docs/prompts/update-data.md)、データの形は [`docs/specs/data-model.md`](docs/specs/data-model.md)。
   - 配信のコメント本文や投稿者名は `data/ingest/cache/`(Git 管理外)にだけ置き、コミットしません。
-- **v1(今の画面が読む)**: `data/data.xlsx` から生成する `data/*.TSV`。v2 への切り替え後は使いません(【旧フロー】。[`docs/data-management.md`](docs/data-management.md))。
+- **v1(参照用。画面はもう読まない)**: `data/data.xlsx` から生成する `data/*.TSV`。フェーズ3で消す予定です(【旧フロー】。[`docs/data-management.md`](docs/data-management.md))。
   - 生成ツールは、まず `--dry-run` で件数を確かめ、持ち主の確認を得てから上書きします。
 
 ## 書き方

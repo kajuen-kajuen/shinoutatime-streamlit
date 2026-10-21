@@ -28,7 +28,9 @@ class Config:
     tweet_embed_code_path: str = "data/tweet_embed_code.html"
     tweet_height_path: str = "data/tweet_height.txt"
     css_file_path: str = "src/ui/styles/style.css"
-    
+    # データモデル v2 の TSV のディレクトリ(画面はここを読む。上の3つの v1 の TSV は参照用)
+    v2_data_dir: str = "data/v2"
+
     # 表示設定
     initial_display_limit: int = 25
     display_increment: int = 25
@@ -82,6 +84,10 @@ class Config:
             css_file_path=os.getenv(
                 "SHINOUTA_CSS_FILE_PATH",
                 "src/ui/styles/style.css"
+            ),
+            v2_data_dir=os.getenv(
+                "SHINOUTA_V2_DATA_DIR",
+                "data/v2"
             ),
             # 表示設定
             initial_display_limit=int(os.getenv(

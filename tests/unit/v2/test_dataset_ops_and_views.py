@@ -214,6 +214,19 @@ class TestPerformanceView:
         assert view.loc[("yt:AAAAAAAAAAA", "Blue Sky"), "link"].endswith("&t=630s")
         assert view.loc[("zan:10001", "Blue Sky"), "link"] == "https://www.zan-live.com/ja/live/detail/10001"
 
+    def test_link_label_by_platform(self, sample_dataset):
+        labels = build_performance_view(sample_dataset).drop_duplicates("content_id").set_index("content_id")["link_label"]
+        assert labels["yt:AAAAAAAAAAA"] == "YouTubeへ👻"
+        assert labels["x:1234567890"] == "Xへ👻"
+        assert labels["zan:10001"] == "Z-aNへ👻"
+
+    def test_display_title_with_part(self, sample_dataset):
+        """尺(part)は表示用の曲名の後ろに付ける。検索の列には入れない"""
+        view = build_performance_view(sample_dataset).set_index(["content_id", "title"])
+        assert view.loc[("yt:BBBBBBBBBBB", "はじまりの歌"), "display_title"] == "はじまりの歌(1chorus)"
+        assert view.loc[("yt:AAAAAAAAAAA", "はじまりの歌"), "display_title"] == "はじまりの歌"
+        assert not view["search"].str.contains("1chorus", regex=False).any()
+
     def test_search_column_is_normalized(self, sample_dataset):
         from src.core.text import normalize_for_match
         view = build_performance_view(sample_dataset)
@@ -244,6 +257,7 @@ class TestSongStats:
         assert stats.loc["s0002", "first_date"] == "2025-05-01"
         assert stats.loc["s0002", "last_date"] == "2025-06-02"
         assert stats.loc["s0002", "latest_link"].startswith("https://x.com/")
+        assert stats.loc["s0002", "latest_link_label"] == "Xへ👻"
 
     def test_acoustic_count(self, sample_dataset):
         stats = build_song_stats(sample_dataset).set_index("song_id")

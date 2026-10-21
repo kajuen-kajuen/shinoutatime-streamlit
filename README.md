@@ -11,10 +11,10 @@ VTuber「幽音しの」さんの配信で歌唱された楽曲を検索・閲�
 ## 主な機能
 
 ### 🔍 楽曲検索機能
-- **キーワード検索**: 曲名、アーティスト名で楽曲を検索
+- **キーワード検索**: 曲名、アーティスト名で楽曲を検索(かなの読みでも当たる。例: 「かいじゅう」で「怪獣の花唄」)
 - **ライブタイトル検索**: 配信タイトルからも検索可能（オプション）
-- **部分一致検索**: 大文字小文字を区別せず、柔軟に検索
-- **検索結果の表示**: 配信日、曲目番号、曲名、アーティスト、YouTubeリンクを一覧表示
+- **部分一致検索**: 大文字小文字・全角半角・カタカナとひらがなを区別せず、柔軟に検索
+- **検索結果の表示**: 配信日、曲目番号、曲名、アーティスト、種類(配信・ショート・動画など)、YouTubeリンクを一覧表示
 
 ### 📊 段階的表示機能
 - 初期表示は25件に制限し、高速な読み込みを実現
@@ -26,9 +26,9 @@ VTuber「幽音しの」さんの配信で歌唱された楽曲を検索・閲�
 - クリックするだけで、その楽曲が歌唱された瞬間から視聴開始
 
 ### 📋 楽曲リスト表示機能
-- 全楽曲をアーティスト順に一覧表示
+- 全楽曲をアーティストの読みの順に一覧表示(25件ずつ)
 - 最近の歌唱へのリンク付き
-- β版として提供中（ソート順の改善予定）
+- β版として提供中
 
 ### 📢 情報ページ機能
 - 配信スケジュールの表示
@@ -60,7 +60,7 @@ TwitterのツイートURLから埋め込みコードを自動的に取得し、�
 
 #### Excel to TSV変換ツール(旧フロー)
 
-> 【旧フロー】v1 のデータ(`data/*.TSV`・`data.xlsx`)の仕組みです。v2(`data/v2/`)への切り替えが進行中で、切り替え後は使いません。今後のデータの追加は [`docs/prompts/update-data.md`](docs/prompts/update-data.md)。
+> 【旧フロー】v1 のデータ(`data/*.TSV`・`data.xlsx`)の仕組みです。画面は v2(`data/v2/`)に切り替え済みで、もう使いません(フェーズ3で消す予定)。今後のデータの追加は [`docs/prompts/update-data.md`](docs/prompts/update-data.md)。
 
 **主な機能:**
 - ✅ Excelファイルからの自動TSV生成
@@ -299,8 +299,8 @@ streamlit run Home.py
 本アプリケーションは、`data/` ディレクトリ内のTSV（タブ区切り）ファイルからデータを読み込みます。
 
 データは2つが並んでいます。
-- **v1(今の画面が読む)**: `data/*.TSV`・`data.xlsx`。下の表はこちらの説明です。
-- **v2(今後の正本)**: `data/v2/` の5つのテーブル(contents・artists・songs・performances・aliases)。YouTube などから取り込みの CLI で追加します。今は確認用のページだけが読みます。本番の画面の切り替えはこれからです。形の決まりは [`docs/specs/data-model.md`](docs/specs/data-model.md)、追加の手順は [`docs/prompts/update-data.md`](docs/prompts/update-data.md)。
+- **v2(正本。画面が読む)**: `data/v2/` の5つのテーブル(contents・artists・songs・performances・aliases)。YouTube などから取り込みの CLI で追加します。形の決まりは [`docs/specs/data-model.md`](docs/specs/data-model.md)、追加の手順は [`docs/prompts/update-data.md`](docs/prompts/update-data.md)。
+- **v1(参照用。画面はもう読まない)**: `data/*.TSV`・`data.xlsx`。下の表はこちらの説明です。フェーズ3で消す予定です。
 
 ### ディレクトリ構造
 
@@ -465,7 +465,7 @@ TWITTER_API_RETRY_DELAY=1.0
 
 ## Excel to TSV変換ツール（管理者向け）
 
-> 【旧フロー】この節は v1 のデータ(`data/*.TSV`・`data.xlsx`)の手順です。v2(`data/v2/`)への切り替えが進行中で、切り替え後は使いません。今後のデータの追加は [`docs/prompts/update-data.md`](docs/prompts/update-data.md)。
+> 【旧フロー】この節は v1 のデータ(`data/*.TSV`・`data.xlsx`)の手順です。画面は v2(`data/v2/`)に切り替え済みで、もう使いません(フェーズ3で消す予定)。今後のデータの追加は [`docs/prompts/update-data.md`](docs/prompts/update-data.md)。
 
 ### 概要
 
@@ -751,7 +751,7 @@ python -m src.cli.excel_to_tsv_cli
 ├── .streamlit/             # Streamlit設定
 ├── .claude/skills/         # AI エージェント向けのスキルの入口(本体は docs/prompts/)
 ├── data/                   # データファイル
-│   ├── v2/                 # v2 のテーブル(今後の正本)
+│   ├── v2/                 # v2 のテーブル(正本。画面が読む)
 │   ├── ingest/             # 取り込み(skipped.tsv。cache/・staged/ は Git 管理外)
 │   ├── backups/            # バックアップ(v1)
 │   ├── data.xlsx           # 入力データ(v1)
@@ -942,7 +942,7 @@ YouTube などの取得結果から歌唱を読み取り、`data/v2/` に追記�
 
 ### Excel to TSV変換ツール(旧フロー)
 
-`data/data.xlsx` からTSVファイルを自動生成する統合ツールです。v1 のデータ用で、v2 への切り替え後は使いません。
+`data/data.xlsx` からTSVファイルを自動生成する統合ツールです。v1 のデータ用で、画面が v2 に切り替わったのでもう使いません(フェーズ3で消す予定)。
 
 **使い方:**
 1. `data/data.xlsx` を `data/` フォルダに配置します。

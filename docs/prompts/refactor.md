@@ -18,7 +18,7 @@
   - 読み込みは `@st.cache_data` の関数で、その中で表示しない
   - データ由来の文字列をエスケープせずに HTML に埋め込まない
 - `data/` の TSV の形式・列は変えない(`data/v2/` も同じ。列と値の形は `src/models/schema.py` と `docs/specs/data-model.md` が正本)。変えたくなったら、それはリファクタリングではなく feature として別に扱う
-- 公開している関数・クラスの名前を変えるときは、`tests/` と `src/cli/` からの呼び出しもすべて追う。v2 の部品(`src/core/views.py`・`src/ingest/`・`src/repositories/table_repository.py`)は、CLI(`ingest`・`data`)と確認用ページ(`pages/9x_V2_*_Preview.py`、Git 管理外)からも呼ばれる
+- 公開している関数・クラスの名前を変えるときは、`tests/` と `src/cli/` からの呼び出しもすべて追う。v2 の部品(`src/core/views.py`・`src/ingest/`・`src/repositories/table_repository.py`)は、画面(`src/ui/v2_data.py`・`home_page.py`・`pages/99_Song_List_beta.py`)と CLI(`ingest`・`data`)から呼ばれる
 - `views.py` の集計を変えるときは、性能テスト(`pytest --runslow`)も流す。`lambda` での集計や Arrow の文字列のままの min・max は、2万件で遅くなる(`docs/specs/data-model.md` の4章)
 
 ## 止まって聞く所

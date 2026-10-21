@@ -386,8 +386,8 @@
 
 **A:** データファイルはTSV（Tab-Separated Values）形式です。タブ区切りのテキストファイルです。
 
-- 今の画面が読む v1 のデータ(`data/*.TSV`)は、Excel(`data/data.xlsx`)から生成しています。
-- 今後の正本になる v2 のデータ(`data/v2/`)は、YouTube などから取り込みの CLI で作ります。手で編集はしません([データモデル v2](specs/data-model.md))。
+- 画面が読む v2 のデータ(`data/v2/`)は、YouTube などから取り込みの CLI で作ります。手で編集はしません([データモデル v2](specs/data-model.md))。
+- 参照用に残している v1 のデータ(`data/*.TSV`)は、Excel(`data/data.xlsx`)から生成していました(フェーズ3で消す予定)。
 
 データファイルの詳細は、[README.md](../README.md)の「データファイル構造」セクションをご覧ください。
 

@@ -10,17 +10,17 @@
 {{機能要件の説明}}
 
 上記が不十分な場合、実装に着手する前に以下を私に確認すること:
-- どのページか(Home の検索・Song List・Information・新しいページ。v2 のデータを使うものは、確認用ページ `pages/9x_V2_*_Preview.py`(ローカル専用・Git 管理外)で先に試す)
+- どのページか(Home の検索・Song List・Information・新しいページ。大きく変えるときは、ローカル専用の確認用ページ `pages/9x_*_Preview.py`(Git 管理外)で先に試してよい)
 - 使うデータ(既存の TSV の列で足りるか、列や新しいデータファイルが要るか)
 - スマホでの見え方の希望(表・カード・折りたたみ)
 
 ## 設計時の制約(CLAUDE.md / docs/prompts/_common-context.md 準拠)
 
 - 層を守る: TSV の読み込みは `src/repositories/`、加工は `src/services/`・`src/core/`、表示は `pages/`・`src/ui/`。ページから TSV を直接読まない
-  - v2 は、ページから `TableRepository(...).load()` と `src/core/views.py` を呼ぶ(services を通さない)。集計は `views` に足し、ページには書かない(`docs/architecture/overview.md`)
+  - 画面は v2 を読む: ページから `src/ui/v2_data.py`(`load_performance_view`・`load_song_stats`。中で `TableRepository` と `src/core/views.py` を呼ぶ)を使う(services を通さない)。集計は `views` に足し、ページには書かない(`docs/architecture/overview.md`)
 - 読み込みは `@st.cache_data` の関数で行い、その中で `st.*` を表示しない。失敗は例外で上げてページで表示する
 - 画面の見た目は今のもの(HTML の表、style.css、「YouTubeへ👻」のリンク、「さらに25件表示」)に合わせる。見た目を変える提案は「聞く」に当たる
-- データ由来の文字列をエスケープせずに HTML に埋め込まない。表の部品(`src/ui/components` の `render_results_table` など)は、リンクや CSS のクラスを効かせるため `to_html(escape=False)` で組み立てていて、**自分ではエスケープしない**。呼び出す側で、データ由来の文字列を `html.escape` してから渡す(v2 の確認用ページのやり方)。v1 の Home・Song List はまだエスケープしていない(`check-rules.sh` の WARN)
+- データ由来の文字列をエスケープせずに HTML に埋め込まない。表の部品 `render_results_table`(`src/ui/components`)は、セルと見出しを自分でエスケープする。呼び出す側で HTML に組み立てる列(リンク・artist-cell)だけ `html_columns` で渡し、その中のデータ由来の文字列は呼び出す側で `html.escape` する(Home の `build_table` のやり方)。`to_html(escape=False)` は使わない(`check-rules.sh` の NG)
 - Streamlit の内部クラス名に依存した CSS を書かない。スマホの幅(約 375px)で横にはみ出さない
 - 新しいデータファイルは `data/` に置き、形式(列・文字コード)を仕様書に書く。秘密の値・API キーが要る機能は聞く
 - 依存を足すときは聞く(`requirements.txt` はそのまま本番に入る)

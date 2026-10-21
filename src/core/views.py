@@ -21,6 +21,15 @@ HIDDEN_ACCESS = ("members",)
 # 画面の「種類」の列の表示(contents.type → 日本語)。知らない値はそのまま表示する
 CONTENT_TYPE_LABELS = {"live": "配信", "short": "ショート", "video": "動画", "post": "投稿"}
 
+# 画面のリンクの文言(contents.platform → 文言)。知らない値は「リンク👻」
+LINK_LABELS = {"youtube": "YouTubeへ👻", "x": "Xへ👻", "zan": "Z-aNへ👻"}
+
+VIEW_COLUMNS = [
+    "content_id", "date", "no", "title", "display_title", "artist", "style", "part", "note",
+    "link", "link_label", "platform", "type", "type_label", "content_title", "song_id", "artist_id",
+    "search", "search_song",
+]
+
 
 def _normalized(series: pd.Series) -> pd.Series:
     """normalize_for_match を、重複を除いた値にだけかける(同じ曲名・アーティストが多いため)"""
@@ -51,6 +60,17 @@ def display_artist(name: pd.Series, feat: pd.Series) -> pd.Series:
     return name.fillna("").where(feat == "", name.fillna("") + " feat." + feat)
 
 
+def display_title(title: pd.Series, part: pd.Series) -> pd.Series:
+    """表示用の曲名: 尺(part)があれば「曲名(1chorus)」(v1 の画面と同じ半角の括弧)"""
+    title, part = title.fillna(""), part.fillna("")
+    return title.where(part == "", title + "(" + part + ")")
+
+
+def link_label(platform: pd.Series) -> pd.Series:
+    """リンクの文言(LINK_LABELS)"""
+    return platform.map(lambda p: LINK_LABELS.get(p, "リンク👻"))
+
+
 def search_text(*columns: pd.Series) -> pd.Series:
     """検索用の文字列: 各列を normalize_for_match し、改行で区切ってつなぐ"""
     result = _normalized(columns[0])
@@ -73,10 +93,7 @@ def build_performance_view(dataset: Dataset) -> pd.DataFrame:
     perf = dataset["performances"]
     perf = perf[perf["content_id"].isin(contents["content_id"])]
     if perf.empty:
-        return pd.DataFrame(columns=[
-            "content_id", "date", "no", "title", "artist", "style", "part", "note",
-            "link", "platform", "type", "type_label", "content_title", "song_id", "artist_id", "search", "search_song",
-        ])
+        return pd.DataFrame(columns=VIEW_COLUMNS)
     songs = dataset["songs"].rename(columns={"kind": "song_kind"})
     artists = dataset["artists"].rename(columns={"name": "artist"})
 
@@ -89,7 +106,7 @@ def build_performance_view(dataset: Dataset) -> pd.DataFrame:
     view["seq_n"] = pd.to_numeric(view["seq"])
     view["no_in_content"] = view.groupby("content_id")["seq_n"].rank(method="first").astype(int)
 
-    # 同じ日のライブ配信どうしに、時刻の早い順で枝番を振る(今の Home と同じ)。
+    # 同じ日のライブ配信どうしに、時刻の早い順で枝番を振る。
     # ショート・動画は枝番を付けない(同じ日にあっても、ライブ配信の No. を変えないため)
     ordered = (
         contents.assign(_t=contents["start_time"].replace("", "99:99"))
@@ -113,21 +130,21 @@ def build_performance_view(dataset: Dataset) -> pd.DataFrame:
     view["style"] = view["style"].where(view["style"] != "", view["default_style"])
     view["type_label"] = view["type"].map(lambda t: CONTENT_TYPE_LABELS.get(t, t))
     view["link"] = [build_link(p, u, s) for p, u, s in zip(view["platform"], view["url"], view["start"])]
+    view["link_label"] = link_label(view["platform"])
+    view["display_title"] = display_title(view["title"], view["part"])
     # 検索語も normalize_for_match してから照合する。項目をまたいで一致しないよう改行で区切る。
     # 読み(sort_title・sort_name)も入れて、「かいじゅう」で「怪獣の花唄」を見つけられるようにする
     view["search_song"] = search_text(view["title"], view["sort_title"], view["artist"], view["sort_name"])
     view["search"] = view["search_song"] + "\n" + search_text(view["content_title"])
 
-    # 日付は新しい順、同じ日の中は時刻の早い順、コンテンツの中は曲順。今の Home と同じ並び
+    # 日付は新しい順、同じ日の中は時刻の早い順(2026-10-21 決定。v1 の画面は遅い配信が上だった)、
+    # コンテンツの中は曲順
     view = view.sort_values(
         ["date", "day_pos", "seq_n"],
         ascending=[False, True, True],
         kind="mergesort",
     ).reset_index(drop=True)
-    return view[[
-        "content_id", "date", "no", "title", "artist", "style", "part", "note",
-        "link", "platform", "type", "type_label", "content_title", "song_id", "artist_id", "search", "search_song",
-    ]]
+    return view[VIEW_COLUMNS]
 
 
 def build_song_stats(dataset: Dataset, view: pd.DataFrame = None) -> pd.DataFrame:
@@ -144,7 +161,7 @@ def build_song_stats(dataset: Dataset, view: pd.DataFrame = None) -> pd.DataFram
     )
     songs["artist"] = display_artist(songs["artist"], songs["feat"])
     columns = ["song_id", "title", "artist", "kind", "work", "year", "count", "first_date",
-               "last_date", "latest_link", "live_count", "has_video", "has_short",
+               "last_date", "latest_link", "latest_link_label", "live_count", "has_video", "has_short",
                "acoustic_count", "sort_name", "sort_title"]
     if view.empty or songs.empty:
         return pd.DataFrame(columns=columns + ["search"])
@@ -175,7 +192,10 @@ def build_song_stats(dataset: Dataset, view: pd.DataFrame = None) -> pd.DataFram
     ).reset_index()
     stats["first_date"] = stats["first_date"].dt.strftime("%Y-%m-%d")
     stats["last_date"] = stats["last_date"].dt.strftime("%Y-%m-%d")
-    stats = stats.merge(latest[["song_id", "link"]].rename(columns={"link": "latest_link"}), on="song_id")
+    stats = stats.merge(
+        latest[["song_id", "link", "link_label"]].rename(columns={"link": "latest_link", "link_label": "latest_link_label"}),
+        on="song_id",
+    )
 
     result = songs.merge(stats, on="song_id", how="inner")
     order = [

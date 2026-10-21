@@ -21,7 +21,7 @@
 - Streamlit の版の違い(ローカルと Streamlit Cloud)、内部クラス名に依存した CSS
 - `data/` の更新で件数が大きく変わった(`_commands.md`「データ件数の確認」「本番のデータ件数」)
 
-v2(`data/v2/`、確認用ページ `pages/9x_V2_*_Preview.py`、取り込みの CLI)で起きやすいこと(仕様は `docs/specs/data-model.md`):
+v2(`data/v2/`、画面の Home・Song List、取り込みの CLI)で起きやすいこと(仕様は `docs/specs/data-model.md`):
 
 - リンク: `src/core/links.py` の `build_link`。YouTube は `t=秒` を付け、0秒からのときは付けない。ショートの URL(`/shorts/<ID>`)、X・Z-aN は url のまま
 - キャッシュ: 画面の鍵は `views.cache_key`(データファイルと、集計・読み込みのコードの更新日時)。鍵に入っていないファイルを変えても、計算し直されない

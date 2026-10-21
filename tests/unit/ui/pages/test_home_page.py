@@ -1,19 +1,15 @@
 """
-HomePageクラスの単体テスト
+HomePageクラスの単体テスト(データは v2 の歌唱の一覧。すべて架空)
 """
 import pytest
-import sys
-import os
-from unittest.mock import Mock, patch, MagicMock
-import pandas as pd
-import streamlit as st
+from unittest.mock import patch, MagicMock
 
-# srcモジュールをインポートできるようにする
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../')))
-
-from src.ui.pages.home_page import HomePage
 from src.config.settings import Config
+from src.core.views import build_performance_view
 from src.exceptions.errors import DataLoadError
+from src.ui.pages.home_page import HomePage, TABLE_COLUMNS, build_table, filter_view
+from tests.unit.v2.conftest import content, make_dataset
+
 
 class MockSessionState(dict):
     """SessionStateのモック（属性アクセスと辞書アクセス両対応）"""
@@ -21,9 +17,67 @@ class MockSessionState(dict):
         if key in self:
             return self[key]
         raise AttributeError(f"'{type(self).__name__}' object has no attribute '{key}'")
-    
+
     def __setattr__(self, key, value):
         self[key] = value
+
+
+@pytest.fixture
+def view():
+    """配信1本(3曲)と、尺付きの歌唱・記号を含む曲名とアーティスト"""
+    dataset = make_dataset(
+        contents=[content("yt:AAAAAAAAAAA", "2025-05-01", "【歌枠】夜のうた", start_time="20:00", kind="歌枠")],
+        artists=[
+            {"artist_id": "a0001", "name": "テストバンド", "sort_name": "てすとばんど"},
+            {"artist_id": "a0002", "name": "A & <B>", "sort_name": ""},
+        ],
+        songs=[
+            {"song_id": "s0001", "title": "怪獣の歌", "sort_title": "かいじゅうのうた", "artist_id": "a0001"},
+            {"song_id": "s0002", "title": "<Song>", "artist_id": "a0002"},
+            {"song_id": "s0003", "title": "Blue Sky", "artist_id": "a0001"},
+        ],
+        performances=[
+            {"content_id": "yt:AAAAAAAAAAA", "seq": "10", "start": "0:05:00", "song_id": "s0001"},
+            {"content_id": "yt:AAAAAAAAAAA", "seq": "20", "start": "0:10:00", "song_id": "s0002"},
+            {"content_id": "yt:AAAAAAAAAAA", "seq": "30", "start": "0:15:00", "song_id": "s0003", "part": "1chorus"},
+        ],
+    )
+    return build_performance_view(dataset)
+
+
+class TestFilterView:
+    def test_empty_query_returns_all(self, view):
+        assert len(filter_view(view, "", True)) == 3
+        assert len(filter_view(view, "   ", True)) == 3
+
+    def test_matches_reading_and_width(self, view):
+        assert list(filter_view(view, "カイジュウ", True)["title"]) == ["怪獣の歌"]
+        assert list(filter_view(view, "ＢＬＵＥ", True)["title"]) == ["Blue Sky"]
+
+    def test_live_title_only_when_included(self, view):
+        assert len(filter_view(view, "夜のうた", True)) == 3
+        assert filter_view(view, "夜のうた", False).empty
+
+
+class TestBuildTable:
+    def test_columns_and_values(self, view):
+        table = build_table(view)
+        assert list(table.columns) == TABLE_COLUMNS
+        row = table.iloc[2]
+        assert row["配信日"] == "2025/05/01"
+        assert row["No."] == "3"
+        assert row["曲名"] == "Blue Sky(1chorus)"
+        assert row["種類"] == "配信"
+        assert row["リンク"] == (
+            '<a href="https://www.youtube.com/watch?v=AAAAAAAAAAA&amp;t=900s" target="_blank" rel="noopener">YouTubeへ👻</a>'
+        )
+
+    def test_artist_is_escaped_and_title_is_left_raw(self, view):
+        row = build_table(view).iloc[1]
+        assert row["アーティスト"] == '<div class="artist-cell">A &amp; &lt;B&gt;</div>'
+        # 曲名はそのまま渡し、render_results_table 側でエスケープする
+        assert row["曲名"] == "<Song>"
+
 
 class TestHomePage:
     """HomePageクラスのテスト"""
@@ -32,90 +86,52 @@ class TestHomePage:
     def mock_config(self):
         """Configのモック"""
         config = MagicMock(spec=Config)
-        config.page_title = "Test Title"
-        config.page_icon = "🧪"
-        config.layout = "wide"
         config.css_file_path = "style.css"
-        config.lives_file_path = "lives.tsv"
-        config.songs_file_path = "songs.tsv"
-        config.enable_cache = True
         config.initial_display_limit = 25
         config.display_increment = 25
         return config
 
     @pytest.fixture
-    def mock_search_service(self):
-        """SearchServiceのモック"""
-        return MagicMock()
-
-    @pytest.fixture
-    def home_page(self, mock_config, mock_search_service):
+    def home_page(self, mock_config):
         """HomePageインスタンスのフィクスチャ"""
-        with patch('src.ui.pages.home_page.Config.from_env', return_value=mock_config), \
-             patch('src.ui.pages.home_page.SearchService', return_value=mock_search_service):
-            page = HomePage()
-            return page
-
-    @pytest.fixture
-    def sample_df(self):
-        """サンプルデータ"""
-        return pd.DataFrame({
-            '曲名': ['Song A', 'Song B'],
-            'アーティスト': ['Artist A', 'Artist B'],
-            'ライブタイトル': ['Live 1', 'Live 2'],
-            'YouTubeタイムスタンプ付きURL': ['http://url1', 'http://url2']
-        })
-
-    def test_init(self, home_page):
-        """初期化のテスト"""
-        assert home_page.config is not None
-        assert home_page.search_service is not None
+        with patch('src.ui.pages.home_page.Config.from_env', return_value=mock_config):
+            return HomePage()
 
     @patch('src.ui.pages.home_page.st')
-    @patch('src.ui.pages.home_page.load_and_process_data')
+    @patch('src.ui.pages.home_page.load_performance_view')
     @patch('src.ui.pages.home_page.display_footer')
-    def test_run_success(self, mock_footer, mock_load_data, mock_st, home_page, sample_df):
+    def test_run_success(self, mock_footer, mock_load, mock_st, home_page, view):
         """正常系の実行テスト"""
-        # Session Stateのモック
         mock_st.session_state = MockSessionState()
-        
-        # セットアップ
-        mock_load_data.return_value = sample_df
-        # メソッドのモック化（privateメソッドの呼び出し確認のため）
+        mock_load.return_value = view
         home_page._load_css = MagicMock()
         home_page._render_header = MagicMock()
         home_page._handle_search_and_display = MagicMock()
 
-        # 実行
         home_page.run()
 
-        # 検証
         home_page._load_css.assert_called_once()
         home_page._render_header.assert_called_once()
-        # load_and_process_data は引数を取らない(設定は関数の中で Config.from_env() から読む)
-        mock_load_data.assert_called_once_with()
-        home_page._handle_search_and_display.assert_called_once_with(sample_df)
+        home_page._handle_search_and_display.assert_called_once_with(view)
         mock_footer.assert_called_once()
 
     @patch('src.ui.pages.home_page.st')
-    @patch('src.ui.pages.home_page.load_and_process_data')
-    def test_run_failure(self, mock_load_data, mock_st, home_page):
-        """データ読み込み失敗時のテスト"""
-        # Session Stateのモック
+    @patch('src.ui.pages.home_page.load_performance_view')
+    @patch('src.ui.pages.home_page.display_footer')
+    def test_run_failure(self, mock_footer, mock_load, mock_st, home_page):
+        """データ読み込み失敗時は、エラーを出して検索と表は出さない"""
         mock_st.session_state = MockSessionState()
-        
-        # セットアップ
-        # 読み込みの失敗は None ではなく例外で伝わる
-        mock_load_data.side_effect = DataLoadError("lives.tsv", "読み込めません")
+        mock_load.side_effect = DataLoadError("data/v2", "読み込めません")
         home_page._load_css = MagicMock()
         home_page._render_header = MagicMock()
         home_page._handle_error = MagicMock()
+        home_page._handle_search_and_display = MagicMock()
 
-        # 実行
         home_page.run()
 
-        # 検証
         home_page._handle_error.assert_called_once()
+        home_page._handle_search_and_display.assert_not_called()
+        mock_footer.assert_called_once()
 
     @patch('builtins.open')
     @patch('src.ui.pages.home_page.st')
@@ -133,125 +149,73 @@ class TestHomePage:
 
     @patch('src.ui.pages.home_page.render_search_form')
     @patch('src.ui.pages.home_page.st')
-    def test_handle_search_and_display_initial(
-        self, mock_st, mock_render_form, home_page, sample_df
-    ):
-        """検索フォーム初期表示テスト"""
-        # Session Stateのモック
+    def test_handle_search_and_display_initial(self, mock_st, mock_render_form, home_page, view):
+        """初期表示: 全件を出す"""
         mock_st.session_state = MockSessionState()
-        
-        # 検索フォームの戻り値 (query, include_title, clicked)
         mock_render_form.return_value = ("", True, False)
-        
-        # 内部メソッドのモック
         home_page._render_results = MagicMock()
 
-        # 実行
-        home_page._handle_search_and_display(sample_df)
+        home_page._handle_search_and_display(view)
 
-        # 検証
         assert mock_st.session_state.search_query == ""
         assert mock_st.session_state.display_limit == home_page.config.initial_display_limit
-        home_page._render_results.assert_called_once()
+        assert len(home_page._render_results.call_args.args[0]) == 3
+        mock_st.write.assert_called_once_with("検索キーワードが入力されていません。全件表示します。")
 
     @patch('src.ui.pages.home_page.render_search_form')
     @patch('src.ui.pages.home_page.st')
-    def test_perform_search(self, mock_st, mock_render_form, home_page, sample_df):
-        """検索実行テスト"""
-        # Session Stateのモック
-        mock_st.session_state = MockSessionState()
-        
-        # 検索ボタン押下状態
-        mock_render_form.return_value = ("Query", True, True)
-        
-        home_page.search_service.search.return_value = sample_df.iloc[[0]]
+    def test_search_button_saves_query_and_resets_limit(self, mock_st, mock_render_form, home_page, view):
+        """検索ボタン: 検索語を保存し、表示件数を戻して絞った結果を出す"""
+        mock_st.session_state = MockSessionState(display_limit=75)
+        mock_render_form.return_value = ("かいじゅう", True, True)
         home_page._render_results = MagicMock()
 
-        # 実行
-        home_page._handle_search_and_display(sample_df)
+        home_page._handle_search_and_display(view)
 
-        # 検証
-        assert mock_st.session_state.search_query == "Query"
-        home_page.search_service.search.assert_called_once()
-        home_page._render_results.assert_called_once()
-        
+        assert mock_st.session_state.search_query == "かいじゅう"
+        assert mock_st.session_state.display_limit == 25
+        assert list(home_page._render_results.call_args.args[0]["title"]) == ["怪獣の歌"]
+        mock_st.write.assert_called_once_with("「かいじゅう」で検索した結果: 1件")
+
+    @patch('src.ui.pages.home_page.render_search_form')
+    @patch('src.ui.pages.home_page.st')
+    def test_saved_query_is_used_without_button(self, mock_st, mock_render_form, home_page, view):
+        """検索済みのあと(さらに表示など)は、保存した検索語で絞り続ける"""
+        mock_st.session_state = MockSessionState(search_query="blue", include_live_title=False, display_limit=50)
+        mock_render_form.return_value = ("書きかけ", False, False)
+        home_page._render_results = MagicMock()
+
+        home_page._handle_search_and_display(view)
+
+        assert list(home_page._render_results.call_args.args[0]["title"]) == ["Blue Sky"]
+        assert mock_st.session_state.display_limit == 50
+
     @patch('src.ui.pages.home_page.render_results_table')
     @patch('src.ui.pages.home_page.render_pagination')
     @patch('src.ui.pages.home_page.st')
-    def test_render_results(self, mock_st, mock_pagination, mock_results_table, home_page, sample_df):
-        """結果表示テスト"""
-        mock_st.session_state = MockSessionState()
-        mock_st.session_state.display_limit = 25
-        
-        mock_pagination.return_value = None  # ページネーションボタン押下なし
+    def test_render_results(self, mock_st, mock_pagination, mock_results_table, home_page, view):
+        """表示件数だけ表に出し、html_columns でアーティストとリンクを渡す"""
+        mock_st.session_state = MockSessionState(display_limit=2)
+        mock_pagination.return_value = None
 
-        home_page._render_results(sample_df)
+        home_page._render_results(view)
 
-        mock_results_table.assert_called_once()
-        mock_pagination.assert_called_once()
+        table, columns, _headers = mock_results_table.call_args.args
+        assert len(table) == 2
+        assert columns == TABLE_COLUMNS
+        assert mock_results_table.call_args.kwargs['html_columns'] == {'アーティスト', 'リンク'}
+        assert mock_pagination.call_args.kwargs['total_count'] == 3
         mock_st.rerun.assert_not_called()
 
     @patch('src.ui.pages.home_page.render_results_table')
     @patch('src.ui.pages.home_page.render_pagination')
     @patch('src.ui.pages.home_page.st')
-    def test_render_results_escapes_link_and_artist(self, mock_st, mock_pagination, mock_results_table, home_page):
-        """リンクの URL とアーティストはエスケープして HTML に組み立て、html_columns で渡す"""
-        mock_st.session_state = MockSessionState()
-        mock_st.session_state.display_limit = 25
-        mock_pagination.return_value = None
-        df = pd.DataFrame({
-            'ライブ配信日': ['2023/01/01'],
-            '曲目': ['1-1'],
-            '曲名': ['<Song>'],
-            'アーティスト': ['A & <B>'],
-            'YouTubeタイムスタンプ付きURL': ['https://youtu.be/x?t=1&a="b"'],
-        })
-
-        home_page._render_results(df)
-
-        table, columns, _headers = mock_results_table.call_args.args
-        assert mock_results_table.call_args.kwargs['html_columns'] == {'アーティスト', 'YouTubeリンク'}
-        row = table.iloc[0]
-        assert row['アーティスト'] == '<div class="artist-cell">A &amp; &lt;B&gt;</div>'
-        assert row['YouTubeリンク'] == (
-            '<a href="https://youtu.be/x?t=1&amp;a=&quot;b&quot;" target="_blank" rel="noopener">YouTubeへ👻</a>'
-        )
-        # 曲名はそのまま渡し、render_results_table 側でエスケープする
-        assert row['曲名'] == '<Song>'
-
-    @patch('src.ui.pages.home_page.render_results_table')
-    @patch('src.ui.pages.home_page.render_pagination')
-    @patch('src.ui.pages.home_page.st')
-    def test_render_results_missing_artist_and_url(self, mock_st, mock_pagination, mock_results_table, home_page):
-        """アーティスト・URL の欠損は "nan" ではなく空にする"""
-        mock_st.session_state = MockSessionState()
-        mock_st.session_state.display_limit = 25
-        mock_pagination.return_value = None
-        df = pd.DataFrame({
-            'ライブ配信日': ['2023/01/01'],
-            '曲目': ['1-1'],
-            '曲名': ['Song'],
-            'アーティスト': pd.Series([None], dtype='str'),
-            'YouTubeタイムスタンプ付きURL': pd.Series([None], dtype='str'),
-        })
-
-        home_page._render_results(df)
-
-        row = mock_results_table.call_args.args[0].iloc[0]
-        assert row['アーティスト'] == '<div class="artist-cell"></div>'
-        assert row['YouTubeリンク'] == ''
-
-    @patch('src.ui.pages.home_page.render_results_table')
-    @patch('src.ui.pages.home_page.render_pagination')
-    @patch('src.ui.pages.home_page.st')
-    def test_render_results_pagination_click(self, mock_st, mock_pagination, mock_results_table, home_page, sample_df):
+    def test_render_results_pagination_click(self, mock_st, mock_pagination, mock_results_table, home_page, view):
         """ページネーションボタン押下時のテスト"""
-        mock_st.session_state = MockSessionState()
-        mock_st.session_state.display_limit = 25
-        
+        mock_st.session_state = MockSessionState(display_limit=25)
         mock_pagination.return_value = 50  # ボタン押下で新しいリミットが返る
 
-        home_page._render_results(sample_df)
+        home_page._render_results(view)
 
         assert mock_st.session_state.display_limit == 50
         mock_st.rerun.assert_called_once()
