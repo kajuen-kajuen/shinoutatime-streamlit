@@ -7,6 +7,8 @@
 
 import html
 import logging
+from typing import Optional
+
 import streamlit as st
 import pandas as pd
 
@@ -82,9 +84,14 @@ class HomePage:
     ホーム画面の描画とインタラクションを管理します。
     """
 
-    def __init__(self):
-        """初期化"""
-        self.config = Config.from_env()
+    def __init__(self, config: Optional[Config] = None):
+        """
+        初期化
+
+        Args:
+            config: 設定(Home.py の setup_page() が読んだもの)。渡されなければ環境変数から読む
+        """
+        self.config = config or Config.from_env()
         logger.info("HomePage initialized")
 
     def run(self):

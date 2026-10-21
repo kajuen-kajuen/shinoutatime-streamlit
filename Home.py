@@ -26,8 +26,8 @@ if "logging_initialized" not in st.session_state:
     st.session_state.logging_initialized = True
 
 # ページの準備(ページ設定・共通の CSS・サイト名の見出し。全ページで共通)
-setup_page()
+config = setup_page()
 
 if __name__ == "__main__":
-    home_page = HomePage()
+    home_page = HomePage(config)  # setup_page が読んだ設定を渡す(読み直さない)
     home_page.run()

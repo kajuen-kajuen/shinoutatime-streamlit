@@ -217,3 +217,10 @@ class TestHomePage:
 
         assert mock_st.session_state.display_limit == 50
         mock_st.rerun.assert_called_once()
+
+    def test_uses_given_config_without_reading_env(self, mock_config):
+        """Home.py の setup_page が読んだ設定を渡せば、環境変数を読み直さない"""
+        with patch('src.ui.pages.home_page.Config.from_env') as mock_from_env:
+            page = HomePage(mock_config)
+        assert page.config is mock_config
+        mock_from_env.assert_not_called()

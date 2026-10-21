@@ -57,7 +57,7 @@ class Config:
         Returns:
             Config: 設定オブジェクト
         """
-        logger.info("環境変数から設定を読み込み中")
+        logger.debug("環境変数から設定を読み込み中")
         
         config = cls(
             # ファイルパス
@@ -122,7 +122,7 @@ class Config:
             ))
         )
         
-        logger.info("環境変数からの設定読み込みが完了しました")
+        logger.debug("環境変数からの設定読み込みが完了しました")
         logger.debug(f"設定内容: enable_cache={config.enable_cache}, cache_ttl={config.cache_ttl}")
         
         return config
@@ -140,7 +140,7 @@ class Config:
         """
         from src.exceptions.errors import ConfigurationError
         
-        logger.info("設定値を検証中")
+        logger.debug("設定値を検証中")
         
         # ファイルパスの検証（空でないこと）
         if not self.lives_file_path:
@@ -192,7 +192,7 @@ class Config:
                 f"キャッシュTTLは0以上である必要があります: {self.cache_ttl}"
             )
         
-        logger.info("設定値の検証が完了しました")
+        logger.debug("設定値の検証が完了しました")
         return True
 
 
