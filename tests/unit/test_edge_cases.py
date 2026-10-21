@@ -17,8 +17,9 @@ from src.utils.html_validator import validate_html_structure, validate_twitter_e
 from src.utils.validators import validate_tweet_url, extract_tweet_id
 from src.services.twitter_embed_service import TwitterEmbedService
 from src.services.data_service import DataService
+from src.repositories.live_repository import LiveRepository
 from src.config.settings import Config, TwitterEmbedConfig
-from src.exceptions.errors import InvalidURLError, FileWriteError
+from src.exceptions.errors import InvalidURLError, FileWriteError, DataLoadError
 from tests.fixtures.mock_responses import create_mock_success_response, create_mock_oembed_response
 
 
@@ -361,13 +362,13 @@ class TestBoundaryConditions:
             empty_tsv = Path(tmpdir) / "empty.tsv"
             empty_tsv.write_text("", encoding='utf-8')
             
-            # Configを作成
+            # 本物のリポジトリで空のファイルを読ませる
             config = Config(lives_file_path=str(empty_tsv))
-            service = DataService(config, MagicMock(), MagicMock(), MagicMock())
-            result = service.load_lives_data()
-            
-            # 空のファイルはエラーまたは空のDataFrameを返す
-            assert result is None or len(result) == 0
+            service = DataService(config, LiveRepository(str(empty_tsv)), Mock(), Mock())
+
+            # 空のファイルは読み込みの失敗として DataLoadError になる
+            with pytest.raises(DataLoadError):
+                service.load_lives_data()
     
     def test_data_service_with_single_row(self):
         """データサービスで1行のみのデータを処理できること"""
@@ -376,14 +377,13 @@ class TestBoundaryConditions:
             single_row_tsv = Path(tmpdir) / "single.tsv"
             single_row_tsv.write_text("ID\tタイトル\n", encoding='utf-8')
             
-            # Configを作成
+            # 本物のリポジトリでヘッダーだけのファイルを読ませる
             config = Config(lives_file_path=str(single_row_tsv))
-            service = DataService(config, MagicMock(), MagicMock(), MagicMock())
-            result = service.load_lives_data()
-            
-            # ヘッダーのみの場合は空のDataFrameを返す
-            if result is not None:
-                assert len(result) == 0
+            service = DataService(config, LiveRepository(str(single_row_tsv)), Mock(), Mock())
+
+            # ヘッダーだけ(データの行が無い)のファイルも DataLoadError になる
+            with pytest.raises(DataLoadError):
+                service.load_lives_data()
 
 
 class TestPathEdgeCases:

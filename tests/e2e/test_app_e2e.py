@@ -2,7 +2,11 @@
 E2E tests for the Shinoutatime Streamlit app using AppTest.
 """
 import pytest
+from pathlib import Path
 from streamlit.testing.v1 import AppTest
+
+# AppTest.from_file の相対パスは、呼び出したファイル(このテスト)からの位置になるので絶対パスで渡す
+HOME_SCRIPT = str(Path(__file__).resolve().parents[2] / "Home.py")
 
 class TestAppE2E:
     """E2E tests for the main application"""
@@ -10,7 +14,7 @@ class TestAppE2E:
     @pytest.fixture
     def app(self):
         """Fixture to initialize the app"""
-        at = AppTest.from_file("Home.py", default_timeout=10)
+        at = AppTest.from_file(HOME_SCRIPT, default_timeout=10)
         at.run()
         return at
 

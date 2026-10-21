@@ -84,7 +84,8 @@ class TestTwitterEmbedAdmin:
         # 入力フォームへの入力
         test_url = "https://twitter.com/user/status/1234567890"
         # at.text_area[0] は "ツイートURL" 入力欄を想定
-        at.text_area[0].set_value(test_url).run()
+        # フォームの中の欄は、ここで run すると送信前に値が消えるので、送信ボタンの run だけにする
+        at.text_area[0].set_value(test_url)
         
         # 取得ボタン押下 (フォームの送信ボタン)
         # フォーム内のボタンは通常、識別が難しい場合があるが、
@@ -132,7 +133,7 @@ class TestTwitterEmbedAdmin:
         at.run()
         
         # URL入力と取得実行 (stateを手動設定する代わりに操作をシミュレート)
-        at.text_area[0].set_value("https://twitter.com/test").run()
+        at.text_area[0].set_value("https://twitter.com/test")  # フォームの中の欄なので run しない
         [b for b in at.button if b.label == "🔍 取得"][0].click().run()
         
         # 保存ボタン押下

@@ -12,8 +12,6 @@ import os
 # srcモジュールをインポートできるようにする
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from src.services.data_service import DataService
-from src.core.data_pipeline import DataPipeline
 from src.services.search_service import SearchService
 from src.config.settings import Config
 from src.ui.components import render_search_form, render_results_table, render_pagination
@@ -40,34 +38,6 @@ class TestHomeIntegration:
             '曲目': [1, 2],
             'YouTubeタイムスタンプ付きURL': ['https://example.com/1', 'https://example.com/2']
         })
-
-    def test_data_pipeline_execution_with_cache(self, config, sample_data):
-        """DataPipelineの実行とキャッシュ動作をテスト"""
-        with patch('src.services.data_service.DataService') as mock_data_service_class:
-            mock_data_service = MagicMock()
-            mock_data_service_class.return_value = mock_data_service
-            mock_data_service.load_lives_data.return_value = sample_data
-            mock_data_service.load_songs_data.return_value = sample_data
-            mock_data_service.merge_data.return_value = sample_data
-
-            data_service = DataService(config, MagicMock(), MagicMock(), MagicMock())
-            pipeline = DataPipeline(data_service, config)
-
-            # 初回実行
-            result1 = pipeline.execute()
-            assert result1 is not None
-            assert len(result1) > 0
-
-            # キャッシュから2回目実行
-            result2 = pipeline.execute()
-            assert result2 is not None
-            assert result1 is result2  # 同じオブジェクトを返す
-
-            # キャッシュクリア後
-            pipeline.clear_cache()
-            result3 = pipeline.execute()
-            assert result3 is not None
-            # キャッシュがクリアされたので新しいオブジェクト
 
     def test_search_service_integration(self, sample_data):
         """SearchServiceの統合テスト"""
@@ -145,22 +115,23 @@ class TestHomeIntegration:
         assert new_limit is None
         mock_info.assert_called_with("全ての25件が表示されています。")
 
-    def test_load_and_process_data_caching(self, config, sample_data):
-        """load_and_process_dataのキャッシュ動作をテスト"""
-        with patch('src.services.data_service.DataService') as mock_data_service_class, \
-             patch('src.core.data_pipeline.DataPipeline') as mock_pipeline_class:
+    def test_load_and_process_data_caching(self, sample_data):
+        """load_and_process_data は st.cache_data で、2回呼んでもパイプラインは1回だけ動く"""
+        from src.ui.pages.home_page import load_and_process_data
 
-            mock_data_service = MagicMock()
-            mock_data_service_class.return_value = mock_data_service
+        # home_page が import した名前にパッチを当てる(src.core.data_pipeline 側では効かない)
+        with patch('src.ui.pages.home_page.DataPipeline') as mock_pipeline_class:
             mock_pipeline = MagicMock()
             mock_pipeline_class.return_value = mock_pipeline
             mock_pipeline.execute.return_value = sample_data
 
-            # 初回実行
-            from src.ui.pages.home_page import load_and_process_data
-            result1 = load_and_process_data('lives.tsv', 'songs.tsv', True)
-            assert result1 is not None
+            load_and_process_data.clear()
+            try:
+                result1 = load_and_process_data()
+                result2 = load_and_process_data()
+            finally:
+                load_and_process_data.clear()  # ほかのテストにモックの結果を残さない
 
-            # 同じパラメータで2回目実行（キャッシュから）
-            result2 = load_and_process_data('lives.tsv', 'songs.tsv', True)
-            assert result2 is not None
+            assert len(result1) == len(sample_data)
+            assert len(result2) == len(sample_data)
+            mock_pipeline.execute.assert_called_once()

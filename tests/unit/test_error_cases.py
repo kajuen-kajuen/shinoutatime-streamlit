@@ -17,24 +17,24 @@ class TestErrorCases:
     def test_data_service_file_permission_error(self):
         """DataServiceのファイル権限エラーテスト"""
         from src.services.data_service import DataService
+        from src.repositories.live_repository import LiveRepository
         from src.config.settings import Config
-        import stat
+        from src.exceptions.errors import DataLoadError
 
         config = Config()
-        config.lives_file_path = "nonexistent_file.tsv"  # 存在しないファイルを指定
 
-        data_service = DataService(config, MagicMock(), MagicMock(), MagicMock())
+        # 存在しないファイルを読むリポジトリを渡す(読み込みの失敗は例外で伝わる)
+        data_service = DataService(config, LiveRepository("nonexistent_file.tsv"), MagicMock(), MagicMock())
 
-        # 存在しないファイルの読み込みをテスト
-        result = data_service.load_lives_data()
-        assert result is None
-        assert data_service.get_last_error() is not None
+        with pytest.raises(DataLoadError):
+            data_service.load_lives_data()
 
     def test_data_pipeline_parse_error_handling(self):
         """DataPipelineのパースエラー処理テスト"""
         from src.core.data_pipeline import DataPipeline
         from src.services.data_service import DataService
         from src.config.settings import Config
+        from src.exceptions.errors import DataProcessingError
 
         config = Config()
         config.enable_cache = False
@@ -56,9 +56,10 @@ class TestErrorCases:
 
         pipeline = DataPipeline(data_service, config)
 
-        # パイプライン実行（例外が発生してもNoneを返すことを確認）
-        result = pipeline.execute()
-        assert result is None  # merge_dataが失敗するのでNoneが返される
+        # merge_data の失敗は、どの段階で失敗したかを持つ DataProcessingError になる
+        with pytest.raises(DataProcessingError) as excinfo:
+            pipeline.execute()
+        assert excinfo.value.step == "merge"
 
     def test_file_repository_encoding_error(self):
         """FileRepositoryのエンコーディングエラーテスト"""
@@ -168,32 +169,6 @@ class TestErrorCases:
 
         # Configはファイルの存在をチェックしないので、エラーは発生しない
         assert config.css_file_path == "nonexistent.css"
-
-    def test_data_pipeline_cache_corruption(self):
-        """DataPipelineのキャッシュ破損テスト"""
-        from src.core.data_pipeline import DataPipeline
-        from src.services.data_service import DataService
-        from src.config.settings import Config
-
-        config = Config()
-        config.enable_cache = True
-
-        data_service = Mock(spec=DataService)
-        data_service.load_lives_data.return_value = None  # 読み込み失敗
-
-        pipeline = DataPipeline(data_service, config)
-
-        # キャッシュが空の状態で実行
-        result1 = pipeline.execute()
-        assert result1 is None
-        assert pipeline._cache == {}  # キャッシュは保存されない
-
-        # キャッシュを手動で破損
-        pipeline._cache["final_data"] = "invalid_data"
-
-        # キャッシュクリア
-        pipeline.clear_cache()
-        assert pipeline._cache == {}
 
     def test_search_service_empty_query(self):
         """SearchServiceの空クエリテスト"""

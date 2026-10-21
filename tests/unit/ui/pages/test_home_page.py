@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 
 from src.ui.pages.home_page import HomePage
 from src.config.settings import Config
+from src.exceptions.errors import DataLoadError
 
 class MockSessionState(dict):
     """SessionStateのモック（属性アクセスと辞書アクセス両対応）"""
@@ -91,11 +92,8 @@ class TestHomePage:
         # 検証
         home_page._load_css.assert_called_once()
         home_page._render_header.assert_called_once()
-        mock_load_data.assert_called_once_with(
-            home_page.config.lives_file_path,
-            home_page.config.songs_file_path,
-            home_page.config.enable_cache
-        )
+        # load_and_process_data は引数を取らない(設定は関数の中で Config.from_env() から読む)
+        mock_load_data.assert_called_once_with()
         home_page._handle_search_and_display.assert_called_once_with(sample_df)
         mock_footer.assert_called_once()
 
@@ -107,7 +105,8 @@ class TestHomePage:
         mock_st.session_state = MockSessionState()
         
         # セットアップ
-        mock_load_data.return_value = None
+        # 読み込みの失敗は None ではなく例外で伝わる
+        mock_load_data.side_effect = DataLoadError("lives.tsv", "読み込めません")
         home_page._load_css = MagicMock()
         home_page._render_header = MagicMock()
         home_page._handle_error = MagicMock()

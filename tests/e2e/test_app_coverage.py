@@ -4,14 +4,22 @@
 import pytest
 from streamlit.testing.v1 import AppTest
 import pandas as pd
+from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+# AppTest.from_file の相対パスは、呼び出したファイル(このテスト)からの位置になるので絶対パスで渡す
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def app_path(relative: str) -> str:
+    return str(ROOT / relative)
 
 class TestAppCoverage:
     """各ページの起動と基本動作を確認してカバレッジを向上させるテスト"""
 
     def test_home_page_startup(self):
         """Home.py の起動テスト"""
-        at = AppTest.from_file("Home.py", default_timeout=10)
+        at = AppTest.from_file(app_path("Home.py"), default_timeout=10)
         at.run()
         assert not at.exception
         assert "しのうたタイム" in at.title[0].value
@@ -21,7 +29,7 @@ class TestAppCoverage:
         # データのモック化が必要な場合はここでパッチを当てることを検討するが、
         # AppTestは別プロセスで動くため、ファイルベースのモックデータ利用が推奨される。
         # ここでは基本動作（入力してボタン押下）までを確認。
-        at = AppTest.from_file("Home.py", default_timeout=10)
+        at = AppTest.from_file(app_path("Home.py"), default_timeout=10)
         at.run()
         
         # 検索入力
@@ -36,18 +44,18 @@ class TestAppCoverage:
 
     def test_information_page(self):
         """01_Information.py の起動テスト"""
-        at = AppTest.from_file("pages/01_Information.py", default_timeout=10)
+        at = AppTest.from_file(app_path("pages/01_Information.py"), default_timeout=10)
         at.run()
         assert not at.exception
 
     def test_about_us_page(self):
         """02_About_Us.py の起動テスト"""
-        at = AppTest.from_file("pages/02_About_Us.py", default_timeout=10)
+        at = AppTest.from_file(app_path("pages/02_About_Us.py"), default_timeout=10)
         at.run()
         assert not at.exception
         
     def test_song_list_beta_page(self):
         """99_Song_List_beta.py の起動テスト"""
-        at = AppTest.from_file("pages/99_Song_List_beta.py", default_timeout=10)
+        at = AppTest.from_file(app_path("pages/99_Song_List_beta.py"), default_timeout=10)
         at.run()
         assert not at.exception

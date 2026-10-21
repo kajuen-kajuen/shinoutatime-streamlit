@@ -12,6 +12,7 @@ import pandas as pd
 from src.core.data_pipeline import DataPipeline
 from src.services.data_service import DataService
 from src.config.settings import Config
+from src.exceptions.errors import DataLoadError
 
 
 class TestDataPipelineProperties:
@@ -26,27 +27,26 @@ class TestDataPipelineProperties:
         Feature: test-coverage-improvement, Property 16: エラー処理の一貫性
         
         すべてのエラー状況（ファイル読み込み失敗、データ変換エラー）に対して、
-        Noneが返され、適切なエラーログが記録される
-        
+        読み込みの例外(DataLoadError)が包み直されずにそのまま送出される
+
         **検証: 要件7.3**
         """
         # モックの設定
         config = Mock(spec=Config)
         config.enable_cache = False
-        
+
         data_service = Mock(spec=DataService)
-        
-        # DataServiceのモックメソッドを設定（エラー状態）
-        data_service.load_lives_data.return_value = None
-        data_service.load_songs_data.return_value = None
-        data_service.get_last_error.return_value = error_message
-        
+
+        # DataServiceのモックメソッドを設定（エラー状態。読み込みの失敗は例外で伝わる）
+        data_service.load_lives_data.side_effect = DataLoadError("lives.tsv", error_message)
+
         # DataPipelineを初期化して実行
         pipeline = DataPipeline(data_service, config)
-        result = pipeline.execute()
-        
-        # 検証：エラー時はNoneが返される
-        assert result is None
-        
+
+        # 検証：エラー時は DataLoadError がそのまま送出され、メッセージが残る
+        with pytest.raises(DataLoadError) as excinfo:
+            pipeline.execute()
+        assert error_message in str(excinfo.value)
+
         # DataServiceのメソッドが呼ばれたことを確認
         data_service.load_lives_data.assert_called_once()
