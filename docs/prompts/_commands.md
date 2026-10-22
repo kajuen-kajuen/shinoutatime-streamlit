@@ -11,6 +11,8 @@
 | テスト(全部) | `docker compose exec shinouta-time pytest` | 作業の終わりに必ず。e2e は `data/v2/` の本物のデータを読む |
 | テスト(一部) | `docker compose exec shinouta-time pytest tests/unit -q` | `tests/unit` を `tests/property`・`tests/integration`・`tests/e2e` やファイル名に替えてよい |
 | テスト(性能も) | `docker compose exec shinouta-time pytest --runslow` | `tests/performance`(架空の 2万件で読み込みから集計まで)は、`--runslow` のときだけ動く。集計(`src/core/views.py`)や読み込みを変えたときに流す |
+| ブラウザの確認(手元) | `docker compose --profile browser run --rm browser pytest tests/browser --runbrowser` | Playwright の Chromium で手元のアプリ(起動中の shinouta-time)を開く。画面・CSS・Streamlit の版を変えたとき、push の前に流す。初回は `docker compose --profile browser build browser`(数分) |
+| ブラウザの確認(本番) | `docker compose --profile browser run --rm browser sh -c "python tools/wake_up_streamlit.py https://shinoutatime.streamlit.app/ && pytest tests/browser --runbrowser --base-url https://shinoutatime.streamlit.app/"` | リリースのあと(Reboot app のあと)に流す。スリープしていると開けないので先に起こす。stg はログインが要るので対象外 |
 | カバレッジ | `docker compose exec shinouta-time pytest --cov=src --cov-report=term-missing` | |
 | 絶対制約の確認 | `sh tools/check-rules.sh` | ホストで打つ(コンテナに git が無い)。NG が 0 になるまで直す |
 | データ件数の確認 | `wc -l data/v2/*.tsv data/ingest/skipped.tsv` | 1 行目はヘッダー。データを触る前後で比べる |

@@ -84,7 +84,7 @@ git push origin main-local:main  # 本番に反映される
 git switch -                     # 作業していたブランチへ戻る
 ```
 
-本番の画面(https://shinoutatime.streamlit.app/)と、Streamlit Cloud の「Manage app」のログを確かめます。`src/` を変えたリリースでは、先に「Manage app」→「⋮」→「Reboot app」で起動し直します(しないと古い部品が残り、`ImportError` になることがある。[デプロイメントガイド](../deployment.md)の「反映の確認」)。
+本番の画面(https://shinoutatime.streamlit.app/)と、Streamlit Cloud の「Manage app」のログを確かめます。`src/` を変えたリリースでは、先に「Manage app」→「⋮」→「Reboot app」で起動し直します(しないと古い部品が残り、`ImportError` になることがある。[デプロイメントガイド](../deployment.md)の「反映の確認」)。そのあと、本番に向けてブラウザの確認を流します(コマンドは [`_commands.md`](../prompts/_commands.md) の「ブラウザの確認(本番)」)。
 
 ## 緊急の修正(hotfix)
 

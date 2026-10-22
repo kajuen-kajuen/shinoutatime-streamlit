@@ -57,6 +57,14 @@ push のあと、Cloud のダッシュボードの「Manage app」→ ログで�
 - [ ] Information の動画、今週のスケジュール(X の投稿)と、Wiki・X・公式サイトへのリンクが出る
 - [ ] どのページにも見出し「しのうたタイム👻🫧」とフッターが出る
 
+本番では、Reboot app のあとにブラウザの確認を流します(4ページが PC・スマホの幅で例外なく開く、検索とリンク、はみ出し。上のチェックの一部を自動で確かめる)。スリープしていると開けないので、先に起こします。
+
+```bash
+docker compose --profile browser run --rm browser sh -c "python tools/wake_up_streamlit.py https://shinoutatime.streamlit.app/ && pytest tests/browser --runbrowser --base-url https://shinoutatime.streamlit.app/"
+```
+
+stg はログインが要るので、ブラウザの確認は流せません。stg は上のチェックを目で確かめます。
+
 ## ログとエラーのとき
 
 - ログは「Manage app」から見られ、ファイルに落とすこともできます。落としたログ(`logs-*.txt`)はリポジトリの直下に置いて読めますが、Git には入れません(`.gitignore` 済み)。

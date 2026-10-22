@@ -18,7 +18,13 @@ docker compose exec shinouta-time pytest --runslow
 
 # カバレッジ
 docker compose exec shinouta-time pytest --cov=src --cov-report=term-missing
+
+# ブラウザの確認(Playwright。別のコンテナ。--runbrowser のときだけ集める)
+docker compose --profile browser build browser   # 初回だけ(Chromium を入れる。数分)
+docker compose --profile browser run --rm browser pytest tests/browser --runbrowser
 ```
+
+ブラウザの確認は、いつもの `pytest` には入りません(`tests/browser/` を集めない)。本番に向けて流すときは `_commands.md` の「ブラウザの確認(本番)」。
 
 ほかのコマンドは [`docs/prompts/_commands.md`](../prompts/_commands.md)。
 
@@ -33,6 +39,7 @@ docker compose exec shinouta-time pytest --cov=src --cov-report=term-missing
 | `tests/integration/` | 統合テスト(画面の部品・v2 の読み込みのキャッシュ) |
 | `tests/e2e/` | ページの起動・検索・さらに表示(Streamlit の `AppTest`)。本物の `data/v2/` を読むので、件数は「1件以上」などで確かめる |
 | `tests/performance/` | 性能テスト。架空の2万件で、読み込みから集計までを約0.5秒で終えることを確かめる(`--runslow`) |
+| `tests/browser/` | ブラウザの確認(Playwright)。4ページが PC・スマホの幅で開く、検索とリンク、スマホ幅で横にはみ出さない、今週のスケジュールの枠。`--runbrowser` と browser のコンテナで流す。`--base-url` で本番にも向けられる |
 | `tests/fixtures/` | テスト用のデータ |
 
 ## 書き方の要点
