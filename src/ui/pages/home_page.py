@@ -28,6 +28,17 @@ logger = logging.getLogger(__name__)
 # 表の列(表示の見出し)
 TABLE_COLUMNS = ["配信日", "No.", "曲名", "アーティスト", "種類", "リンク"]
 
+# 読み込みに失敗したときの案内(Song List と同じ)
+LOAD_ERROR_HINT = "時間をおいて、ページを開き直してください。"
+
+# Markdown で書式として効く記号
+_MARKDOWN_SPECIALS = set("\\`*_{}[]()#+-.!|<>~")
+
+
+def escape_markdown(text: str) -> str:
+    """Markdown の記号の前にバックスラッシュを付け、入力した文字のまま表示されるようにする"""
+    return "".join(f"\\{ch}" if ch in _MARKDOWN_SPECIALS else ch for ch in text)
+
 
 def filter_view(view: pd.DataFrame, query: str, include_title: bool) -> pd.DataFrame:
     """
@@ -107,7 +118,7 @@ class HomePage:
             view = load_performance_view()
         except Exception as e:  # DataLoadError のほか、集計中の想定外の失敗も画面に出して止める
             logger.error(f"データの読み込み中にエラーが発生しました: {e}", exc_info=True)
-            self._handle_error(str(e))
+            self._handle_error()
         else:
             self._handle_search_and_display(view)
 
@@ -161,7 +172,7 @@ class HomePage:
         query = st.session_state.search_query
         filtered = filter_view(view, query, st.session_state.include_live_title)
         if normalize_for_match(query):
-            st.write(f"「{query}」で検索した結果: {len(filtered)}件")
+            st.write(f"「{escape_markdown(query)}」で検索した結果: {len(filtered)}件")
         else:
             st.write("検索キーワードが入力されていません。全件表示します。")
 
@@ -185,13 +196,12 @@ class HomePage:
             increment=self.config.display_increment,
         )
 
-    def _handle_error(self, error_msg: str):
+    def _handle_error(self):
         """
         エラー時の表示
 
-        Args:
-            error_msg: 表示するエラーメッセージ
+        公開の画面なので、例外のメッセージ(サーバー上のパスを含む)は出さず、短い案内だけにする。
+        詳しいことはログに出ている(run の logger.error)。
         """
         st.error("データの読み込みまたは処理中にエラーが発生しました。")
-        st.warning(error_msg)
-        st.info("データファイル（TSV）の形式や存在を確認してください。")
+        st.info(LOAD_ERROR_HINT)

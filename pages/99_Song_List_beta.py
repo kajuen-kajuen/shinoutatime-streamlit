@@ -22,6 +22,7 @@ import pandas as pd
 from src.ui.components import render_pagination
 from src.ui.components.footer import display_footer
 from src.ui.page_setup import setup_page
+from src.ui.pages.home_page import LOAD_ERROR_HINT
 from src.ui.v2_data import load_song_stats
 
 logger = logging.getLogger(__name__)
@@ -84,13 +85,18 @@ def build_table_html(stats: pd.DataFrame) -> str:
 try:
     stats = load_song_stats()
 except Exception as e:  # DataLoadError のほか、集計中の想定外の失敗も画面に出して止める
+    # 公開の画面なので、例外のメッセージ(サーバー上のパスを含む)は出さず、Home と同じ短い案内にする
     logger.error(f"楽曲リストの読み込みに失敗しました: {e}", exc_info=True)
     st.error("楽曲リストを読み込めませんでした。")
-    st.info(f"`{config.v2_data_dir}` のデータが正しく配置されているか確認してください。")
+    st.info(LOAD_ERROR_HINT)
     stats = None
 
 # --- メインコンテンツの表示 ---
-if stats is not None and not stats.empty:
+if stats is None:
+    pass  # 失敗の表示は上で出した
+elif stats.empty:
+    st.warning("楽曲データが読み込めませんでした。")
+else:
     if "song_list_limit" not in st.session_state:
         st.session_state.song_list_limit = config.initial_display_limit
 
@@ -106,9 +112,6 @@ if stats is not None and not stats.empty:
         state_key="song_list_limit",
         increment=config.display_increment,
     )
-
-else:
-    st.warning("楽曲データが読み込めませんでした。")
 
 # --- フッターを表示 ---
 display_footer()

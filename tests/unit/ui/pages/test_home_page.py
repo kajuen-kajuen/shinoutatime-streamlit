@@ -8,7 +8,9 @@ from unittest.mock import patch, MagicMock
 from src.config.settings import Config
 from src.core.views import build_performance_view
 from src.exceptions.errors import DataLoadError
-from src.ui.pages.home_page import HomePage, TABLE_COLUMNS, build_table, data_as_of, filter_view
+from src.ui.pages.home_page import (
+    HomePage, LOAD_ERROR_HINT, TABLE_COLUMNS, build_table, data_as_of, escape_markdown, filter_view,
+)
 from tests.unit.v2.conftest import content, make_dataset
 
 
@@ -70,6 +72,17 @@ class TestDataAsOf:
 
     def test_empty_view_is_blank(self, view):
         assert data_as_of(view.iloc[0:0]) == ""
+
+
+class TestEscapeMarkdown:
+    @pytest.mark.parametrize("text, expected", [
+        ("かいじゅう", "かいじゅう"),
+        ("**太字**", "\\*\\*太字\\*\\*"),
+        ("[x](https://example.com)", "\\[x\\]\\(https://example\\.com\\)"),
+        ("a_b \\ c", "a\\_b \\\\ c"),
+    ])
+    def test_escapes_markdown_specials(self, text, expected):
+        assert escape_markdown(text) == expected
 
 
 class TestBuildTable:
@@ -174,6 +187,27 @@ class TestHomePage:
         assert mock_st.session_state.display_limit == 25
         assert list(home_page._render_results.call_args.args[0]["title"]) == ["怪獣の歌"]
         mock_st.write.assert_called_once_with("「かいじゅう」で検索した結果: 1件")
+
+    @patch('src.ui.pages.home_page.render_search_form')
+    @patch('src.ui.pages.home_page.st')
+    def test_query_markdown_is_escaped(self, mock_st, mock_render_form, home_page, view):
+        """検索語の Markdown の記号は書式にせず、入力したまま出す(<Song> の < も)"""
+        mock_st.session_state = MockSessionState()
+        mock_render_form.return_value = ("<Song>", True, True)
+        home_page._render_results = MagicMock()
+
+        home_page._handle_search_and_display(view)
+
+        mock_st.write.assert_called_once_with("「\\<Song\\>」で検索した結果: 1件")
+
+    @patch('src.ui.pages.home_page.st')
+    def test_handle_error_does_not_show_exception(self, mock_st, home_page):
+        """読み込みの失敗は短い案内だけ(例外のメッセージやサーバー上のパスは出さない)"""
+        home_page._handle_error()
+
+        mock_st.error.assert_called_once_with("データの読み込みまたは処理中にエラーが発生しました。")
+        mock_st.info.assert_called_once_with(LOAD_ERROR_HINT)
+        mock_st.warning.assert_not_called()
 
     @patch('src.ui.pages.home_page.render_search_form')
     @patch('src.ui.pages.home_page.st')
