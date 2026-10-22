@@ -78,7 +78,6 @@ st.markdown(
     [公式サイト](https://www.774.ai/talent/shino-kasukane)をご覧ください。
     """
 )
-st.markdown("---")
 
-# --- フッター ---
+# --- フッター(区切り線はフッターが引く) ---
 display_footer()
