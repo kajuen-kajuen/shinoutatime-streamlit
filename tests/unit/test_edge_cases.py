@@ -16,10 +16,7 @@ from src.repositories.file_repository import FileRepository
 from src.utils.html_validator import validate_html_structure, validate_twitter_embed_code
 from src.utils.validators import validate_tweet_url, extract_tweet_id
 from src.services.twitter_embed_service import TwitterEmbedService
-from src.services.data_service import DataService
-from src.repositories.live_repository import LiveRepository
-from src.config.settings import Config, TwitterEmbedConfig
-from src.exceptions.errors import InvalidURLError, FileWriteError, DataLoadError
+from src.exceptions.errors import InvalidURLError, FileWriteError
 from tests.fixtures.mock_responses import create_mock_success_response, create_mock_oembed_response
 
 
@@ -138,22 +135,6 @@ class TestNoneValueEdgeCases:
             # Noneを書き込もうとするとFileWriteErrorが発生する
             with pytest.raises((TypeError, AttributeError, FileWriteError)):
                 repo.write_embed_code(None)
-    
-    def test_file_repository_read_height_with_none_default(self):
-        """ファイルリポジトリでNoneをデフォルト値として使用できること"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            embed_path = Path(tmpdir) / "test_embed.html"
-            height_path = Path(tmpdir) / "nonexistent_height.txt"
-            
-            repo = FileRepository(
-                embed_code_path=str(embed_path),
-                height_path=str(height_path),
-                backup_dir=str(Path(tmpdir) / "backups")
-            )
-            
-            # デフォルト値としてNoneを指定できる
-            result = repo.read_height(default=None)
-            assert result is None
 
 
 class TestMaxMinValueEdgeCases:
@@ -177,7 +158,7 @@ class TestMaxMinValueEdgeCases:
             result = repo.write_embed_code(large_content)
             assert result is True
             
-            read_content = repo.read_embed_code()
+            read_content = repo.embed_code_path.read_bytes().decode("utf-8")
             assert len(read_content) == len(large_content)
     
     def test_file_repository_with_zero_height(self):
@@ -195,7 +176,7 @@ class TestMaxMinValueEdgeCases:
             result = repo.write_height(0)
             assert result is True
             
-            read_height = repo.read_height()
+            read_height = int(repo.height_path.read_text(encoding="utf-8").strip())
             assert read_height == 0
     
     def test_file_repository_with_negative_height(self):
@@ -214,7 +195,7 @@ class TestMaxMinValueEdgeCases:
             result = repo.write_height(-100)
             assert result is True
             
-            read_height = repo.read_height()
+            read_height = int(repo.height_path.read_text(encoding="utf-8").strip())
             assert read_height == -100
     
     def test_file_repository_with_very_large_height(self):
@@ -235,7 +216,7 @@ class TestMaxMinValueEdgeCases:
             result = repo.write_height(large_height)
             assert result is True
             
-            read_height = repo.read_height()
+            read_height = int(repo.height_path.read_text(encoding="utf-8").strip())
             assert read_height == large_height
     
     def test_html_validator_with_very_long_html(self):
@@ -283,7 +264,7 @@ class TestSpecialCharacterEdgeCases:
             result = repo.write_embed_code(content_with_emoji)
             assert result is True
             
-            read_content = repo.read_embed_code()
+            read_content = repo.embed_code_path.read_bytes().decode("utf-8")
             assert read_content == content_with_emoji
     
     def test_file_repository_with_special_html_chars(self):
@@ -303,7 +284,7 @@ class TestSpecialCharacterEdgeCases:
             result = repo.write_embed_code(content_with_special)
             assert result is True
             
-            read_content = repo.read_embed_code()
+            read_content = repo.embed_code_path.read_bytes().decode("utf-8")
             assert read_content == content_with_special
     
     def test_html_validator_with_html_entities(self):
@@ -326,64 +307,6 @@ class TestSpecialCharacterEdgeCases:
         url_with_slash = "https://twitter.com/user/status/1234567890/"
         tweet_id = extract_tweet_id(url_with_slash)
         assert tweet_id == "1234567890"
-
-
-class TestBoundaryConditions:
-    """境界条件のテスト"""
-    
-    def test_config_with_zero_timeout(self):
-        """設定で0秒のタイムアウトを処理できること"""
-        from src.exceptions.errors import ConfigurationError
-        
-        # 0秒のタイムアウトは無効な値として扱われる
-        config = TwitterEmbedConfig(api_timeout=0)
-        
-        with pytest.raises(ConfigurationError) as exc_info:
-            config.validate()
-        
-        assert "api_timeout" in str(exc_info.value)
-    
-    def test_config_with_negative_timeout(self):
-        """設定で負のタイムアウトを処理できること"""
-        from src.exceptions.errors import ConfigurationError
-        
-        # 負の値は無効として扱われる
-        config = TwitterEmbedConfig(api_timeout=-10)
-        
-        with pytest.raises(ConfigurationError) as exc_info:
-            config.validate()
-        
-        assert "api_timeout" in str(exc_info.value)
-    
-    def test_data_service_with_empty_dataframe(self):
-        """データサービスで空のDataFrameを処理できること"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # 空のTSVファイルを作成
-            empty_tsv = Path(tmpdir) / "empty.tsv"
-            empty_tsv.write_text("", encoding='utf-8')
-            
-            # 本物のリポジトリで空のファイルを読ませる
-            config = Config(lives_file_path=str(empty_tsv))
-            service = DataService(config, LiveRepository(str(empty_tsv)), Mock(), Mock())
-
-            # 空のファイルは読み込みの失敗として DataLoadError になる
-            with pytest.raises(DataLoadError):
-                service.load_lives_data()
-    
-    def test_data_service_with_single_row(self):
-        """データサービスで1行のみのデータを処理できること"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # 1行のみのTSVファイルを作成（ヘッダーのみ）
-            single_row_tsv = Path(tmpdir) / "single.tsv"
-            single_row_tsv.write_text("ID\tタイトル\n", encoding='utf-8')
-            
-            # 本物のリポジトリでヘッダーだけのファイルを読ませる
-            config = Config(lives_file_path=str(single_row_tsv))
-            service = DataService(config, LiveRepository(str(single_row_tsv)), Mock(), Mock())
-
-            # ヘッダーだけ(データの行が無い)のファイルも DataLoadError になる
-            with pytest.raises(DataLoadError):
-                service.load_lives_data()
 
 
 class TestPathEdgeCases:
@@ -412,7 +335,7 @@ class TestPathEdgeCases:
                 result = repo.write_embed_code(content)
                 assert result is True
                 
-                read_content = repo.read_embed_code()
+                read_content = repo.embed_code_path.read_bytes().decode("utf-8")
                 assert read_content == content
             finally:
                 os.chdir(original_cwd)

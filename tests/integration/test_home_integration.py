@@ -12,20 +12,11 @@ import os
 # srcモジュールをインポートできるようにする
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from src.services.search_service import SearchService
-from src.config.settings import Config
 from src.ui.components import render_search_form, render_results_table, render_pagination
 
 
 class TestHomeIntegration:
     """Home.pyの統合テスト"""
-
-    @pytest.fixture
-    def config(self):
-        """設定オブジェクトのフィクスチャ"""
-        config = Config()
-        config.enable_cache = True
-        return config
 
     @pytest.fixture
     def sample_data(self):
@@ -38,25 +29,6 @@ class TestHomeIntegration:
             '曲目': [1, 2],
             'YouTubeタイムスタンプ付きURL': ['https://example.com/1', 'https://example.com/2']
         })
-
-    def test_search_service_integration(self, sample_data):
-        """SearchServiceの統合テスト"""
-        search_service = SearchService()
-
-        # 曲名検索
-        results = search_service.search(sample_data, '曲A', ['曲名'], case_sensitive=False)
-        assert len(results) == 1
-        assert results.iloc[0]['曲名'] == '曲A'
-
-        # アーティスト検索
-        results = search_service.search(sample_data, 'アーティストB', ['アーティスト'], case_sensitive=False)
-        assert len(results) == 1
-        assert results.iloc[0]['アーティスト'] == 'アーティストB'
-
-        # ライブタイトル検索
-        results = search_service.search(sample_data, 'ライブ1', ['ライブタイトル'], case_sensitive=False)
-        assert len(results) == 1
-        assert results.iloc[0]['ライブタイトル'] == 'ライブ1'
 
     @patch('streamlit.form')
     @patch('streamlit.text_input')

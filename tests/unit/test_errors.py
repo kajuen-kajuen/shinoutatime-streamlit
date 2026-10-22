@@ -5,12 +5,10 @@ src/exceptions/errors.pyのカスタム例外クラスが正しく動作する�
 """
 
 import pytest
-import logging
 
 from src.exceptions.errors import (
     ShinoutaTimeError,
     DataLoadError,
-    DataProcessingError,
     ConfigurationError,
     TwitterEmbedError,
     InvalidURLError,
@@ -18,7 +16,6 @@ from src.exceptions.errors import (
     APITimeoutError,
     RateLimitError,
     FileWriteError,
-    log_error,
 )
 
 
@@ -45,18 +42,6 @@ class TestCustomExceptions:
         assert file_path in str(error)
         assert message in str(error)
     
-    def test_data_processing_error(self):
-        """データ処理エラーが正しく動作することを確認"""
-        step = "merge"
-        message = "データの結合に失敗しました"
-        
-        error = DataProcessingError(step, message)
-        
-        assert isinstance(error, ShinoutaTimeError)
-        assert error.step == step
-        assert error.message == message
-        assert step in str(error)
-        assert message in str(error)
     
     def test_configuration_error(self):
         """設定エラーが正しく動作することを確認"""
@@ -74,7 +59,6 @@ class TestCustomExceptions:
     def test_exception_inheritance(self):
         """全てのカスタム例外がShinoutaTimeErrorを継承していることを確認"""
         assert issubclass(DataLoadError, ShinoutaTimeError)
-        assert issubclass(DataProcessingError, ShinoutaTimeError)
         assert issubclass(ConfigurationError, ShinoutaTimeError)
         assert issubclass(TwitterEmbedError, ShinoutaTimeError)
         assert issubclass(InvalidURLError, TwitterEmbedError)
@@ -99,54 +83,6 @@ class TestCustomExceptions:
             assert isinstance(e, DataLoadError)
         except Exception:
             pytest.fail("ShinoutaTimeErrorでキャッチできませんでした")
-
-
-class TestLogError:
-    """log_error関数のテスト"""
-    
-    def test_log_error_basic(self, caplog):
-        """基本的なエラーログが記録されることを確認"""
-        with caplog.at_level(logging.ERROR):
-            error = ValueError("テストエラー")
-            log_error(error)
-        
-        assert len(caplog.records) == 1
-        assert "ValueError" in caplog.text
-        assert "テストエラー" in caplog.text
-    
-    def test_log_error_with_context(self, caplog):
-        """コンテキスト情報付きでエラーログが記録されることを確認"""
-        with caplog.at_level(logging.ERROR):
-            error = DataLoadError("test.tsv", "ファイルが見つかりません")
-            context = {"user_id": "test_user", "operation": "load_data"}
-            log_error(error, context)
-        
-        assert len(caplog.records) == 1
-        record = caplog.records[0]
-        assert "DataLoadError" in caplog.text
-        assert record.user_id == "test_user"
-        assert record.operation == "load_data"
-    
-    def test_log_error_custom_exception(self, caplog):
-        """カスタム例外のログが正しく記録されることを確認"""
-        with caplog.at_level(logging.ERROR):
-            error = DataProcessingError("transform", "変換に失敗しました")
-            log_error(error)
-        
-        assert len(caplog.records) == 1
-        assert "DataProcessingError" in caplog.text
-        assert "transform" in caplog.text
-        assert "変換に失敗しました" in caplog.text
-    
-    def test_log_error_without_context(self, caplog):
-        """コンテキストなしでもエラーログが記録されることを確認"""
-        with caplog.at_level(logging.ERROR):
-            error = Exception("一般的なエラー")
-            log_error(error, None)
-        
-        assert len(caplog.records) == 1
-        assert "Exception" in caplog.text
-        assert "一般的なエラー" in caplog.text
 
 
 class TestTwitterEmbedExceptions:
@@ -294,32 +230,6 @@ class TestErrorScenarios:
         assert "data.csv" in str(exc_info.value)
         assert "TSVファイルではありません" in str(exc_info.value)
     
-    def test_data_processing_error_scenario(self):
-        """データ処理エラーのシナリオをテスト"""
-        def process_data(data):
-            """データ処理をシミュレート"""
-            if data is None:
-                raise DataProcessingError("validate", "データがNullです")
-            if len(data) == 0:
-                raise DataProcessingError("validate", "データが空です")
-            return data
-        
-        # 正常系
-        assert process_data([1, 2, 3]) == [1, 2, 3]
-        
-        # 異常系: Nullデータ
-        with pytest.raises(DataProcessingError) as exc_info:
-            process_data(None)
-        
-        assert "validate" in str(exc_info.value)
-        assert "Null" in str(exc_info.value)
-        
-        # 異常系: 空データ
-        with pytest.raises(DataProcessingError) as exc_info:
-            process_data([])
-        
-        assert "validate" in str(exc_info.value)
-        assert "空です" in str(exc_info.value)
     
     def test_configuration_error_scenario(self):
         """設定エラーのシナリオをテスト"""

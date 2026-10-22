@@ -5,9 +5,6 @@
 """
 
 import pytest
-import tempfile
-import os
-from pathlib import Path
 
 from tests.fixtures import (
     VALID_TWITTER_EMBED_HTML,
@@ -15,10 +12,6 @@ from tests.fixtures import (
     INVALID_HTML_MISSING_BLOCKQUOTE,
     INVALID_HTML_MISSING_CLASS,
     INVALID_HTML_EMPTY,
-    SAMPLE_LIVES_DATA,
-    SAMPLE_SONGS_DATA,
-    SAMPLE_SONG_LIST_DATA,
-    create_sample_tsv_file,
     create_mock_oembed_response,
     create_mock_rate_limit_headers,
     create_mock_error_response,
@@ -56,60 +49,6 @@ class TestHTMLFixtures:
         assert INVALID_HTML_EMPTY == ""
 
 
-class TestDataFixtures:
-    """データフィクスチャのテスト"""
-    
-    def test_sample_lives_data_structure(self):
-        """配信データの構造が正しいことを確認"""
-        assert "ID" in SAMPLE_LIVES_DATA
-        assert "配信日" in SAMPLE_LIVES_DATA
-        assert "タイトル" in SAMPLE_LIVES_DATA
-        assert "URL" in SAMPLE_LIVES_DATA
-        
-        # すべてのキーが同じ長さであることを確認
-        lengths = [len(v) for v in SAMPLE_LIVES_DATA.values()]
-        assert len(set(lengths)) == 1
-    
-    def test_sample_songs_data_structure(self):
-        """楽曲データの構造が正しいことを確認"""
-        assert "ID" in SAMPLE_SONGS_DATA
-        assert "LIVE_ID" in SAMPLE_SONGS_DATA
-        assert "曲名" in SAMPLE_SONGS_DATA
-        assert "タイムスタンプ" in SAMPLE_SONGS_DATA
-        
-        # すべてのキーが同じ長さであることを確認
-        lengths = [len(v) for v in SAMPLE_SONGS_DATA.values()]
-        assert len(set(lengths)) == 1
-    
-    def test_sample_song_list_data_structure(self):
-        """楽曲リストデータの構造が正しいことを確認"""
-        assert "ID" in SAMPLE_SONG_LIST_DATA
-        assert "曲名" in SAMPLE_SONG_LIST_DATA
-        assert "アーティスト" in SAMPLE_SONG_LIST_DATA
-        assert "ジャンル" in SAMPLE_SONG_LIST_DATA
-        
-        # すべてのキーが同じ長さであることを確認
-        lengths = [len(v) for v in SAMPLE_SONG_LIST_DATA.values()]
-        assert len(set(lengths)) == 1
-    
-    def test_create_sample_tsv_file(self):
-        """TSVファイル作成関数が正しく動作することを確認"""
-        # 一時ファイルを作成
-        file_path = create_sample_tsv_file(SAMPLE_LIVES_DATA)
-        
-        try:
-            # ファイルが存在することを確認
-            assert os.path.exists(file_path)
-            
-            # ファイルの内容を確認
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-                assert "ID\t配信日\tタイトル\tURL" in content
-                assert "新年最初の配信" in content
-        finally:
-            # クリーンアップ
-            if os.path.exists(file_path):
-                os.remove(file_path)
 
 
 class TestMockResponseHelpers:
@@ -189,22 +128,3 @@ class TestFixturesIntegration:
         assert response["html"] == VALID_TWITTER_EMBED_HTML
         assert "blockquote" in response["html"]
         assert "twitter-tweet" in response["html"]
-    
-    def test_data_and_tsv_file_integration(self):
-        """データフィクスチャとTSVファイル作成の統合"""
-        import pandas as pd
-        
-        # TSVファイルを作成
-        file_path = create_sample_tsv_file(SAMPLE_LIVES_DATA)
-        
-        try:
-            # ファイルを読み込んでデータを確認
-            df = pd.read_csv(file_path, sep='\t', encoding='utf-8')
-            
-            assert len(df) == len(SAMPLE_LIVES_DATA["ID"])
-            assert list(df.columns) == list(SAMPLE_LIVES_DATA.keys())
-            assert df["タイトル"].tolist() == SAMPLE_LIVES_DATA["タイトル"]
-        finally:
-            # クリーンアップ
-            if os.path.exists(file_path):
-                os.remove(file_path)

@@ -7,15 +7,11 @@
 from src.exceptions.errors import (
     ShinoutaTimeError,
     DataLoadError,
-    DataProcessingError,
     ConfigurationError,
-    log_error
 )
 
 __all__ = [
     "ShinoutaTimeError",
     "DataLoadError",
-    "DataProcessingError",
     "ConfigurationError",
-    "log_error"
 ]

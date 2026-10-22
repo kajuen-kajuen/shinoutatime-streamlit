@@ -41,7 +41,7 @@ class TestFileRepositoryProperties:
             assert write_result is True
             
             # 読み込み
-            read_content = repo.read_embed_code()
+            read_content = repo.embed_code_path.read_bytes().decode("utf-8")
             
             # ラウンドトリップの検証(改行も含めて元の内容と一致する)
             assert read_content == content

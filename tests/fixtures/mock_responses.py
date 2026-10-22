@@ -309,7 +309,6 @@ def create_mock_file_repository(
     
     if should_succeed:
         # 成功時のモック
-        mock_repo.read_embed_code.return_value = content or "<blockquote class='twitter-tweet'></blockquote>"
         mock_repo.write_embed_code.return_value = None
         mock_repo.create_backup.return_value = None
     else:
@@ -323,7 +322,6 @@ def create_mock_file_repository(
         }
         
         error = error_map.get(error_type, FileNotFoundError())
-        mock_repo.read_embed_code.side_effect = error
         mock_repo.write_embed_code.side_effect = error
     
     return mock_repo

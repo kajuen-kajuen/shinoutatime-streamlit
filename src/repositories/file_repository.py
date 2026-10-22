@@ -1,7 +1,7 @@
 """
 ファイルリポジトリモジュール
 
-埋め込みコードファイルの読み書きとバックアップを管理する
+埋め込みコードファイルの書き込みとバックアップを管理する
 """
 
 import os
@@ -10,7 +10,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 import logging
-import chardet # chardetをインポート
 
 from src.exceptions.errors import FileWriteError
 
@@ -19,7 +18,7 @@ class FileRepository:
     """
     ファイルリポジトリ
     
-    埋め込みコードファイルの読み書きとバックアップを管理
+    埋め込みコードファイルの書き込みとバックアップを管理
     """
     
     def __init__(
@@ -44,66 +43,6 @@ class FileRepository:
         # バックアップディレクトリが存在しない場合は作成
         self.backup_dir.mkdir(parents=True, exist_ok=True)
     
-    def read_embed_code(self) -> Optional[str]:
-        """
-        埋め込みコードを読み込む
-        
-        Returns:
-            埋め込みコード（ファイルが存在しない場合はNone）
-        """
-        try:
-            if not self.embed_code_path.exists():
-                self.logger.warning(
-                    f"埋め込みコードファイルが存在しません: {self.embed_code_path}"
-                )
-                return None
-            
-            # ファイルをバイナリモードで読み込み
-            with open(self.embed_code_path, 'rb') as f_raw:
-                raw_data = f_raw.read()
-            
-            # まずUTF-8での読み込みを試みる
-            try:
-                content = raw_data.decode('utf-8')
-                self.logger.debug(
-                    f"埋め込みコードを読み込みました: {self.embed_code_path} (エンコーディング: utf-8)"
-                )
-                return content
-            except UnicodeDecodeError:
-                self.logger.warning(
-                    f"UTF-8での読み込みに失敗しました。エンコーディングの自動検出を試みます: {self.embed_code_path}"
-                )
-
-            # UTF-8で失敗した場合、エンコーディングを検出
-            detected_encoding = chardet.detect(raw_data)['encoding']
-            
-            if detected_encoding:
-                # 検出されたエンコーディングでファイルを読み込む
-                try:
-                    content = raw_data.decode(detected_encoding)
-                    self.logger.info(
-                        f"自動検出されたエンコーディングで読み込みました: {self.embed_code_path} (エンコーディング: {detected_encoding})"
-                    )
-                    return content
-                except UnicodeDecodeError:
-                    self.logger.warning(
-                        f"検出されたエンコーディング ({detected_encoding}) での読み込みに失敗しました"
-                    )
-            
-            # 最終手段: UTF-8でエラーを置換して読み込む
-            self.logger.warning(
-                f"エンコーディングの解決に失敗しました。UTF-8 (errors='replace') で読み込みます: {self.embed_code_path}"
-            )
-            content = raw_data.decode('utf-8', errors='replace')
-            return content
-            
-        except Exception as e:
-            self.logger.error(
-                f"埋め込みコードの読み込みに失敗しました: {e}",
-                exc_info=True
-            )
-            return None
-    
     def write_embed_code(
         self,
         content: str
@@ -124,7 +63,7 @@ class FileRepository:
             # 親ディレクトリが存在しない場合は作成
             self.embed_code_path.parent.mkdir(parents=True, exist_ok=True)
             
-            # ファイルに書き込み(改行を変えずに書く。読み込みもバイナリで読むので、内容がそのまま戻る)
+            # ファイルに書き込み(改行を変えずに書く)
             with open(self.embed_code_path, 'w', encoding='utf-8', newline='') as f:
                 f.write(content)
             
@@ -250,46 +189,3 @@ class FileRepository:
                 message=error_msg,
                 original_error=e
             ) from e
-    
-    def read_height(
-        self,
-        default: int = 850
-    ) -> int:
-        """
-        表示高さを読み込む
-        
-        Args:
-            default: デフォルト値
-            
-        Returns:
-            高さ（ピクセル）
-        """
-        try:
-            if not self.height_path.exists():
-                self.logger.info(
-                    f"高さファイルが存在しないため、デフォルト値を使用します: {default}px"
-                )
-                return default
-            
-            with open(self.height_path, 'r', encoding='utf-8') as f:
-                content = f.read().strip()
-            
-            # 整数に変換
-            height = int(content)
-            
-            self.logger.debug(
-                f"表示高さを読み込みました: {height}px"
-            )
-            return height
-            
-        except ValueError as e:
-            self.logger.warning(
-                f"高さファイルの内容が不正です。デフォルト値を使用します: {e}"
-            )
-            return default
-            
-        except Exception as e:
-            self.logger.warning(
-                f"高さファイルの読み込みに失敗しました。デフォルト値を使用します: {e}"
-            )
-            return default

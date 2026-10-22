@@ -4,8 +4,7 @@
 アプリケーション固有の例外クラスを定義します。
 """
 
-import logging
-from typing import Any, Dict, Optional
+from typing import Optional
 
 
 class ShinoutaTimeError(Exception):
@@ -31,23 +30,6 @@ class DataLoadError(ShinoutaTimeError):
         self.file_path = file_path
         self.message = message
         super().__init__(f"データ読み込みエラー ({file_path}): {message}")
-
-
-class DataProcessingError(ShinoutaTimeError):
-    """データ処理エラー
-    
-    データの変換や処理時に発生するエラーです。
-    """
-    
-    def __init__(self, step: str, message: str):
-        """
-        Args:
-            step: エラーが発生した処理ステップ
-            message: エラーメッセージ
-        """
-        self.step = step
-        self.message = message
-        super().__init__(f"データ処理エラー ({step}): {message}")
 
 
 class DataSaveError(ShinoutaTimeError):
@@ -182,29 +164,3 @@ class FileWriteError(TwitterEmbedError):
         self.original_error = original_error
         error_detail = f" ({str(original_error)})" if original_error else ""
         super().__init__(f"{message}: {file_path}{error_detail}")
-
-
-def log_error(error: Exception, context: Optional[Dict[str, Any]] = None) -> None:
-    """エラーをログに記録する
-    
-    例外オブジェクトと追加のコンテキスト情報をログに記録します。
-    
-    Args:
-        error: 例外オブジェクト
-        context: 追加のコンテキスト情報（オプション）
-    """
-    logger = logging.getLogger(__name__)
-    
-    error_info = {
-        "error_type": type(error).__name__,
-        "error_message": str(error)
-    }
-    
-    if context:
-        error_info.update(context)
-    
-    logger.error(
-        f"エラーが発生しました: {error_info['error_type']} - {error_info['error_message']}",
-        extra=error_info,
-        exc_info=True
-    )

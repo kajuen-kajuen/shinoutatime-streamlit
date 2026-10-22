@@ -198,7 +198,7 @@ class TestTwitterEmbedServiceProperties:
             
             # 読み込み
             if save_result:
-                read_content = file_repo.read_embed_code()
+                read_content = file_repo.embed_code_path.read_bytes().decode("utf-8")
                 
                 # Assert
                 # ラウンドトリップの一貫性

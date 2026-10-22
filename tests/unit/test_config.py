@@ -18,9 +18,7 @@ class TestConfig:
         """デフォルト値が正しく設定されることを確認"""
         config = Config()
         
-        assert config.lives_file_path == "data/M_YT_LIVE.TSV"
-        assert config.songs_file_path == "data/M_YT_LIVE_TIMESTAMP.TSV"
-        assert config.song_list_file_path == "data/V_SONG_LIST.TSV"
+        assert config.v2_data_dir == "data/v2"
         assert config.initial_display_limit == 25
         assert config.display_increment == 25
         assert config.page_title == "しのうたタイム"
@@ -32,7 +30,7 @@ class TestConfig:
     def test_from_env_with_environment_variables(self):
         """環境変数から設定を読み込めることを確認"""
         # 環境変数を設定
-        os.environ["SHINOUTA_LIVES_FILE_PATH"] = "custom/lives.tsv"
+        os.environ["SHINOUTA_V2_DATA_DIR"] = "custom/v2"
         os.environ["SHINOUTA_INITIAL_DISPLAY_LIMIT"] = "50"
         os.environ["SHINOUTA_ENABLE_CACHE"] = "false"
         os.environ["SHINOUTA_PAGE_TITLE"] = "カスタムタイトル"
@@ -40,13 +38,13 @@ class TestConfig:
         try:
             config = Config.from_env()
             
-            assert config.lives_file_path == "custom/lives.tsv"
+            assert config.v2_data_dir == "custom/v2"
             assert config.initial_display_limit == 50
             assert config.enable_cache is False
             assert config.page_title == "カスタムタイトル"
         finally:
             # 環境変数をクリア
-            del os.environ["SHINOUTA_LIVES_FILE_PATH"]
+            del os.environ["SHINOUTA_V2_DATA_DIR"]
             del os.environ["SHINOUTA_INITIAL_DISPLAY_LIMIT"]
             del os.environ["SHINOUTA_ENABLE_CACHE"]
             del os.environ["SHINOUTA_PAGE_TITLE"]
@@ -80,24 +78,6 @@ class TestConfig:
         """有効な設定値の検証が成功することを確認"""
         config = Config()
         assert config.validate() is True
-    
-    def test_validate_empty_lives_file_path(self):
-        """配信データファイルパスが空の場合に例外が発生することを確認"""
-        config = Config(lives_file_path="")
-        
-        with pytest.raises(ConfigurationError) as exc_info:
-            config.validate()
-        
-        assert "lives_file_path" in str(exc_info.value)
-    
-    def test_validate_empty_songs_file_path(self):
-        """楽曲データファイルパスが空の場合に例外が発生することを確認"""
-        config = Config(songs_file_path="")
-        
-        with pytest.raises(ConfigurationError) as exc_info:
-            config.validate()
-        
-        assert "songs_file_path" in str(exc_info.value)
     
     def test_validate_invalid_initial_display_limit(self):
         """初期表示件数が0以下の場合に例外が発生することを確認"""

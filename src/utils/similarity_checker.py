@@ -2,7 +2,6 @@
 文字列の類似度を計算するモジュール
 """
 import logging
-from typing import List, Tuple
 
 try:
     import Levenshtein
@@ -71,51 +70,3 @@ class SimilarityChecker:
         
         similarity = 1.0 - (distance / max_len)
         return similarity
-    
-    def find_similar_pairs(
-        self, 
-        strings: List[str], 
-        threshold: float = 0.85
-    ) -> List[Tuple[str, str, float]]:
-        """
-        文字列リストから類似度が閾値以上のペアを検出
-        
-        Args:
-            strings: 比較する文字列のリスト
-            threshold: 類似度の閾値（0.0-1.0、デフォルト: 0.85）
-            
-        Returns:
-            類似ペアのリスト。各要素は(str1, str2, similarity)のタプル
-            
-        Examples:
-            >>> checker = SimilarityChecker()
-            >>> checker.find_similar_pairs(["hello", "hallo", "world"], 0.8)
-            [('hello', 'hallo', 0.8)]
-        """
-        if Levenshtein is None:
-            logger.warning("python-Levenshteinが利用できないため、空のリストを返します")
-            return []
-        
-        similar_pairs = []
-        
-        # すべてのペアを比較
-        for i in range(len(strings)):
-            for j in range(i + 1, len(strings)):
-                str1 = strings[i]
-                str2 = strings[j]
-                
-                # 同じ文字列はスキップ
-                if str1 == str2:
-                    continue
-                
-                # 類似度を計算
-                similarity = self.calculate_similarity(str1, str2)
-                
-                # 閾値以上の場合はリストに追加
-                if similarity >= threshold:
-                    similar_pairs.append((str1, str2, similarity))
-        
-        # 類似度の降順でソート
-        similar_pairs.sort(key=lambda x: x[2], reverse=True)
-        
-        return similar_pairs
