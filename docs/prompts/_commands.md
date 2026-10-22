@@ -33,7 +33,7 @@
 | 曲なしの記録を外す | `docker compose exec shinouta-time python -m src.cli.ingest unskip <content_id>` | 曲なしにしていたものを登録し直すとき(取り込み直しなど)。外してから `apply` する |
 | 取り込みの状況 | `docker compose exec shinouta-time python -m src.cli.ingest status --month 2025-04` | 登録済み / 曲なし / 下書きあり / 未処理 |
 | 取り込み(下書き → 追記) | `docker compose exec shinouta-time python -m src.cli.ingest prepare <content_id>` → 判断 → `… ingest apply <content_id> --dry-run` → `… ingest apply <content_id>` | 手順と判断の決まりは `docs/prompts/update-data.md` |
-| 今週のスケジュールの埋め込みを更新 | `docker compose exec shinouta-time python -m src.cli.twitter_embed_cli <投稿の URL>` | X の公開の oEmbed(キー不要)で取り、`data/tweet_embed_code.html`・`data/tweet_height.txt` を上書きする(前のものは Git 管理外の `data/backups/` に控える)。Information に出る。手順は `update-data.md` の「週間スケジュール」 |
+| 今週のスケジュールの埋め込みを更新 | `docker compose exec shinouta-time python -m src.cli.twitter_embed_cli <投稿の URL>` | X の公開の oEmbed(キー不要)で取り、`data/tweet_embed_code.html` を上書きする(前のものは Git 管理外の `data/backups/` に控える。X は高さを返さないので `data/tweet_height.txt` は変わらず、高さは画面が自動で合わせる)。Information に出る。手順は `update-data.md` の「週間スケジュール」 |
 | コンテナの停止 | `docker compose down` | |
 | 差分の確認 | `git status --short` / `git diff --stat` | コミットはユーザーの指示があったときだけ |
 
