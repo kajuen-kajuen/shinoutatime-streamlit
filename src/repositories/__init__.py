@@ -1,21 +1,7 @@
 """
 リポジトリパッケージ
 
-ファイルシステムやデータベースへのアクセスを担当するリポジトリを提供します。
+ファイルへのアクセスを担当するリポジトリ。v2 は table_repository、ほかは v1(フェーズ3で消す)。
+使うものは `from src.repositories.table_repository import TableRepository` のように個別に import する
+(ここでまとめて import すると、画面が v1 とその依存(openpyxl・chardet)まで読み込むため)。
 """
-
-from src.repositories.file_repository import FileRepository
-from src.repositories.live_repository import LiveRepository
-from src.repositories.timestamp_repository import TimestampRepository
-from src.repositories.song_list_repository import SongListRepository
-from src.repositories.excel_repository import ExcelRepository
-from src.repositories.tsv_repository import TsvRepository
-
-__all__ = [
-    'FileRepository',
-    'LiveRepository',
-    'TimestampRepository',
-    'SongListRepository',
-    'ExcelRepository',
-    'TsvRepository'
-]

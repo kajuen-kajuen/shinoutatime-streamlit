@@ -168,7 +168,7 @@ class TestTwitterEmbedConfigEnvironmentVariables:
             assert config.retry_delay == 1.0
             assert config.api_timeout == 30
             assert config.default_height == 850
-            assert config.enable_admin_page is True
+            assert config.enable_admin_page is False  # 既定は管理ページを出さない
     
     def test_from_env_with_custom_values(self):
         """環境変数からカスタム値を読み込み"""
@@ -182,7 +182,7 @@ class TestTwitterEmbedConfigEnvironmentVariables:
             "TWITTER_API_RETRY_DELAY": "2.5",
             "TWITTER_API_TIMEOUT": "60",
             "TWITTER_DEFAULT_HEIGHT": "1000",
-            "TWITTER_ENABLE_ADMIN_PAGE": "false"
+            "TWITTER_ENABLE_ADMIN_PAGE": "true"
         }
         
         with patch.dict(os.environ, env_vars, clear=True):
@@ -198,7 +198,7 @@ class TestTwitterEmbedConfigEnvironmentVariables:
             assert config.retry_delay == 2.5
             assert config.api_timeout == 60
             assert config.default_height == 1000
-            assert config.enable_admin_page is False
+            assert config.enable_admin_page is True
     
     def test_from_env_type_conversion(self):
         """型変換のテスト"""

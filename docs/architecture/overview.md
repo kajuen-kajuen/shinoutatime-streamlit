@@ -98,6 +98,6 @@ src/cli/                  CLI(v2: ingest・data / v1: excel_to_tsv_cli・song_li
 
 ## 9. 既知の課題(2026-10-21 時点)
 
-- v1 のコード・データ・テスト・CLI が残っている(画面からは使わない)。`src/repositories/__init__.py` が `ExcelRepository`(openpyxl)を、`src/services/__init__.py` が `TwitterEmbedService`(requests)をまとめて import するので、openpyxl・requests を本番の requirements から外せない。フェーズ3で片付ける。
+- v1 のコード・データ・テスト・CLI が残っている(画面からは使わない)。フェーズ3で片付ける。2026-10-22 に `src/repositories`・`src/services`・`src/core` の `__init__.py` のまとめての import をやめ、画面が v1 を読み込まないようにした。openpyxl・chardet は `requirements-tools.txt` に移した(requests は Streamlit が要るので本番に残る)。
 - X の埋め込みの管理画面(`src/ui/twitter_embed_admin.py`)は、ページを消してあり、どこからも使っていない。フェーズ3で片付けるか決める。取得の部品(`src/cli/twitter_embed_cli.py`・`src/services/twitter_embed_service.py`・`src/clients/twitter_api_client.py`)と `data/tweet_*` は、Information の今週のスケジュールで使う(2026-10-22 から。毎週の更新は `docs/prompts/update-data.md`)。
 - `style.css` の `.block-container` は Streamlit の内部のクラス名に頼っている(data-testid の指定に置き換えるかは未定)。

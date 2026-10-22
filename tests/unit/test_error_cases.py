@@ -138,25 +138,6 @@ class TestErrorCases:
         # Noneの場合は空文字列が返される
         assert result == ""
 
-    def test_validators_edge_cases(self):
-        """バリデーターのエッジケーステスト"""
-        from os.path import exists as file_exists_check
-
-        # 存在しないファイル
-        assert not file_exists_check("nonexistent_file.txt")
-
-        # 存在するファイル
-        with tempfile.NamedTemporaryFile(delete=False) as f:
-            temp_file = f.name
-
-        try:
-            assert file_exists_check(temp_file)
-        finally:
-            os.unlink(temp_file)
-
-        # URL形式バリデーション（importできないのでスキップ）
-        pytest.skip("validate_url_format function not available")
-
     def test_settings_config_file_not_found(self):
         """Configのファイル未検出テスト"""
         from src.config.settings import Config
@@ -181,11 +162,6 @@ class TestErrorCases:
         results = search_service.search(df, "", ['曲名'], case_sensitive=False)
         # 空クエリの場合は全件返されるか、または空の結果が返される
         # SearchServiceの実装による
-
-    def test_html_validator_invalid_html(self):
-        """HTMLValidatorの無効HTMLテスト"""
-        # HTMLバリデーターが実装されていない場合、テストをスキップ
-        pytest.skip("HTMLValidator is not implemented")
 
     def test_retry_decorator_failure(self):
         """リトライデコレーターの失敗テスト"""
