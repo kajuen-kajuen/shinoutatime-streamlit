@@ -1,7 +1,7 @@
 # Agent Behavior Guidelines
 
 ## Read first
-- Read `CLAUDE.md` (repository root) before working. It lists the absolute rules (never commit/merge/push to `main`/`develop`, never commit secrets or personal data — this repository is public), the project structure, and the documents to read next (`docs/prompts/_common-context.md`, `docs/prompts/_commands.md`).
+- Read `CLAUDE.md` (repository root) before working. It lists the absolute rules (never commit/merge/push to `main`, never push to `develop`, switch to `develop` or run `git merge` only with the user's confirmation, never commit secrets or personal data — this repository is public), the project structure, and the documents to read next (`docs/prompts/_common-context.md`, `docs/prompts/_commands.md`).
 
 ## Language
 - **Japanese (日本語)**: This is the primary language for this project.

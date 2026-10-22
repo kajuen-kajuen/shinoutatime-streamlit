@@ -14,6 +14,6 @@ argument-hint: <対象と動機>
 
 進め方: refactor.md の「手順」を上から順に。「止まって聞く所」ではユーザーの返事を待つ(Plan Mode の計画は承認を待つ)。
 終わりの型: `sh tools/check-rules.sh` → `_commands.md` のテスト → 差分の要約 → 【要確認】【仮定】の一覧。
-git commit はユーザーが指示したときだけ。push はしない。main・develop には触れない。
+git commit はユーザーが指示したときだけ。push はしない。main には触れない。develop への切り替えと git merge はユーザーの確認を取ってから。
 
 引数: $ARGUMENTS

@@ -10,7 +10,7 @@
 
 ## やってはいけないこと
 
-- `main`・`develop` にコミット・マージ・push しない(push されると Streamlit Cloud の本番・stg に自動で反映される)。作業は `feature/xxx` などの作業ブランチで行う
+- `main` にコミット・マージ・push しない。`develop` には push しない(push は持ち主が行う。push されると Streamlit Cloud の本番・stg に自動で反映される)。作業は `feature/xxx` などの作業ブランチで行う。develop への切り替えと `git merge`(作業ブランチへの `origin/develop` の取り込み、読むだけの merge-tree・merge-base)は、毎回ユーザーの確認を取ってから
 - 公開リポジトリなので、秘密の値・ローカルの絶対パス・メールアドレスなどの個人情報をコミットしない(`.env`・`.streamlit/secrets.toml`・`.claude/settings.local.json` は Git に入れない)
 - `data/*.TSV`・`data/data.xlsx` を確認なしで上書き・削除しない(生成ツールはまず `--dry-run`。件数が大きく変わったら報告して止まる)
 - `data/v2/*.tsv`・`data/ingest/skipped.tsv` を手で編集しない(`ingest`・`data` の CLI を通す。並びと検査がそろわなくなる)

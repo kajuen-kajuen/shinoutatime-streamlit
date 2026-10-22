@@ -21,7 +21,7 @@
 
 `sh tools/check-rules.sh` で 1・2 を確かめ、4・5 は WARN で知らせる(既知の違反を直したら NG に上げる)。
 
-1. `main`・`develop` にコミット・マージ・push しない。作業ブランチで行い、push はユーザーの指示があったときだけ(`check-rules.sh` がブランチを確かめる。`settings.json` で push・merge・rebase を deny)
+1. `main` にコミット・マージ・push しない。`develop` には push しない。作業ブランチで行い、push はユーザーが行う(`check-rules.sh` がブランチを確かめる。main は NG、develop は WARN。`settings.json` で push・rebase・main への切り替えを deny)。develop への切り替えと `git merge`(作業ブランチへの `origin/develop` の取り込み、読むだけの merge-tree・merge-base)は、毎回ユーザーの確認を取ってから(`settings.json` の ask)
 2. 秘密の値(`.env`・`secrets.toml`・トークン)、ローカルの絶対パス、メールアドレスをコミットしない(`check-rules.sh` が追跡中・未追跡のファイルを grep する)
 3. `data/` の TSV と `data.xlsx` を、確認なしで上書き・削除しない。生成ツールはまず `--dry-run` で件数を見る。配信・歌唱の件数が減るときは必ず止まって報告する。`data/v2/*.tsv`・`data/ingest/skipped.tsv` も同じで、手で編集せず CLI を通し、`ingest apply` の前は判断の表を出して承認を待つ
 4. データ由来の文字列(曲名・アーティスト・配信タイトル・URL)をエスケープせずに HTML へ埋め込まない(`to_html(escape=False)`・`unsafe_allow_html=True` を新しく足さない)

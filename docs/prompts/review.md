@@ -25,7 +25,7 @@
 
 | # | 制約 | 確かめ方 |
 |---|---|---|
-| 1 | main・develop に触れない | `sh tools/check-rules.sh`(ブランチ)と `.claude/settings.json` の deny |
+| 1 | main に触れない・develop に push しない | `sh tools/check-rules.sh`(ブランチ。main は NG、develop は WARN)と `.claude/settings.json` の deny・ask |
 | 2 | 秘密・個人情報をコミットしない | `sh tools/check-rules.sh`(公開リポジトリ)に加え、`.gitignore` と `git ls-files` を読む |
 | 3 | データを確認なしで書き換えない | `src/cli/` の生成ツールに `--dry-run` があり、上書き前にバックアップするかを読む |
 | 4 | エスケープしない HTML を足さない | `sh tools/check-rules.sh`(escape=False の WARN)に加え、`unsafe_allow_html=True` の使い所を読む |

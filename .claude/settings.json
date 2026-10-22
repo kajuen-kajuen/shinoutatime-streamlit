@@ -10,17 +10,17 @@
     ],
     "deny": [
       "Bash(git push*)",
-      "Bash(git merge*)",
       "Bash(git rebase*)",
       "Bash(git checkout main)",
-      "Bash(git checkout develop)",
       "Bash(git switch main)",
-      "Bash(git switch develop)",
       "Read(./.env)",
       "Read(./.streamlit/secrets.toml)"
     ],
     "ask": [
-      "Bash(git commit*)"
+      "Bash(git commit*)",
+      "Bash(git merge*)",
+      "Bash(git checkout develop)",
+      "Bash(git switch develop)"
     ]
   },
   "hooks": {

@@ -36,6 +36,9 @@
 | 今週のスケジュールの埋め込みを更新 | `docker compose exec shinouta-time python -m src.cli.twitter_embed_cli <投稿の URL>` | X の公開の oEmbed(キー不要)で取り、`data/tweet_embed_code.html` を上書きする(前のものは Git 管理外の `data/backups/` に控える。X は高さを返さないので `data/tweet_height.txt` は変わらず、高さは画面が自動で合わせる)。Information に出る。手順は `update-data.md` の「週間スケジュール」 |
 | コンテナの停止 | `docker compose down` | |
 | 差分の確認 | `git status --short` / `git diff --stat` | コミットはユーザーの指示があったときだけ |
+| 作業ブランチに develop を取り込む | `git fetch origin` → `git merge origin/develop` | 作業ブランチの上で。打つたびにユーザーの確認が出る(`settings.json` の ask)。衝突したら止まって報告する |
+| 取り込む前に衝突を調べる | `git merge-tree --write-tree --name-only HEAD origin/develop` | 読むだけ(ブランチは変わらない)。確認が出る。終了コードが 0 なら衝突なし |
+| develop に切り替える | `git switch develop` | 確認が出る。develop の上でのコミットはよいが、push はユーザーが行う(push すると stg に反映される) |
 
 ### 旧フロー(v1。画面はもう読まない。フェーズ3で消す)
 
@@ -53,7 +56,7 @@
 | コマンド | 理由 |
 |---|---|
 | `git push`(どのブランチも) | ユーザーの指示があるまで行わない。公開リポジトリなので push した時点で公開される(`settings.json` で deny) |
-| `git checkout main` / `git checkout develop` / `git switch main` / `git switch develop` / `git merge` / `git rebase` | `main`・`develop` は本番・stg に直結する。統合はユーザーが行う(`settings.json` で deny) |
+| `git checkout main` / `git switch main` / `git rebase` | `main` は本番に直結する。本番への統合はユーザーが行う(`settings.json` で deny) |
 | `git add .` / `git add -A` | 意図しないファイル(作業中の別の変更、ログなど)が入る。ファイルを名指しで add する |
 | ホストでの `pip install` / `pytest` / `streamlit run` | 環境が本番(コンテナ)とずれる。コンテナの中で打つ |
 | 判断の表の承認の前の `ingest apply`(`--dry-run` なし)・`data` の書き込み(`set`・`merge-*`・`drop-artist` など) | `data/v2/` を書き換える。判断の表を出し、ユーザーの承認を得てから |

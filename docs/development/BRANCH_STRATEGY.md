@@ -5,7 +5,8 @@
 ## 今の運用(2026-10)
 
 - 運用は、持ち主1人と AI(Claude Code など)です。**PR(GitHub のプルリクエスト)の運用は未定です【要確認】。** 決まるまでは、持ち主が手元で merge と push を行います(下の手順)。
-- **`main`・`develop` への統合(merge)と push は、持ち主が手で行います。** AI は行いません。`.claude/settings.json` で、AI の `git push`・`git merge`・`git rebase`・`git checkout main|develop`・`git switch main|develop` を禁止しています。下の手順の merge・push は、持ち主が打つものです。
+- **push と、`main` への統合(merge)は、持ち主が手で行います。** AI は行いません。`.claude/settings.json` で、AI の `git push`・`git rebase`・`git checkout main`・`git switch main` を禁止しています。
+- AI は、**毎回持ち主の確認を取って**、作業ブランチに `origin/develop` を取り込む(下の手順3の `git merge origin/develop`)、取り込む前に衝突を調べる(`git merge-tree`・`git merge-base`)、`develop` に切り替える、ことができます(`settings.json` の ask。2026-10-22 から)。develop の上でコミットしても、push は持ち主が行います。
 - AI は作業ブランチでコミットまでを行います(持ち主の指示があったときだけ)。コミットの前に `sh tools/check-rules.sh` が自動で流れ、問題があればコミットが止まります。
 
 ## ブランチと環境
@@ -40,7 +41,7 @@ graph LR
    git switch -c feature/xxx origin/develop
    ```
 2. 作業してコミットする。コミットメッセージは `<type>: <日本語の件名>`([`CONTRIBUTING.md`](../../CONTRIBUTING.md))。データの変更が混ざるときは `data:` のコミットに分けます
-3. `origin/develop` が先に進んでいたら、取り込んでから出す
+3. `origin/develop` が先に進んでいたら、取り込んでから出す(AI は持ち主の確認を取って打つ)
    ```bash
    git fetch origin
    git merge origin/develop

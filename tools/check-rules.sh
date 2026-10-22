@@ -5,7 +5,8 @@
 # 使い方(Git Bash、リポジトリのどこからでも): sh tools/check-rules.sh
 # コンテナ(python:3.14.8-slim-trixie)には git が無いので、ホストの Git Bash で流す。
 # 確かめること:
-#   - ブランチ: main・develop の上にいない(push されると本番・stg に反映される)
+#   - ブランチ: main の上にいない(NG。push されると本番に反映される)。
+#     develop の上は WARN(ユーザーの確認を取って作業してよい。push はユーザーが行い、push すると stg に反映される)
 #   - 公開リポジトリ: 追跡中・未追跡(.gitignore 対象外)のファイルに、ローカルの絶対パス・
 #     メールアドレス・トークンらしき文字列(Google API キーを含む)が無い。
 #     .env・secrets.toml・取り込みのキャッシュ(data/ingest/cache・staged)を追跡していない
@@ -30,7 +31,8 @@ search() {
 echo "== ブランチ"
 branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 case "$branch" in
-    main|develop) ng "$branch の上にいる(作業は feature/ などの作業ブランチで行う)" ;;
+    main) ng "main の上にいる(作業は feature/ などの作業ブランチで行う)" ;;
+    develop) warn "develop の上にいる(push はユーザーが行う。push すると stg に反映される)" ;;
     "") ng "ブランチが読めない" ;;
     *) ok "作業ブランチ: $branch" ;;
 esac
