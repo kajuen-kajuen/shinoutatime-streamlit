@@ -1,8 +1,4 @@
-# データ生成の CLI(song_list_generator など)で使う依存。本番には入れない
+# データの取り込みの CLI(ingest)で使う依存。本番には入れない
 -r requirements.txt
-pykakasi==2.3.0
+# 似た曲名の照合(src/utils/similarity_checker.py)
 python-Levenshtein==0.27.5
-# v1 の Excel・TSV の読み込み(excel_to_tsv_cli・song_list_generator。フェーズ3で消す)
-openpyxl==3.1.5
-et_xmlfile==2.0.0
-chardet==7.7.0

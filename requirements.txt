@@ -3,8 +3,6 @@
 streamlit==1.66.0
 pandas==3.0.6
 python-dotenv==1.2.4
-# openpyxl・chardet(v1 の Excel・TSV の読み込み)は requirements-tools.txt に移した(2026-10-22)。
-# 画面は v1 を import しない(src/repositories・src/services・src/core の __init__ はまとめて import しない)
 
 # --- 間接の依存(上の依存が引き込むもの) ---
 # Cloud のビルドのたびに版が変わらないよう、コンテナで使っている版に固定する(2026-10-21)。
