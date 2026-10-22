@@ -99,4 +99,25 @@ error は 0 件。`data/v2/` の件数は origin/main と同じ(ヘッダーを�
 
 ## 6. 追記
 
-(まだ無い)
+### 2026-10-22 指摘への対応(ブランチ `fix/review-2026-10-22`)
+
+| # | 状態 | 対応 |
+|---|---|---|
+| 1 | 対応済み | `dataset_ops._refuse_max_id` を足し、`merge_song`・`merge_artist`・`drop_artist` でいちばん大きい ID を消そうとすると止める(データの形は変えない)。仕様 3.4 にも書いた |
+| 2 | 対応済み | `ingest apply` は、`skipped.tsv` に記録があれば止めて unskip を促す(dry-run でも) |
+| 3 | 対応済み | `src/repositories`・`src/services`・`src/core` の `__init__.py` のまとめての import をやめた。openpyxl・et_xmlfile・chardet を `requirements-tools.txt` に移した。requests は Streamlit が要るので、本番の間接の依存として残した。新しい venv に `requirements.txt` だけを入れて、4ページが AppTest で起動することを確かめた |
+| 4 | 対応済み | Home と Song List の読み込み失敗の表示を、短い案内「時間をおいて、ページを開き直してください。」にそろえた。例外のメッセージとサーバー上のパスは出さない(ログには出る) |
+| 5 | 対応済み | Song List の失敗のときに、warning を重ねて出さないようにした |
+| 6 | 決定 | 出さない(今のまま)。`docs/specs/data-model.md` 3.3 に書いた |
+| 7 | 対応済み | kind に「ゲーム」(ゲーム・運動などの配信)を足し(仕様・`update-data.md`)、6件を `data set` で直した |
+| 8 | 対応済み | a0268・a0286・a0314 を `data drop-artist` で消した |
+| 9 | 対応済み | `v2_data._load` に `max_entries=1` |
+| 10 | 対応済み | パスワードを `hmac.compare_digest` で比べるようにした。`enable_admin_page` の既定を False にした。コードを消すのはフェーズ3 |
+| 11 | 対応済み | `from PIL import Image` を消した |
+| 12 | 見送り | 任意の対応のため、今回は見送り |
+| 13 | 対応済み | 「「…」で検索した結果」で、検索語の Markdown の記号をエスケープする(`home_page.escape_markdown`) |
+| 14 | 対応済み | 中身の無い2件は消した。`test_run_song_list_generator_success` は skip を外すと通ったので残した |
+
+確認: `pytest` が `888 passed, 1 skipped`(skip は `--runslow` の性能テストだけ)、`pytest --runslow tests/performance` が `1 passed`、`data validate` が「問題はありません」、`check-rules.sh` が「問題なし」。データの件数は artists が 336 → 333 で、ほかは同じ。
+
+新しく気づいたこと(この記録の対象外): Streamlit 1.66 が `st.components.v1.html`(Information の今週のスケジュールの埋め込みで使う)について「2026-06-01 以降に消す。`st.iframe` に置き換える」と警告を出している。Streamlit の版を上げる前に置き換える。
