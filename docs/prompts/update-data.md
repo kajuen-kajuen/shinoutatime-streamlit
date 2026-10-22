@@ -235,7 +235,7 @@ X(旧 Twitter)の、ある人の投稿を期間で一覧にし、決まった形
 
 本人は毎週 X に「【今週のスケジュール！🗓️】」を画像付きで投稿する。これを2つに使う。
 
-- **Information に出す**: 投稿の埋め込みを `data/tweet_embed_code.html`・`data/tweet_height.txt` に保存すると、Information の「今週のスケジュール」に出る(読めないときは X へ案内する)。
+- **Information に出す**: 投稿の埋め込みを `data/tweet_embed_code.html`・`data/tweet_height.txt` に保存すると、Information の「今週のスケジュール」に出る(読めないときは X へ案内する)。枠の高さは表示のときにカードに合わせて自動で伸び縮みするので、毎週書き直さなくてよい(`tweet_height.txt` は、合わせられないときの高さ)。
 - **取り込みの抜けを探す**: 画像の予定を手元のメモ `docs/plans/ingest-review/週間スケジュール/YYYY-MM-DD週.md`(Git 管理外。YYYY-MM-DD はその週の月曜)に控え、月末の取り込みで照らし合わせる(上の「手順」の1)。
 
 毎週の流れ:

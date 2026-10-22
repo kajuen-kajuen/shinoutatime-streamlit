@@ -200,6 +200,38 @@ def render_pagination(
         logger.debug("全件表示済み")
 
 
+# X の埋め込みを包む要素の ID と、枠(iframe)の高さを中身に合わせるスクリプト。
+# components.html の枠は親の画面と同じオリジンで動く(sandbox に allow-same-origin)ので、
+# 枠の中から window.frameElement と、その外の入れ物(data-testid="stElementContainer")の高さを変えられる。カードは widgets.js があとから描き、
+# 画像の読み込みで高さが変わるので、ResizeObserver で包みの要素の大きさを見て合わせ直す。
+# 枠に触れられないときは何もしない(渡した高さのまま、スクロールできる)。
+EMBED_WRAPPER_ID = "shinouta-embed"
+EMBED_AUTO_HEIGHT_SCRIPT = f"""
+<style>body {{ margin: 0; }}</style>
+<script>
+(function () {{
+  var wrapper = document.getElementById("{EMBED_WRAPPER_ID}");
+  function fit() {{
+    try {{
+      var frame = window.frameElement;
+      var h = Math.ceil(wrapper.getBoundingClientRect().height);
+      if (!frame || h <= 0) {{ return; }}
+      frame.style.height = h + "px";
+      // 枠の外の入れ物も、Streamlit が渡した高さのままなので合わせる(しないと下に空きが残る)。
+      // 入れ物の高さは Streamlit の CSS の flex(0 0 <高さ>)で決まっているので、flex と height を上書きする
+      var box = frame.closest('[data-testid="stElementContainer"]');
+      if (box) {{
+        box.style.setProperty("flex", "0 0 " + h + "px", "important");
+        box.style.setProperty("height", h + "px", "important");
+      }}
+    }} catch (e) {{}}
+  }}
+  if (wrapper && window.ResizeObserver) {{ new ResizeObserver(fit).observe(wrapper); }}
+  window.addEventListener("load", fit);
+}})();
+</script>
+"""
+
 
 def render_twitter_embed(
     embed_code: str,
@@ -223,20 +255,22 @@ def render_twitter_embed(
     Notes:
         - 埋め込みコードが空の場合は情報メッセージを表示します
         - 画面レイアウトは3カラム [1, 2, 1] で中央に表示されます
-        - スクロール可能なコンポーネントとして表示されます
+        - 枠の高さは、X のカードが描かれたあとに中身に合わせて伸び縮みします(EMBED_AUTO_HEIGHT_SCRIPT)。
+          合わせられないときは height のまま、スクロールできる枠で表示します
     """
     import streamlit.components.v1 as components
-    
+
     logger.debug(f"Twitter埋め込みを表示中: 高さ={height}px")
-    
+
     # 画面レイアウトを3つのカラムに分割し、中央にコンテンツを配置
     col1, col2, col3 = st.columns([1, 2, 1])
-    
+
     with col2:
         if embed_code:
             # Streamlitのcomponents.htmlを使用してTwitter埋め込みコードを表示
             components.html(
-                embed_code,
+                f'<div id="{EMBED_WRAPPER_ID}" style="display: flow-root;">{embed_code}</div>'
+                + EMBED_AUTO_HEIGHT_SCRIPT,
                 height=height,
                 scrolling=True,
             )
