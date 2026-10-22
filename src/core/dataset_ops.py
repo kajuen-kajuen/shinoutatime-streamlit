@@ -20,6 +20,22 @@ def next_id(existing: pd.Series, prefix: str) -> str:
     return f"{prefix}{(max(numbers) + 1) if numbers else 1:04d}"
 
 
+def _refuse_max_id(existing: pd.Series, drop_id: str) -> None:
+    """
+    いちばん大きい ID を消そうとしたら止める
+
+    ID は最大値+1 で振るので、いちばん大きい ID を消すと、次に足したものに同じ ID が使われる
+    (消した ID は再利用しない決まり。古い下書きの song_id が別の曲に付いてしまう)。
+    """
+    prefix = drop_id[:1]
+    if next_id(existing, prefix) == next_id(existing[existing != drop_id], prefix):
+        return
+    raise ValueError(
+        f"{drop_id} はいちばん大きい ID なので消せません(次に足すものに同じ ID が使われるため)。"
+        f"残す・消すを入れ替えてまとめ、必要なら set で値を写してください"
+    )
+
+
 def seq_values(count: int) -> List[str]:
     """count 曲ぶんの曲順(10, 20, 30…)"""
     return [str(SEQ_STEP * (i + 1)) for i in range(count)]
@@ -87,7 +103,7 @@ def merge_song(dataset: Dataset, keep_id: str, drop_id: str) -> int:
     同じ曲だった2つをまとめる
 
     歌唱と aliases の参照を drop_id から keep_id に付け替え、drop_id の曲を消す。
-    付け替えた歌唱の件数を返す。
+    付け替えた歌唱の件数を返す。いちばん大きい ID は消せない(_refuse_max_id)。
     """
     songs = dataset["songs"]
     for sid in (keep_id, drop_id):
@@ -95,6 +111,7 @@ def merge_song(dataset: Dataset, keep_id: str, drop_id: str) -> int:
             raise ValueError(f"曲 {sid} がありません")
     if keep_id == drop_id:
         raise ValueError("同じ曲は指定できません")
+    _refuse_max_id(songs["song_id"], drop_id)
     perf = dataset["performances"]
     moved = int((perf["song_id"] == drop_id).sum())
     perf.loc[perf["song_id"] == drop_id, "song_id"] = keep_id
@@ -107,13 +124,14 @@ def merge_song(dataset: Dataset, keep_id: str, drop_id: str) -> int:
 
 
 def merge_artist(dataset: Dataset, keep_id: str, drop_id: str) -> int:
-    """同じアーティストだった2つをまとめる。付け替えた曲の件数を返す"""
+    """同じアーティストだった2つをまとめる。付け替えた曲の件数を返す。いちばん大きい ID は消せない"""
     artists = dataset["artists"]
     for aid in (keep_id, drop_id):
         if aid not in set(artists["artist_id"]):
             raise ValueError(f"アーティスト {aid} がいません")
     if keep_id == drop_id:
         raise ValueError("同じアーティストは指定できません")
+    _refuse_max_id(artists["artist_id"], drop_id)
     songs = dataset["songs"]
     moved = int((songs["artist_id"] == drop_id).sum())
     songs.loc[songs["artist_id"] == drop_id, "artist_id"] = keep_id
@@ -147,7 +165,7 @@ def drop_artist(dataset: Dataset, artist_id: str) -> str:
     どの曲からも参照されていないアーティストを消す。消したアーティストの名前を返す
 
     ID は最大値+1 で振るので、いちばん大きい ID を消すと、次に足したときに同じ ID が使われる
-    (merge_artist でも同じ)。消した ID は再利用しない決まりなので、いちばん大きい ID は消さない運用にする。
+    (merge_artist でも同じ)。消した ID は再利用しない決まりなので、いちばん大きい ID は消せない(_refuse_max_id)。
     """
     artists = dataset["artists"]
     hit = artists[artists["artist_id"] == artist_id]
@@ -161,5 +179,6 @@ def drop_artist(dataset: Dataset, artist_id: str) -> str:
             f"{artist_id} は曲 {', '.join(used[:5])}{more} から参照されています。"
             f"merge-artist か set songs <song_id> artist_id で付け替えてから消してください"
         )
+    _refuse_max_id(artists["artist_id"], artist_id)
     dataset["artists"] = artists[artists["artist_id"] != artist_id]
     return hit.iloc[0]["name"]

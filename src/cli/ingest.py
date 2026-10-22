@@ -145,6 +145,12 @@ def cmd_prepare(args) -> int:
 
 
 def cmd_apply(args) -> int:
+    # 曲なしの記録があるものを登録すると、登録済みと曲なしの両方になる(skip は登録済みを拒むので、逆も止める)
+    skips = load_skips()
+    if args.content_id in skips:
+        print(f"{args.content_id} は曲なしとして記録されています({skips[args.content_id]})。"
+              f"登録するなら先に unskip してください")
+        return 1
     repo = TableRepository(args.dir)
     dataset = repo.load()
     content_row, rows = load_staged(args.content_id)
