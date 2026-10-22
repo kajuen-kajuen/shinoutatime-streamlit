@@ -91,7 +91,7 @@ data/tweet_embed_code.htmlファイルに保存します。
   99 - 予期しないエラー
 
 詳細なドキュメント:
-  docs/twitter-embed-automation.md を参照してください
+  docs/archive/specs/twitter-embed-automation/ を参照してください
         """
     )
     
