@@ -1,11 +1,6 @@
 """
-サービス層モジュール
+サービス層モジュール(v1。画面はもう使わない。フェーズ3で消す)
 
-このモジュールは、ビジネスロジックを担当するサービスクラスを提供します。
+使うクラスは `from src.services.data_service import DataService` のように個別に import する
+(ここでまとめて import すると、requests などの依存まで読み込むため)。
 """
-
-from src.services.data_service import DataService
-from src.services.search_service import SearchService
-from src.services.twitter_embed_service import TwitterEmbedService
-
-__all__ = ["DataService", "SearchService", "TwitterEmbedService"]

@@ -394,7 +394,6 @@ class TestExcelToTsvServiceURLValidation:
 class TestExcelToTsvServiceSongListGenerator:
     """song_list_generator実行のテスト"""
     
-    @pytest.mark.skip(reason="song_list_generatorモジュールが環境にインストールされていない場合はスキップ")
     def test_run_song_list_generator_success(self):
         """song_list_generatorの正常実行（要件9.1, 9.2, 9.3）"""
         with tempfile.TemporaryDirectory() as tmpdir:

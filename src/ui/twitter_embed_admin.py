@@ -14,6 +14,7 @@ Twitter埋め込みコード管理画面
 要件: 4.1, 4.2, 4.3, 4.4, 4.5
 """
 
+import hmac
 import os
 import logging
 import streamlit as st
@@ -73,7 +74,8 @@ def check_admin_auth() -> bool:
     
     # ログインボタン
     if st.button("ログイン", key="admin_login_button"):
-        if password == admin_password:
+        # 比べる時間から一致した文字数が分からないよう、compare_digest で比べる
+        if hmac.compare_digest(password.encode("utf-8"), admin_password.encode("utf-8")):
             st.session_state.authenticated = True
             logger.info("管理者認証成功")
             st.success("認証に成功しました！")

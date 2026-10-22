@@ -515,6 +515,39 @@ class TestYouTubeApi:
 
 
 class TestIngestCli:
+    def _prepare(self, tmp_path, monkeypatch, dataset):
+        """既定のパス(data/v2・data/ingest/staged・skipped.tsv)を tmp_path に向け、下書きを1つ置く"""
+        from src.repositories.table_repository import TableRepository
+        monkeypatch.chdir(tmp_path)
+        TableRepository("data/v2").save(dataset)
+        rows = build_staged_rows(dataset, extract_timestamp_lines("0:05:00 はじまりの歌/テストバンド"))
+        save_staged(build_content_row(make_capture(content_id="yt:DDDDDDDDDDD",
+                                                   url="https://www.youtube.com/watch?v=DDDDDDDDDDD")), rows)
+        return tmp_path / "data" / "v2" / "contents.tsv"
+
+    def test_apply_refuses_skipped_content(self, tmp_path, monkeypatch, capsys, sample_dataset):
+        """曲なしに記録したものは、unskip するまで apply しない(登録済みと曲なしの両方にしない)"""
+        from src.cli import ingest
+        contents = self._prepare(tmp_path, monkeypatch, sample_dataset)
+        add_skip("yt:DDDDDDDDDDD", "雑談(曲なし)")
+        before = contents.read_bytes()
+
+        assert ingest.main(["apply", "yt:DDDDDDDDDDD"]) == 1
+
+        assert "曲なしとして記録されています(雑談(曲なし))" in capsys.readouterr().out
+        assert contents.read_bytes() == before
+
+    def test_apply_after_unskip(self, tmp_path, monkeypatch, sample_dataset):
+        from src.cli import ingest
+        from src.repositories.table_repository import TableRepository
+        self._prepare(tmp_path, monkeypatch, sample_dataset)
+        add_skip("yt:DDDDDDDDDDD", "雑談(曲なし)")
+
+        assert ingest.main(["unskip", "yt:DDDDDDDDDDD"]) == 0
+        assert ingest.main(["apply", "yt:DDDDDDDDDDD"]) == 0
+
+        assert "yt:DDDDDDDDDDD" in set(TableRepository("data/v2").load()["contents"]["content_id"])
+
     @pytest.mark.parametrize("reason, hint", [("rateLimitExceeded", True), ("quotaExceeded", True), ("forbidden", False)])
     def test_api_error_is_reported_without_traceback(self, monkeypatch, capsys, reason, hint):
         """API の失敗は、トレースバックではなく短いエラーとして出す(上限のときは流し直す時間の案内も)"""

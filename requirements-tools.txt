@@ -2,3 +2,7 @@
 -r requirements.txt
 pykakasi==2.3.0
 python-Levenshtein==0.27.5
+# v1 の Excel・TSV の読み込み(excel_to_tsv_cli・song_list_generator。フェーズ3で消す)
+openpyxl==3.1.5
+et_xmlfile==2.0.0
+chardet==7.7.0

@@ -30,12 +30,33 @@ class TestArtistCommands:
     def test_drop_unused_artist(self, tmp_path, sample_dataset, capsys):
         TableRepository(str(tmp_path)).save(sample_dataset)
         assert _run(tmp_path, "add-artist", "Beta") == 0
+        assert _run(tmp_path, "add-artist", "Gamma") == 0
 
         assert _run(tmp_path, "drop-artist", "a0003") == 0
 
         assert "a0003(Beta)を消しました" in capsys.readouterr().out
         artists = TableRepository(str(tmp_path)).load()["artists"]
-        assert list(artists["artist_id"]) == ["a0001", "a0002"]
+        assert list(artists["artist_id"]) == ["a0001", "a0002", "a0004"]
+
+    def test_drop_largest_artist_fails_without_saving(self, tmp_path, sample_dataset, capsys):
+        """いちばん大きい ID は消せない(次に足すと同じ ID が使われるため)"""
+        TableRepository(str(tmp_path)).save(sample_dataset)
+        assert _run(tmp_path, "add-artist", "Beta") == 0
+        before = (tmp_path / "artists.tsv").read_bytes()
+
+        assert _run(tmp_path, "drop-artist", "a0003") == 1
+
+        assert "a0003 はいちばん大きい ID" in capsys.readouterr().err
+        assert (tmp_path / "artists.tsv").read_bytes() == before
+
+    def test_merge_song_largest_id_fails_without_saving(self, tmp_path, sample_dataset, capsys):
+        TableRepository(str(tmp_path)).save(sample_dataset)
+        before = (tmp_path / "songs.tsv").read_bytes()
+
+        assert _run(tmp_path, "merge-song", "s0001", "s0002") == 1
+
+        assert "s0002 はいちばん大きい ID" in capsys.readouterr().err
+        assert (tmp_path / "songs.tsv").read_bytes() == before
 
     def test_drop_used_artist_fails_without_saving(self, tmp_path, sample_dataset, capsys):
         TableRepository(str(tmp_path)).save(sample_dataset)

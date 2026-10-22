@@ -362,7 +362,7 @@ class TwitterEmbedConfig:
     default_height: int = 850
     
     # UI設定
-    enable_admin_page: bool = True  # 管理ページを表示するか（本番環境ではFalseに設定）
+    enable_admin_page: bool = False  # 管理ページを表示するか(既定は出さない。手元で使うときだけ True)
     
     # 認証情報
     credentials: TwitterAPICredentials = field(default_factory=TwitterAPICredentials)
@@ -427,7 +427,7 @@ class TwitterEmbedConfig:
             # UI設定
             enable_admin_page=os.getenv(
                 "TWITTER_ENABLE_ADMIN_PAGE",
-                "true"
+                "false"
             ).lower() in ("true", "1", "yes"),
             # 認証情報
             credentials=credentials

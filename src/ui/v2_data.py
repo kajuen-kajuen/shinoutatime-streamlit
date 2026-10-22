@@ -26,7 +26,8 @@ def _data_dir() -> str:
     return Config.from_env().v2_data_dir
 
 
-@st.cache_data(show_spinner="データを読み込み中...")
+# 鍵(更新日時)が変わったら前の結果は使わないので、1つだけ持つ(古い結果をメモリに残さない)
+@st.cache_data(show_spinner="データを読み込み中...", max_entries=1)
 def _load(data_dir: str, version: tuple) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     歌唱の一覧と曲ごとの集計を計算する(version はキャッシュの鍵にだけ使う)

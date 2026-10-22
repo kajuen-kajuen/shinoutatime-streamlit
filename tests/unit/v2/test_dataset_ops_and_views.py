@@ -59,20 +59,33 @@ class TestSetValue:
 
 class TestMerge:
     def test_merge_song_moves_performances_and_aliases(self, sample_dataset):
-        moved = dataset_ops.merge_song(sample_dataset, "s0001", "s0002")
-        assert moved == 3
-        assert set(sample_dataset["performances"]["song_id"]) == {"s0001"}
-        assert set(sample_dataset["aliases"]["song_id"]) == {"s0001"}
-        assert "s0002" not in set(sample_dataset["songs"]["song_id"])
+        # s0002 がいちばん大きい ID なので、s0001 を消す向きでまとめる
+        moved = dataset_ops.merge_song(sample_dataset, "s0002", "s0001")
+        assert moved == 4
+        assert set(sample_dataset["performances"]["song_id"]) == {"s0002"}
+        assert set(sample_dataset["aliases"]["song_id"]) == {"s0002"}
+        assert "s0001" not in set(sample_dataset["songs"]["song_id"])
         assert [i for i in validate_dataset(sample_dataset) if i.level == "error"] == []
 
     def test_merge_artist(self, sample_dataset):
-        assert dataset_ops.merge_artist(sample_dataset, "a0001", "a0002") == 1
-        assert set(sample_dataset["songs"]["artist_id"]) == {"a0001"}
+        assert dataset_ops.merge_artist(sample_dataset, "a0002", "a0001") == 1
+        assert set(sample_dataset["songs"]["artist_id"]) == {"a0002"}
 
     def test_merge_unknown_raises(self, sample_dataset):
         with pytest.raises(ValueError):
             dataset_ops.merge_song(sample_dataset, "s0001", "s9999")
+
+    def test_merge_song_refuses_largest_id(self, sample_dataset):
+        """いちばん大きい ID を消すと次に足す曲に同じ ID が使われるので、止める(何も変えない)"""
+        with pytest.raises(ValueError, match="s0002 はいちばん大きい ID"):
+            dataset_ops.merge_song(sample_dataset, "s0001", "s0002")
+        assert set(sample_dataset["songs"]["song_id"]) == {"s0001", "s0002"}
+        assert dataset_ops.next_id(sample_dataset["songs"]["song_id"], "s") == "s0003"
+
+    def test_merge_artist_refuses_largest_id(self, sample_dataset):
+        with pytest.raises(ValueError, match="a0002 はいちばん大きい ID"):
+            dataset_ops.merge_artist(sample_dataset, "a0001", "a0002")
+        assert set(sample_dataset["songs"]["artist_id"]) == {"a0001", "a0002"}
 
 
 class TestArtists:
@@ -100,6 +113,12 @@ class TestArtists:
         dataset_ops.add_artist(sample_dataset, "Gamma")
         assert dataset_ops.drop_artist(sample_dataset, "a0003") == "Beta"
         assert list(sample_dataset["artists"]["artist_id"]) == ["a0001", "a0002", "a0004"]
+
+    def test_drop_largest_artist_raises(self, sample_dataset):
+        dataset_ops.add_artist(sample_dataset, "Beta")
+        with pytest.raises(ValueError, match="a0003 はいちばん大きい ID"):
+            dataset_ops.drop_artist(sample_dataset, "a0003")
+        assert len(sample_dataset["artists"]) == 3
 
     def test_drop_used_artist_raises(self, sample_dataset):
         with pytest.raises(ValueError, match="s0001"):

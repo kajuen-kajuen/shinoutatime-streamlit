@@ -60,4 +60,4 @@
 
 | ファイル | 概要 |
 |---|---|
-| [`reviews/2026-10-22-full-review.md`](reviews/2026-10-22-full-review.md) | フェーズ2の直後の全体レビュー(`ec92209` 時点)。高 0・中 3・低 11。ID の再利用、apply と skipped の整合性、v1 の一括 import ほか(すべて未対応) |
+| [`reviews/2026-10-22-full-review.md`](reviews/2026-10-22-full-review.md) | フェーズ2の直後の全体レビュー(`ec92209` 時点)。高 0・中 3・低 11。ID の再利用、apply と skipped の整合性、v1 の一括 import ほか(2026-10-22 に #12 以外を対応。記録の「6. 追記」) |

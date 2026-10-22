@@ -15,7 +15,6 @@ About Usページ
 """
 
 import streamlit as st
-from PIL import Image
 from src.ui.components.footer import display_footer
 from src.ui.page_setup import setup_page
 

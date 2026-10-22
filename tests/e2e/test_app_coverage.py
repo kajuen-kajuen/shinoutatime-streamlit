@@ -63,6 +63,7 @@ class TestAppCoverage:
 
         assert not at.exception
         assert any("データの読み込みまたは処理中にエラーが発生しました" in e.value for e in at.error)
+        assert not at.warning  # 例外のメッセージ(サーバー上のパスを含む)は出さない
         assert not [m for m in at.markdown if "<table" in m.value]
 
     def test_information_page(self):
@@ -121,7 +122,8 @@ class TestAppCoverage:
 
         assert not at.exception
         assert any("楽曲リストを読み込めませんでした" in e.value for e in at.error)
-        assert any("楽曲データが読み込めませんでした" in w.value for w in at.warning)
+        assert not at.warning  # 失敗の表示を二重に出さない
+        assert not any("nope" in i.value for i in at.info)  # サーバー上のパスを出さない
 
     def test_song_list_beta_page_empty(self, tmp_path, monkeypatch):
         """99_Song_List_beta.py: データが空(TSV が無い)ときは、空の表ではなく警告を出す"""
