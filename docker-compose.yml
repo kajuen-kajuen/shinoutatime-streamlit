@@ -14,3 +14,15 @@ services:
       - YOUTUBE_API_KEYS=${YOUTUBE_API_KEYS:-}
       - SHINOUTA_TRUSTED_COMMENTERS=${SHINOUTA_TRUSTED_COMMENTERS:-}
     command: streamlit run Home.py --server.address 0.0.0.0
+
+  # ブラウザの確認(Playwright)。`docker compose up` では起動しない(profile)
+  # 例: docker compose --profile browser run --rm browser pytest tests/browser --runbrowser
+  # 手元のアプリは同じネットワークの http://shinouta-time:8501/ で開く(先に shinouta-time を起動しておく)
+  browser:
+    build:
+      context: .
+      dockerfile: Dockerfile.browser
+    profiles: ["browser"]
+    volumes:
+      - .:/app
+    working_dir: /app
