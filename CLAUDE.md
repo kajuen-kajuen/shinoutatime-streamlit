@@ -12,7 +12,6 @@
 
 - `main` にコミット・マージ・push しない。`develop` には push しない(push は持ち主が行う。push されると Streamlit Cloud の本番・stg に自動で反映される)。作業は `feature/xxx` などの作業ブランチで行う。develop への切り替えと `git merge`(作業ブランチへの `origin/develop` の取り込み、読むだけの merge-tree・merge-base)は、毎回ユーザーの確認を取ってから
 - 公開リポジトリなので、秘密の値・ローカルの絶対パス・メールアドレスなどの個人情報をコミットしない(`.env`・`.streamlit/secrets.toml`・`.claude/settings.local.json` は Git に入れない)
-- `data/*.TSV`・`data/data.xlsx` を確認なしで上書き・削除しない(生成ツールはまず `--dry-run`。件数が大きく変わったら報告して止まる)
 - `data/v2/*.tsv`・`data/ingest/skipped.tsv` を手で編集しない(`ingest`・`data` の CLI を通す。並びと検査がそろわなくなる)
 - データ由来の文字列をエスケープせずに HTML へ埋め込まない。キャッシュ関数(`@st.cache_data`)の中で `st.error` などを表示しない
 - コマンドをホストで直接打たない(pip・pytest・streamlit は Docker のコンテナで。例外は `sh tools/check-rules.sh` と git)
@@ -30,11 +29,11 @@ VTuber「幽音しの」さんの配信で歌われた楽曲を検索し、YouTu
 ## 技術スタック
 
 - Python 3.14(Docker イメージ `python:3.14.8-slim-trixie`)、Streamlit(マルチページ: `Home.py` と `pages/NN_Name.py`)、pandas
-- 依存は `==` で固定し、3つに分ける: `requirements.txt`(本番。Streamlit Cloud はこれだけを読む)、`requirements-tools.txt`(データ生成の CLI)、`requirements-dev.txt`(テスト。コンテナはこれを入れる)
+- 依存は `==` で固定し、3つに分ける: `requirements.txt`(本番。Streamlit Cloud はこれだけを読む)、`requirements-tools.txt`(取り込みの CLI)、`requirements-dev.txt`(テスト。コンテナはこれを入れる)
 - データ: `data/` の TSV(UTF-8)。DB は使わない。アプリ(画面)は外部 API を使わない。取り込みの CLI だけが YouTube Data API を使う(キーは `.env` の `YOUTUBE_API_KEY`。複数のキーは `YOUTUBE_API_KEYS`)
 - テスト: pytest + hypothesis(`tests/unit`・`property`・`integration`・`e2e`・`performance`。e2e は Streamlit の `AppTest`。性能テストは `--runslow` のときだけ)
-- オフラインのツール(CLI): pykakasi(読み)、python-Levenshtein(類似曲の検出)、openpyxl(Excel)・chardet(v1)は `requirements-tools.txt`。requests は Streamlit が要るので `requirements.txt` に入っている(取り込みの CLI も使う)
-- パッケージの `__init__.py` でまとめて import しない(画面が v1 とその依存まで読み込むため)。使うモジュールは個別に import する
+- オフラインのツール(CLI): python-Levenshtein(類似曲の検出)は `requirements-tools.txt`。requests は Streamlit が要るので `requirements.txt` に入っている(取り込みの CLI・X の埋め込みの CLI も使う)
+- パッケージの `__init__.py` でまとめて import しない(画面が使わない部品とその依存まで読み込むため)。使うモジュールは個別に import する
 
 ## 構成
 
@@ -43,14 +42,14 @@ Home.py                 入口。HomePage(src/ui/pages/home_page.py)を呼ぶ
 pages/                  01_Information / 02_About_Us / 99_Song_List_beta
                         (*_Admin.py・*_Preview.py はローカル専用・Git 管理外)
 src/config/             設定(Config、環境変数 SHINOUTA_*)、ログ
-src/repositories/       TSV の読み込み(失敗は DataLoadError を投げる)。table_repository.py は v2 の5テーブル
+src/repositories/       table_repository.py(v2 の5テーブルの読み書き。失敗は DataLoadError を投げる)、file_repository.py(X の埋め込みコードの保存)
 src/models/schema.py    v2 のテーブルの定義(列・主キー・値の形)
-src/services/           DataService・SearchService・SongListService ほか(v1)
-src/core/               DataPipeline(v1)、views.py(v2 の歌唱の一覧・曲ごとの集計)、validation・dataset_ops・text・links
+src/services/・clients/ X の埋め込みコードの取得(twitter_embed_service・twitter_api_client)
+src/core/               views.py(v2 の歌唱の一覧・曲ごとの集計)、validation・dataset_ops・text・links
 src/ingest/             取り込み(YouTube API・コメントの解析・下書き・曲なしの記録)
 src/ui/                 コンポーネント、フッター、style.css、v2_data.py(画面が読む v2 のデータ。キャッシュ付き)
-src/cli/                ingest・data(v2 の取り込みと修正)、excel_to_tsv_cli・song_list_generator・artist_sort_cli(v1)、twitter_embed_cli
-data/                   v1: M_YT_LIVE.TSV(配信)・M_YT_LIVE_TIMESTAMP.TSV(歌唱)・V_SONG_LIST.TSV(生成物)・ARTIST_SORT_MAPPING.TSV・data.xlsx
+src/cli/                ingest・data(v2 の取り込みと修正)、twitter_embed_cli(今週のスケジュールの埋め込みコード)
+data/                   tweet_embed_code.html・tweet_height.txt(Information の今週のスケジュール)
 data/v2/                v2: contents・artists・songs・performances・aliases(仕様は docs/specs/data-model.md)
 data/ingest/            skipped.tsv(曲なしの記録。Git 管理)。cache/・staged/ は取得結果と下書き(Git 管理外)
 tests/                  unit(v2 は unit/v2)/ property / integration / e2e / performance / fixtures
@@ -58,9 +57,7 @@ tools/check-rules.sh    絶対制約の機械的な確認(読み取り専用)
 docs/                   仕様書・レビュー記録・プロンプト(一覧は docs/README.md)。古い仕様は docs/archive/
 ```
 
-データの流れ(2つが並んでいる):
-- **v2(正本。画面が読む)**: YouTube の取得 →(`ingest`: 下書き → 判断 → 追記)→ `data/v2/*.tsv` →(`src/core/views.py` で集計。`src/ui/v2_data.py` がキャッシュ)→ Home・Song List。2026-10-21 のフェーズ2で切り替えた
-- **v1(参照用。フェーズ3で消す)**: `data.xlsx` →(`excel_to_tsv_cli`)→ `M_YT_LIVE*.TSV` →(`song_list_generator`)→ `V_SONG_LIST.TSV`。画面はもう読まない
+データの流れ: YouTube の取得 →(`ingest`: 下書き → 判断 → 追記)→ `data/v2/*.tsv` →(`src/core/views.py` で集計。`src/ui/v2_data.py` がキャッシュ)→ Home・Song List。2026-10-21 のフェーズ2で v2 に切り替え、2026-10-23 のフェーズ3で v1(`data.xlsx` → `M_YT_LIVE*.TSV` → `V_SONG_LIST.TSV`)のコード・データ・テストを消した(Git の履歴に残る)
 
 ## 書き方
 
@@ -74,7 +71,7 @@ docs/                   仕様書・レビュー記録・プロンプト(一覧�
 
 - [`README.md`](README.md): 利用者・開発者向けの全体説明
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): コーディング規約・コミット規約
-- [`docs/architecture/overview.md`](docs/architecture/overview.md): 構成の概要(層・v1 と v2・データの流れ・エラー・キャッシュ)。古い構成の文書は `docs/archive/`
+- [`docs/architecture/overview.md`](docs/architecture/overview.md): 構成の概要(層・データの流れ・エラー・キャッシュ)。古い構成の文書は `docs/archive/`
 - [`docs/specs/data-model.md`](docs/specs/data-model.md): データモデル v2 の正本
-- [`docs/archive/data-management.md`](docs/archive/data-management.md)(v1 のデータ。参照用)・[`docs/deployment.md`](docs/deployment.md)
+- [`docs/deployment.md`](docs/deployment.md): デプロイと反映の確認。v1 の資料は `docs/archive/`(参照用)
 - `.cursorrules`: Cursor 向けの同じ方針(日本語・Docker で実行。この CLAUDE.md を読む)

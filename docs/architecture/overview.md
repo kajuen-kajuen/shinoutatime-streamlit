@@ -1,42 +1,35 @@
 # 構成の概要
 
-- 状態: 2026-10-21 時点のコードから書いた(本番の画面を v2 に切り替えた時点)
+- 状態: 2026-10-21 時点のコードから書いた(本番の画面を v2 に切り替えた時点)。2026-10-23 のフェーズ3(v1 を消した)に合わせて直した
 - 関連: [`docs/specs/data-model.md`](../specs/data-model.md)(v2 のデータの正本)、[`docs/prompts/update-data.md`](../prompts/update-data.md)(取り込みの手順)、`CLAUDE.md`(AI 向けの入口)
 
 しのうたタイムは、Streamlit のマルチページのアプリです。データは `data/` の TSV で、DB は使いません。アプリ(画面)は外部の API を使いません。取り込みの CLI だけが YouTube Data API を使います。
 
 以前の構成図・データフロー・エラー処理の文書は、2025年11月時点の v1 の内容で、[`docs/archive/`](../archive/) に移しました。
 
-## 1. v1 と v2
+## 1. データの仕組み
 
-データの仕組みが2つ並んでいます。画面が読むのは v2 です。
+画面が読むのは v2(`data/v2/` の5つのテーブル: contents・artists・songs・performances・aliases)だけです。YouTube などから取り込み(`ingest`)、直すときは `data` の CLI を使います。集計は `src/core/views.py` が実行時に計算し、生成物を持ちません。
 
-| | v1(参照用。フェーズ3で消す) | v2(正本。画面が読む) |
-|---|---|---|
-| データ | `data/M_YT_LIVE.TSV`(配信)・`M_YT_LIVE_TIMESTAMP.TSV`(歌唱)・`V_SONG_LIST.TSV`(生成物) | `data/v2/` の5つのテーブル(contents・artists・songs・performances・aliases) |
-| 作り方 | `data.xlsx` を手で書き、`excel_to_tsv_cli` → `song_list_generator` | YouTube などから取り込み(`ingest`)。直すときは `data` の CLI |
-| 読む画面 | なし(2026-10-21 のフェーズ2で、画面は v2 に切り替えた) | Home(`Home.py`)、Song List(`pages/99_Song_List_beta.py`) |
-| 集計 | `DataPipeline`・`SongListService` | `src/core/views.py`(実行時に計算し、生成物を持たない) |
-
-v1 のデータ・ツール・テストは、比べるための参照として残しています(フェーズ3で消す)。v1 の文書には【旧フロー】の注記を付けています。
+以前の v1(`data.xlsx` を手で書き、`M_YT_LIVE*.TSV` → `V_SONG_LIST.TSV` を生成する仕組み)は、2026-10-21 のフェーズ2で画面から外し、2026-10-23 のフェーズ3でコード・データ・テストを消しました(Git の履歴に残ります)。v1 の文書は `docs/archive/` にあり、【旧フロー】の注記を付けています。
 
 ## 2. 層
 
 ```
 pages/・Home.py           画面の入口(Streamlit のページ)
   └ src/ui/               画面の部品(page_setup.py・components/・pages/home_page.py・v2_data.py・styles/style.css)
-      └ src/core/         処理の中心(v2: views・validation・dataset_ops・text・links / v1: DataPipeline・utils)
-          └ src/repositories/  ファイルの読み書き(v2: TableRepository / v1: Live・Timestamp・SongList など)
+      └ src/core/         処理の中心(views・validation・dataset_ops・text・links)
+          └ src/repositories/  ファイルの読み書き(TableRepository。X の埋め込みコードの保存は FileRepository)
               └ src/models/    データの形(v2 のテーブル定義は schema.py)
-      └ src/services/     v1 の業務の処理(DataService・SearchService・SongListService ほか。画面からは使わない)
+src/services/・clients/   X の埋め込みコードの取得(twitter_embed_service・twitter_api_client。CLI からだけ使う)
 src/config/               設定(Config。環境変数 SHINOUTA_*)とログ
-src/exceptions/           例外(DataLoadError・DataProcessingError・DataSaveError ほか)
+src/exceptions/           例外(DataLoadError・DataSaveError・ConfigurationError と、X の埋め込みの例外)
 src/ingest/               v2 の取り込み(youtube_api・parser・staging・skips・capture)
-src/cli/                  CLI(v2: ingest・data / v1: excel_to_tsv_cli・song_list_generator・artist_sort_cli / twitter_embed_cli)
+src/cli/                  CLI(ingest・data・twitter_embed_cli)
 ```
 
 - 上の層が下の層を呼びます。下の層は Streamlit を知りません(`st.*` を使うのは `pages/`・`Home.py`・`src/ui/` だけ)。
-- 画面は `src/ui/v2_data.py` を通して、`TableRepository` と `views` を直接呼びます(services を通さない)。
+- 画面は `src/ui/v2_data.py` を通して、`TableRepository` と `views` を直接呼びます。
 - 取り込み(`src/ingest/`)は画面からは使わず、CLI(`src/cli/ingest.py`)からだけ使います。
 
 ## 3. データの流れ
@@ -93,11 +86,11 @@ src/cli/                  CLI(v2: ingest・data / v1: excel_to_tsv_cli・song_li
 ## 8. 設定と秘密の値
 
 - 画面の設定は `src/config/settings.py` の `Config` で、環境変数 `SHINOUTA_*` で上書きできます(v2 のデータのディレクトリ `SHINOUTA_V2_DATA_DIR`、表示の件数など)。
-- 取り込みの API キー `YOUTUBE_API_KEY`(複数のキーは `YOUTUBE_API_KEYS`。上限に達したら次のキーへ切り替える)、職人さんの指定 `SHINOUTA_TRUSTED_COMMENTERS` は `.env` に置きます(Git 管理外。`docker-compose.yml` がコンテナに渡す)。`ADMIN_PASSWORD` は X の埋め込みの管理画面のためのもので、今は使うページがありません。
+- 取り込みの API キー `YOUTUBE_API_KEY`(複数のキーは `YOUTUBE_API_KEYS`。上限に達したら次のキーへ切り替える)、職人さんの指定 `SHINOUTA_TRUSTED_COMMENTERS` は `.env` に置きます(Git 管理外。`docker-compose.yml` がコンテナに渡す)。
 - 公開リポジトリなので、秘密の値・コメント本文・ローカルの絶対パスはコミットしません。`tools/check-rules.sh` で確かめます。
 
 ## 9. 既知の課題(2026-10-21 時点)
 
-- v1 のコード・データ・テスト・CLI が残っている(画面からは使わない)。フェーズ3で片付ける。2026-10-22 に `src/repositories`・`src/services`・`src/core` の `__init__.py` のまとめての import をやめ、画面が v1 を読み込まないようにした。openpyxl・chardet は `requirements-tools.txt` に移した(requests は Streamlit が要るので本番に残る)。
-- X の埋め込みの管理画面(`src/ui/twitter_embed_admin.py`)は、ページを消してあり、どこからも使っていない。フェーズ3で片付けるか決める。取得の部品(`src/cli/twitter_embed_cli.py`・`src/services/twitter_embed_service.py`・`src/clients/twitter_api_client.py`)と `data/tweet_*` は、Information の今週のスケジュールで使う(2026-10-22 から。毎週の更新は `docs/prompts/update-data.md`)。
+- (済み)v1 のコード・データ・テスト・CLI と、X の埋め込みの管理画面(`src/ui/twitter_embed_admin.py`)は、2026-10-23 のフェーズ3で消した。openpyxl・chardet・pykakasi も依存から外した(requests は Streamlit が要るので本番に残る)。
+- X の埋め込みの取得の部品(`src/cli/twitter_embed_cli.py`・`src/services/twitter_embed_service.py`・`src/clients/twitter_api_client.py`)と `data/tweet_*` は、Information の今週のスケジュールで使う(2026-10-22 から。毎週の更新は `docs/prompts/update-data.md`)。
 - `style.css` の `.block-container` は Streamlit の内部のクラス名に頼っている(data-testid の指定に置き換えるかは未定)。

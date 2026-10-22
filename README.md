@@ -59,7 +59,7 @@ docker compose exec shinouta-time pytest tests/e2e -q # 本物の data/v2/ で�
 
 - 歌唱の追加は、取り込みの CLI(`ingest`・`data`)で行います。TSV を手で編集しません。手順は [`docs/prompts/update-data.md`](docs/prompts/update-data.md)、コマンドは [`docs/prompts/_commands.md`](docs/prompts/_commands.md)。
 - 曲の無いコンテンツは `data/ingest/skipped.tsv` に記録します。取得したコメントと下書き(`data/ingest/cache/`・`staged/`)は Git に入れません。
-- v1 のデータ(`data/*.TSV`・`data/data.xlsx`)は参照用に残しているだけで、画面はもう読みません(フェーズ3で消す予定)。古い手順は [`docs/archive/`](docs/archive/README.md) にあります。
+- v1 のデータ(`data/*.TSV`・`data/data.xlsx`)とその道具は、2026-10-23 のフェーズ3で消しました(Git の履歴に残ります)。古い手順は [`docs/archive/`](docs/archive/README.md) にあります。
 
 ## プロジェクト構造
 
@@ -69,17 +69,17 @@ docker compose exec shinouta-time pytest tests/e2e -q # 本物の data/v2/ で�
 ├── pages/                  # ほかのページ(Information・About Us・Song List beta)
 ├── src/
 │   ├── ui/                 # 画面の部品・ページの準備・style.css・v2 のデータの読み込み(キャッシュ付き)
-│   ├── core/               # v2 の集計(views.py)・検査・文字列・リンク(ほかは v1)
-│   ├── repositories/       # TSV の読み込み(v2 は table_repository.py)
+│   ├── core/               # v2 の集計(views.py)・検査・データの操作・文字列・リンク
+│   ├── repositories/       # v2 の TSV の読み書き(table_repository.py)・X の埋め込みコードの保存
 │   ├── models/             # v2 のテーブルの定義(schema.py)
 │   ├── ingest/             # v2 の取り込み(YouTube API・コメントの解析・下書き・曲なしの記録)
-│   ├── cli/                # ingest・data(v2)ほかの CLI
+│   ├── cli/                # ingest・data(v2)・twitter_embed_cli(今週のスケジュール)
 │   ├── config/             # 設定(環境変数 SHINOUTA_*)とログ
 │   └── services/ clients/ exceptions/ utils/
 ├── data/
 │   ├── v2/                 # 画面が読むデータ(正本)
 │   ├── ingest/             # skipped.tsv(cache/・staged/ は Git 管理外)
-│   └── *.TSV・data.xlsx    # v1(参照用。フェーズ3で消す)
+│   └── tweet_*             # Information の今週のスケジュール(X の埋め込み)
 ├── tests/                  # unit(v2 は unit/v2、画面は unit/ui)・property・integration・e2e・performance
 ├── tools/                  # check-rules.sh(絶対制約の確認)・wake_up_streamlit.py(本番のスリープ防止)
 ├── docs/                   # 文書(一覧は docs/README.md)

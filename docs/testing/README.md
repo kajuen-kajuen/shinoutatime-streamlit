@@ -28,9 +28,9 @@ docker compose exec shinouta-time pytest --cov=src --cov-report=term-missing
 |---|---|
 | `tests/unit/v2/` | データモデル v2 のテスト(文字列とリンク、読み書きと検査、操作と集計、取り込み・YouTube API) |
 | `tests/unit/ui/` | 画面の部品のテスト(ページの準備 `page_setup`、Home の絞り込み・表の組み立て・データの時点) |
-| `tests/unit/` | 設定・ログなどと、v1 の部品(サービス・リポジトリ・CLI)のテスト |
-| `tests/property/` | hypothesis を使ったプロパティベーステスト(v1) |
-| `tests/integration/` | 統合テスト(画面の部品・v2 の読み込みのキャッシュ、v1 の部品) |
+| `tests/unit/` | 設定・ログ・例外と、X の埋め込み(取得・保存・HTML の検査)のテスト |
+| `tests/property/` | hypothesis を使ったプロパティベーステスト(設定・ログ・X の埋め込み) |
+| `tests/integration/` | 統合テスト(画面の部品・v2 の読み込みのキャッシュ) |
 | `tests/e2e/` | ページの起動・検索・さらに表示(Streamlit の `AppTest`)。本物の `data/v2/` を読むので、件数は「1件以上」などで確かめる |
 | `tests/performance/` | 性能テスト。架空の2万件で、読み込みから集計までを約0.5秒で終えることを確かめる(`--runslow`) |
 | `tests/fixtures/` | テスト用のデータ |
@@ -42,10 +42,10 @@ docker compose exec shinouta-time pytest --cov=src --cov-report=term-missing
 - e2e の検索フォーム(`st.form`)は、入力欄に `set_value` したあと `.run()` を挟まずに「検索」ボタンを `click().run()` します(フォームの中の値は、送信したときにまとめて渡るため)。
 - ネットワークに出るテストは書きません(YouTube API などはモックで)。
 
-## 今の状態(2026-10-22)
+## 今の状態(2026-10-23)
 
-- 全体: **863 passed / 4 skipped**(失敗なし。v1 のデータを確かめていた環境の確認テスト14件は消した)
-- v1 の部品のテスト(`tests/unit` の DataPipeline・SongListService など、`tests/property`)は、v1 のコードと一緒にフェーズ3で消す。
+- 全体: **561 passed / 1 skipped**(失敗なし。skip は `--runslow` の性能テスト)
+- v1 の部品のテストは、2026-10-23 のフェーズ3で v1 のコードと一緒に消した。
 - 変更の前後で、**失敗が増えていない**ことを確かめます。
 
 ## 古い記録

@@ -70,7 +70,6 @@ graph LR
 3. 出し方は作業ブランチと同じです(`git push origin update-data:develop` → stg で確認 → 本番へ)。リモートの `update-data` に置くときは、作り直したあとなので `git push --force-with-lease origin update-data` になります
 
 - AI のセッションを2つ並べるときは、`data/v2/`・`data/ingest/` への書き込みと `data:` のコミットを、1つのセッションだけが行います。
-- v1 のデータ(`data/*.TSV`・`data/data.xlsx`)は画面がもう読まないので、更新しません(フェーズ3で消す予定)。
 
 ## リリース(develop → main)
 

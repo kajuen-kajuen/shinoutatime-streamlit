@@ -72,3 +72,10 @@
 ## 6. 追記
 
 (レビュー後の対応や再確認の結果を、日付つきで追記する。本文は書き換えない)
+
+### 2026-10-23 フェーズ3(ブランチ `refactor/phase3-remove-v1`)
+
+| # | 状態 | 対応 |
+|---|---|---|
+| 7 | 対応済み | `src/cli/__init__.py` の `twitter_embed_cli` の import を消した(docstring だけ)。`python -m src.cli.twitter_embed_cli` の RuntimeWarning が出なくなった。あわせて、使われていない `src/cli/__main__.py` を消した |
+| 3 | 見送り(変わらず) | X の埋め込みの表示(`render_twitter_embed`)は今週のスケジュールで使うので残した。管理画面(`src/ui/twitter_embed_admin.py`)はフェーズ3で消した |

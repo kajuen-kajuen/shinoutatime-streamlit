@@ -34,8 +34,8 @@ sh tools/check-rules.sh                                # 絶対制約の確認(�
 ほかのコマンド(データの取り込み・修正、ログ、性能テストなど)は [`docs/prompts/_commands.md`](docs/prompts/_commands.md) にまとめています。
 
 - Python 3.14(Docker イメージ `python:3.14.8-slim-trixie`)
-- 依存は `==` で固定し、3つに分けています: `requirements.txt`(本番。Streamlit Community Cloud はこれだけを読む)、`requirements-tools.txt`(データの CLI)、`requirements-dev.txt`(テスト。コンテナはこれを入れる)
-- 秘密の値(`YOUTUBE_API_KEY`・`YOUTUBE_API_KEYS`・`ADMIN_PASSWORD` など)は `.env` に書きます。`.env` は Git に入れません。書き方は `.env.example`。
+- 依存は `==` で固定し、3つに分けています: `requirements.txt`(本番。Streamlit Community Cloud はこれだけを読む)、`requirements-tools.txt`(取り込みの CLI)、`requirements-dev.txt`(テスト。コンテナはこれを入れる)
+- 秘密の値(`YOUTUBE_API_KEY`・`YOUTUBE_API_KEYS` など)は `.env` に書きます。`.env` は Git に入れません。書き方は `.env.example`。
 
 ## ブランチ
 
@@ -79,8 +79,7 @@ sh tools/check-rules.sh                                # 絶対制約の確認(�
   - **TSV を手で編集しません。** 追加は取り込みの CLI(`python -m src.cli.ingest`)、修正は `python -m src.cli.data` を通します(保存の前に検査し、決まった順に並べるため)。
   - 取り込みの手順と判断の決まりは [`docs/prompts/update-data.md`](docs/prompts/update-data.md)、データの形は [`docs/specs/data-model.md`](docs/specs/data-model.md)。
   - 配信のコメント本文や投稿者名は `data/ingest/cache/`(Git 管理外)にだけ置き、コミットしません。
-- **v1(参照用。画面はもう読まない)**: `data/data.xlsx` から生成する `data/*.TSV`。フェーズ3で消す予定です(【旧フロー】。[`docs/archive/data-management.md`](docs/archive/data-management.md))。
-  - 生成ツールは、まず `--dry-run` で件数を確かめ、持ち主の確認を得てから上書きします。
+- v1 のデータ(`data/data.xlsx`・`data/*.TSV`)は、2026-10-23 のフェーズ3で消しました(【旧フロー】の資料は [`docs/archive/data-management.md`](docs/archive/data-management.md))。
 
 ## 書き方
 

@@ -10,7 +10,7 @@
 
 - テスト基盤: pytest + hypothesis(`_commands.md`「テスト(全部)」)。`tests/unit`(v2 は `tests/unit/v2`)・`property`・`integration`・`e2e`(`AppTest`)・`performance`(`--runslow` のときだけ)・`fixtures`。置き場所と今の状態は `docs/testing/README.md`
 - テストの CI は無い。テストは手元のコンテナで流す
-- 2026-10-21 時点: 全体は 859 passed / 4 skipped(失敗なし)。画面(Home・Song List)は v2 を読む。v1 の部品のテストはフェーズ3で v1 のコードと一緒に消すので、穴を埋める対象にしない
+- 2026-10-23 時点: 全体は 561 passed / 1 skipped(失敗なし。skip は `--runslow` の性能テスト)。画面(Home・Song List)は v2 を読む。v1 のコードとテストはフェーズ3で消した
 
 ## 守るべきものの優先順位
 

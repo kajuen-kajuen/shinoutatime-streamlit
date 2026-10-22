@@ -40,17 +40,6 @@
 | 取り込む前に衝突を調べる | `git merge-tree --write-tree --name-only HEAD origin/develop` | 読むだけ(ブランチは変わらない)。確認が出る。終了コードが 0 なら衝突なし |
 | develop に切り替える | `git switch develop` | 確認が出る。develop の上でのコミットはよいが、push はユーザーが行う(push すると stg に反映される) |
 
-### 旧フロー(v1。画面はもう読まない。フェーズ3で消す)
-
-| 用途 | コマンド | 注意 |
-|---|---|---|
-| 楽曲一覧の生成(確認だけ) | `docker compose exec shinouta-time python -m src.cli.song_list_generator --dry-run --verbose` | ファイルを書かない。件数と警告を見る |
-| 楽曲一覧の生成 | `docker compose exec shinouta-time python -m src.cli.song_list_generator` | `V_SONG_LIST.TSV` を上書きする。**打つ前にユーザーへ確認** |
-| Excel から TSV(確認だけ) | `docker compose exec shinouta-time python -m src.cli.excel_to_tsv_cli --dry-run` | ファイルを書かない |
-| Excel から TSV | `docker compose exec shinouta-time python -m src.cli.excel_to_tsv_cli` | `M_YT_LIVE*.TSV` と `V_SONG_LIST.TSV` を上書きする。**打つ前にユーザーへ確認** |
-| アーティストの読みの一覧 | `docker compose exec shinouta-time python -m src.cli.artist_sort_cli list` | 追加・削除(`add`・`delete`)は `ARTIST_SORT_MAPPING.TSV` を書き換えるので確認してから。v2 の読みは `data set artists <id> sort_name <読み>` |
-| v1 のデータ件数 | `wc -l data/M_YT_LIVE.TSV data/M_YT_LIVE_TIMESTAMP.TSV data/V_SONG_LIST.TSV` | 1 行目はヘッダー |
-
 ## 打ってはいけないコマンド
 
 | コマンド | 理由 |
@@ -60,4 +49,3 @@
 | `git add .` / `git add -A` | 意図しないファイル(作業中の別の変更、ログなど)が入る。ファイルを名指しで add する |
 | ホストでの `pip install` / `pytest` / `streamlit run` | 環境が本番(コンテナ)とずれる。コンテナの中で打つ |
 | 判断の表の承認の前の `ingest apply`(`--dry-run` なし)・`data` の書き込み(`set`・`merge-*`・`drop-artist` など) | `data/v2/` を書き換える。判断の表を出し、ユーザーの承認を得てから |
-| v1 の生成ツールの `--dry-run` なしの実行 | `data/` の TSV を上書きする。件数を確かめ、ユーザーの承認を得てから |

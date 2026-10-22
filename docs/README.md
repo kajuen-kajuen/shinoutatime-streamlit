@@ -10,7 +10,7 @@
 | レビュー記録 | [`reviews/`](reviews/) | [`reviews/_template.md`](reviews/_template.md) |
 | 開発ワークフロー用プロンプト | [`prompts/`](prompts/)(本体、`_common-context.md`、`_commands.md`。絶対制約の確認は `../tools/check-rules.sh`)。スキルの入口は `../.claude/skills/<名前>/SKILL.md`(本体の prompts を指すだけ) | — |
 | 作業の計画・調査のメモ | `plans/`(**手元だけ・Git 管理外**。ブラッシュアップの計画、参考サイト、X の調べ方など) | — |
-| アーキテクチャ | [`architecture/overview.md`](architecture/overview.md)(層・v1 と v2・データの流れ・エラー・キャッシュ) | — |
+| アーキテクチャ | [`architecture/overview.md`](architecture/overview.md)(層・データの流れ・エラー・キャッシュ) | — |
 | 開発の決まり | [`development/`](development/)(ブランチ戦略) | — |
 | サイトの使い方 | [`guides/user-guide.md`](guides/user-guide.md)、[`faq.md`](faq.md) | — |
 | 公開と運用 | [`deployment.md`](deployment.md)(Streamlit Community Cloud・スリープ防止・依存と Python の版) | — |
