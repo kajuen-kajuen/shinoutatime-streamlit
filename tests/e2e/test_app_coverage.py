@@ -70,6 +70,17 @@ class TestAppCoverage:
         at = AppTest.from_file(app_path("pages/01_Information.py"), default_timeout=10)
         at.run()
         assert not at.exception
+        assert "今週のスケジュール" in [s.value for s in at.subheader]
+        # data/ の埋め込みが読めているので、案内(st.info)は出ない
+        assert not [i for i in at.info if "今週のスケジュールを表示できませんでした" in i.value]
+
+    def test_information_page_without_schedule(self):
+        """01_Information.py: 今週のスケジュールを読めないときは、例外にせず X へ案内する"""
+        with patch("src.ui.components.load_twitter_embed", return_value=None):
+            at = AppTest.from_file(app_path("pages/01_Information.py"), default_timeout=10)
+            at.run()
+        assert not at.exception
+        assert any("今週のスケジュールを表示できませんでした" in i.value for i in at.info)
 
     def test_about_us_page(self):
         """02_About_Us.py の起動テスト"""

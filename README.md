@@ -13,913 +13,114 @@ VTuber「幽音しの」さんの配信で歌唱された楽曲を検索・閲�
 ### 🔍 楽曲検索機能
 - **キーワード検索**: 曲名、アーティスト名で楽曲を検索(かなの読みでも当たる。例: 「かいじゅう」で「怪獣の花唄」)
 - **ライブタイトル検索**: 配信タイトルからも検索可能（オプション）
-- **部分一致検索**: 大文字小文字・全角半角・カタカナとひらがなを区別せず、柔軟に検索
-- **検索結果の表示**: 配信日、曲目番号、曲名、アーティスト、種類(配信・ショート・動画など)、YouTubeリンクを一覧表示
+- **部分一致検索**: 大文字小文字・全角半角・カタカナとひらがな・空白の有無を区別せず、柔軟に検索。Enter キーでも検索できる
+- **検索結果の表示**: 配信日、No.(配信の中の曲順。同じ日に配信が複数あれば「1-3」)、曲名、アーティスト、種類(配信・ショート・動画・投稿)、リンクを一覧表示
+- **データの時点**: 「データは YYYY/MM/DD の配信まで(歌唱 N 件)」を検索欄の上に表示
+- メンバー限定の配信は載せない
 
 ### 📊 段階的表示機能
 - 初期表示は25件に制限し、高速な読み込みを実現
 - 「さらに25件表示」ボタンで25件ずつ追加表示
 - 現在の表示件数と総件数を常に表示
 
-### 🎬 YouTubeタイムスタンプ付きリンク機能
-- 各楽曲に対して、配信動画の該当箇所へ直接ジャンプできるリンクを生成
-- クリックするだけで、その楽曲が歌唱された瞬間から視聴開始
+### 🎬 歌唱箇所へのリンク
+- YouTube は歌い始めの時刻付きのリンク(「YouTubeへ👻」)。クリックするだけで、その曲のところから視聴できる
+- X の投稿(「Xへ👻」)・Z-aN(「Z-aNへ👻」)は時刻を指定できないので、投稿・ページへのリンク
 
 ### 📋 楽曲リスト表示機能
-- 全楽曲をアーティストの読みの順に一覧表示(25件ずつ)
-- 最近の歌唱へのリンク付き
+- 全楽曲を1曲1行で、アーティストの読み → 曲名の読みの順に一覧表示(25件ずつ)
+- その曲の最新の歌唱(切り抜きを除く)へのリンク付き
 - β版として提供中
 
 ### 📢 情報ページ機能
-- 配信スケジュールの表示
-- お知らせ情報の表示
-- Twitter投稿の埋め込み表示
+- 配信の予定表(ふりちゃ)の動画
+- 今週のスケジュール(本人の X の投稿の埋め込み。毎週更新)
+- お知らせ・グッズ・活動の記録は、ななしいんく 非公式Wiki・本人の X・公式サイトへの案内
 
-### 🔧 管理者向け機能
+使い方の詳細は [ユーザーガイド](docs/guides/user-guide.md)、よくある質問は [FAQ](docs/faq.md) にあります。
 
-#### Twitter埋め込みコード自動取得機能
+## はじめかた(開発する人向け)
 
-TwitterのツイートURLから埋め込みコードを自動的に取得し、情報ページに表示するための機能です。
-
-**主な機能:**
-- ✅ ツイートURLからの自動埋め込みコード取得
-- ✅ 複数ツイートの一括処理
-- ✅ 自動バックアップ機能
-- ✅ エラーハンドリングとリトライ機能
-- ✅ 取得履歴のログ記録
-- ✅ 表示高さの自動設定
-
-**2つのインターフェース:**
-
-1. **コマンドラインインターフェース（CLI）**
-   - スクリプトやバッチ処理での自動化に最適
-2. **Streamlit管理画面（UI）**
-   - ブラウザから操作する(ローカル専用。`pages/*_Admin.py` は Git 管理外)
-
-詳細は「[Twitter埋め込みコード自動取得機能](#twitter埋め込みコード自動取得機能)」セクションを参照してください。
-
-#### Excel to TSV変換ツール(旧フロー)
-
-> 【旧フロー】v1 のデータ(`data/*.TSV`・`data.xlsx`)の仕組みです。画面は v2(`data/v2/`)に切り替え済みで、もう使いません(フェーズ3で消す予定)。今後のデータの追加は [`docs/prompts/update-data.md`](docs/prompts/update-data.md)。
-
-**主な機能:**
-- ✅ Excelファイルからの自動TSV生成
-- ✅ データ検証機能（フィールド数、データ型、URL形式）
-- ✅ 自動バックアップ機能
-- ✅ 後続処理の自動実行（song_list_generator）
-- ✅ エラーハンドリングとロールバック機能
-- ✅ 詳細なログ記録
-
-詳細は「[Excel to TSV変換ツール](#excel-to-tsv変換ツール管理者向け)」セクションを参照してください。
-
-#### アーティスト名ソート修正機能(旧フロー)
-
-V_SONG_LIST.TSVのアーティスト名（ソート用）が誤っている場合に修正できる機能です。v2 では、アーティストの読みは `data/v2/artists.tsv` の `sort_name` に持ちます。
-
-**主な機能:**
-- ✅ 誤ったソート名の手動修正
-- ✅ 修正マッピングの永続化
-- ✅ コマンドラインインターフェース（CLI）
-- ✅ 修正マッピングの追加・更新・削除・一覧表示
-- ✅ 曲リスト生成時の自動適用
-
-**使用例:**
+Docker Desktop と Git があれば動きます。コマンドは Git Bash で打ちます。
 
 ```bash
-# 修正マッピングを追加
-docker exec shinoutatime-streamlit-shinouta-time-1 python -m src.cli.artist_sort_cli add "Vaundy" "Vaundy"
-
-# 修正マッピングを一覧表示
-docker exec shinoutatime-streamlit-shinouta-time-1 python -m src.cli.artist_sort_cli list
-
-# 修正マッピングを削除
-docker exec shinoutatime-streamlit-shinouta-time-1 python -m src.cli.artist_sort_cli delete "Vaundy"
+git clone https://github.com/kajuen-kajuen/shinoutatime-streamlit.git
+cd shinoutatime-streamlit
+docker compose up -d                                  # http://localhost:8501 で開く
+docker compose exec shinouta-time pytest tests/e2e -q # 本物の data/v2/ でページを起動・検索できるか確かめる
 ```
 
-詳細は[アーティスト名ソート修正機能 使い方](docs/guides/artist-sort-correction-guide.md)を参照してください。
+- 環境変数(ログ・取り込みの API キー)、確かめ方、止め方は [SETUP.md](SETUP.md)。困ったときは [TROUBLESHOOTING.md](TROUBLESHOOTING.md)。
+- 開発の決まり(ブランチ・コミット・テスト)は [CONTRIBUTING.md](CONTRIBUTING.md)。AI エージェントは [CLAUDE.md](CLAUDE.md) から読みます。
 
-## セットアップ手順
+## データ
 
-本アプリケーションは、以下の2つの方法で環境構築が可能です：
+画面が読むのは `data/v2/` の5つのテーブル(contents・artists・songs・performances・aliases。UTF-8・タブ区切り)です。形は [データモデル v2](docs/specs/data-model.md) にあります。
 
-1. **Docker Compose を使用する方法（推奨）** - ローカル環境を汚さず、簡単にセットアップ
-2. **Python 仮想環境を使用する方法** - 従来の方法
-
-### 方法の選択
-
-| 方法 | メリット | デメリット |
-|-----|---------|-----------|
-| **Docker Compose（推奨）** | ・ローカル環境にPythonや依存パッケージをインストール不要<br>・本番環境（Python 3.14）と同じ環境を再現<br>・環境のクリーンアップが容易<br>・`docker compose up`コマンド一つで起動 | ・Dockerのインストールが必要<br>・初回起動時にイメージのビルドが必要 |
-| **Python 仮想環境** | ・Dockerが不要<br>・軽量で高速 | ・ローカル環境にPython 3.14のインストールが必要<br>・依存パッケージの管理が必要<br>・環境の分離が不完全 |
-
-**推奨**: ローカル環境を汚さず、本番環境と同じ構成で動作させるため、**Docker Compose を使用する方法**を推奨します。
-
----
-
-### 方法1: Docker Compose を使用する（推奨）
-
-#### 必要な環境
-- **Docker Desktop** (Windows/Mac) または **Docker Engine** (Linux)
-- **Git**
-
-#### 1. リポジトリのクローン
-
-```bash
-git clone <repository-url>
-cd <repository-directory>
-```
-
-#### 2. Docker Compose で起動
-
-```bash
-docker compose up
-```
-
-初回起動時は、Dockerイメージのビルドが行われるため、数分かかる場合があります。
-
-#### 3. 動作確認
-
-環境が正しく構築されたことを確認するため、動作確認スクリプトを実行します：
-
-**Mac/Linux:**
-```bash
-bash scripts/verify_environment.sh
-```
-
-**Windows:**
-```cmd
-scripts/verify_environment.bat
-```
-
-または、手動でテストを実行：
-
-```bash
-docker compose exec shinouta-time pytest tests/integration/test_environment_verification.py -v
-```
-
-全てのテストが成功すれば、環境構築は完了です。
-
-#### 4. アプリケーションへのアクセス
-
-起動後、ブラウザで `http://localhost:8501` にアクセスしてください。
-
-#### 5. 停止とクリーンアップ
-
-アプリケーションを停止するには、`Ctrl+C` を押してください。
-
-コンテナを完全に削除するには：
-
-```bash
-docker compose down
-```
-
-#### 環境変数の設定（オプション）
-
-`.env.example` ファイルを `.env` にコピーして、必要に応じて環境変数を編集できます：
-
-```bash
-cp .env.example .env
-```
-
-詳細は「ロギング設定（オプション）」セクションを参照してください。
-
-#### トラブルシューティング
-
-Docker Compose使用時の問題については、[TROUBLESHOOTING.md](TROUBLESHOOTING.md) を参照してください。
-
----
-
-### 方法2: Python 仮想環境を使用する
-
-> **注意**: このリポジトリの開発・テスト・データの取り込みは、**方法1(Docker)で行う決まり**です([`CONTRIBUTING.md`](CONTRIBUTING.md)・[`CLAUDE.md`](CLAUDE.md))。方法2は、手元で画面を見るだけのための参考です。AI エージェントは使いません。
-
-#### 必要な環境
-- **Python 3.14** (本番環境と同じバージョンを推奨)
-- **pip** (Pythonパッケージマネージャー)
-
-#### 1. リポジトリのクローン
-
-```bash
-git clone <repository-url>
-cd <repository-directory>
-```
-
-#### 2. Python仮想環境の作成とアクティベート
-
-**Linux/Mac:**
-```bash
-python3.14 -m venv venv
-source venv/bin/activate
-```
-
-**Windows:**
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
-
-#### 3. 依存パッケージのインストール
-
-```bash
-pip install -r requirements-dev.txt
-```
-
-依存は用途ごとに3つのファイルに分け、版を `==` で固定しています:
-- `requirements.txt` - 本番（Streamlit Community Cloud）で使うもの。`streamlit`、`pandas` など
-  - Cloud のビルドのたびに版が変わらないよう、間接の依存(`numpy`・`pyarrow` など)まで固定しています。直接の依存を上げたら、ファイルの中の手順で間接の依存も取り直してください
-- `requirements-tools.txt` - データ生成の CLI で使うもの。`pykakasi`（読み）、`python-Levenshtein`（類似曲の検出）
-- `requirements-dev.txt` - テストで使うもの。`pytest`、`hypothesis` など（上の2つも含む）
-
-#### 4. アプリケーションの起動
-
-```bash
-streamlit run Home.py
-```
-
-起動後、ブラウザで `http://localhost:8501` にアクセスしてください。
-
-#### 5. 仮想環境の終了
-
-作業が終わったら、仮想環境を終了します：
-
-```bash
-deactivate
-```
-
----
-
-### 詳細なセットアップ手順
-
-より詳細なセットアップ手順については、[SETUP.md](SETUP.md) を参照してください。
-
-### 4. ロギング設定（オプション）
-
-アプリケーションは標準でコンソールにログを出力します。環境変数を設定することで、ログレベルやファイル出力を制御できます。
-
-#### 環境変数
-
-| 環境変数名 | 説明 | デフォルト値 | 設定例 |
-|-----------|------|------------|--------|
-| `SHINOUTA_LOG_LEVEL` | ログレベル（DEBUG、INFO、WARNING、ERROR） | INFO | INFO |
-| `SHINOUTA_ENABLE_FILE_LOGGING` | ファイルへのログ出力を有効化 | false | true |
-| `SHINOUTA_LOG_FILE` | ログファイルのパス | logs/shinouta.log | logs/app.log |
-
-#### 使用例
-
-**開発環境（DEBUGレベル、ファイルログ有効）:**
-```bash
-export SHINOUTA_LOG_LEVEL=DEBUG
-export SHINOUTA_ENABLE_FILE_LOGGING=true
-streamlit run Home.py
-```
-
-**本番環境（INFOレベル、ファイルログ有効）:**
-```bash
-export SHINOUTA_LOG_LEVEL=INFO
-export SHINOUTA_ENABLE_FILE_LOGGING=true
-export SHINOUTA_LOG_FILE=logs/production.log
-streamlit run Home.py
-```
-
-#### ログファイルのローテーション
-
-ファイルログが有効な場合、以下の設定で自動的にローテーションされます：
-- **最大ファイルサイズ**: 10MB
-- **保持するバックアップ数**: 5個
-- **ファイル名形式**: `shinouta.log`, `shinouta.log.1`, `shinouta.log.2`, ...
-
-#### ログレベルの説明
-
-- **DEBUG**: 詳細なデバッグ情報（開発時のみ推奨）
-- **INFO**: 一般的な情報メッセージ（本番環境推奨）
-- **WARNING**: 警告メッセージ
-- **ERROR**: エラーメッセージ
-
-## データファイル構造
-
-本アプリケーションは、`data/` ディレクトリ内のTSV（タブ区切り）ファイルからデータを読み込みます。
-
-データは2つが並んでいます。
-- **v2(正本。画面が読む)**: `data/v2/` の5つのテーブル(contents・artists・songs・performances・aliases)。YouTube などから取り込みの CLI で追加します。形の決まりは [`docs/specs/data-model.md`](docs/specs/data-model.md)、追加の手順は [`docs/prompts/update-data.md`](docs/prompts/update-data.md)。
-- **v1(参照用。画面はもう読まない)**: `data/*.TSV`・`data.xlsx`。下の表はこちらの説明です。フェーズ3で消す予定です。
-
-### ディレクトリ構造
-
-```
-data/
-├── v2/                         # v2 のテーブル(TSV。取り込みの CLI で書く)
-├── ingest/                     # 取り込み: skipped.tsv(曲なしの記録、Git 管理)、cache/・staged/(Git 管理外)
-├── data.xlsx                   # 入力用Excelファイル（v1、管理者向け）
-├── M_YT_LIVE.TSV               # 配信データ
-├── M_YT_LIVE_TIMESTAMP.TSV     # 楽曲タイムスタンプデータ
-├── V_SONG_LIST.TSV             # 楽曲リストデータ
-├── ARTIST_SORT_MAPPING.TSV     # アーティスト名ソート修正マッピング
-├── tweet_embed_code.html       # Twitter埋め込みコード
-├── tweet_height.txt            # Twitter埋め込み高さ設定
-└── backups/                    # バックアップディレクトリ
-    ├── M_YT_LIVE_*.TSV         # 配信データのバックアップ
-    ├── M_YT_LIVE_TIMESTAMP_*.TSV # タイムスタンプデータのバックアップ
-    └── tweet_embed_code_*.html # Twitter埋め込みコードのバックアップ
-```
-
-### データファイルの詳細
-
-#### M_YT_LIVE.TSV（配信データ）
-配信情報を格納するファイルです。
-
-| カラム名 | データ型 | 説明 |
-|---------|---------|------|
-| ID | 整数 | 配信の一意識別子 |
-| 配信日 | 文字列/数値 | 配信日（UNIXミリ秒またはYYYY/MM/DD形式） |
-| タイトル | 文字列 | 配信タイトル |
-| URL | 文字列 | YouTube配信URL |
-
-#### M_YT_LIVE_TIMESTAMP.TSV（楽曲タイムスタンプデータ）
-各配信で歌唱された楽曲の情報を格納するファイルです。
-
-| カラム名 | データ型 | 説明 |
-|---------|---------|------|
-| ID | 整数 | 楽曲レコードの一意識別子 |
-| LIVE_ID | 整数 | 配信IDへの外部キー（M_YT_LIVE.TSVのIDと対応） |
-| 曲名 | 文字列 | 楽曲名 |
-| アーティスト | 文字列 | アーティスト名 |
-| タイムスタンプ | 文字列 | 歌唱開始時刻（HH:MM:SSまたはMM:SS形式） |
-
-#### V_SONG_LIST.TSV（楽曲リストデータ）
-全楽曲のリスト情報を格納するファイルです。
-
-| カラム名 | データ型 | 説明 |
-|---------|---------|------|
-| アーティスト | 文字列 | アーティスト名（表示用） |
-| アーティスト(ソート用) | 文字列 | アーティスト名（ソート用） |
-| 曲名 | 文字列 | 楽曲名 |
-| 最近の歌唱 | 文字列 | 最近の歌唱へのYouTube URL |
-
-#### ARTIST_SORT_MAPPING.TSV（アーティスト名ソート修正マッピング）
-アーティスト名とその正しいソート名の対応関係を保存するファイルです。
-
-| カラム名 | データ型 | 説明 |
-|---------|---------|------|
-| アーティスト名 | 文字列 | アーティスト名 |
-| ソート名 | 文字列 | 正しいソート名 |
-
-**形式**: TSV（タブ区切り）、UTF-8エンコーディング
-
-**用途**: 自動生成されたソート名が誤っている場合に、正しいソート名を手動で設定できます。
-
-## Twitter埋め込みコード自動取得機能
-
-### 概要
-
-Twitter埋め込みコード自動取得機能は、TwitterのツイートURLから埋め込みコードを自動的に取得し、情報ページに表示するための機能です。手動でのコピー&ペースト作業を排除し、運用効率を向上させます。
-
-### 使用方法
-
-#### 方法1: コマンドラインインターフェース（CLI）
-
-スクリプトやバッチ処理での自動化に最適です。
-
-**基本的な使用方法:**
-
-```bash
-# 単一のツイートを取得
-python -m src.cli.twitter_embed_cli https://twitter.com/user/status/1234567890
-
-# 複数のツイートを取得
-python -m src.cli.twitter_embed_cli \
-  https://twitter.com/user/status/123 \
-  https://twitter.com/user/status/456
-
-# バックアップを作成せずに保存
-python -m src.cli.twitter_embed_cli --no-backup https://twitter.com/user/status/123
-
-# 詳細ログを表示
-python -m src.cli.twitter_embed_cli -v https://twitter.com/user/status/123
-```
-
-**Docker環境での実行:**
-
-```bash
-# Docker Composeを使用
-docker compose exec shinouta-time python -m src.cli.twitter_embed_cli \
-  https://twitter.com/user/status/1234567890
-```
-
-**ヘルプの表示:**
-
-```bash
-python -m src.cli.twitter_embed_cli --help
-```
-
-詳細は[Twitter埋め込みコード自動取得システム](docs/archive/specs/twitter-embed-automation/design.md)を参照してください。
-
-#### 方法2: Streamlit管理画面（UI）
-
-ブラウザから簡単に操作できる管理画面です。
-
-1. Streamlitアプリケーションを起動
-2. サイドバーから「Twitter Embed Admin」ページを選択
-3. 管理者パスワードを入力してログイン
-4. ツイートURLを入力して「取得」ボタンをクリック
-5. プレビューを確認して「保存」ボタンをクリック
-
-詳細は[Twitter埋め込みコード管理画面 使用ガイド](docs/archive/specs/twitter-embed-automation/design.md#ui-design)を参照してください。
-
-### 対応URL形式
-
-以下のURL形式に対応しています：
-
-- `https://twitter.com/username/status/1234567890`
-- `https://x.com/username/status/1234567890`
-- `https://mobile.twitter.com/username/status/1234567890`
-- `https://twitter.com/i/web/status/1234567890`
-
-### 出力ファイル
-
-- **埋め込みコード**: `data/tweet_embed_code.html`
-- **表示高さ**: `data/tweet_height.txt`
-- **バックアップ**: `data/backups/tweet_embed_code_YYYYMMDD_HHMMSS.html`
-
-### 環境変数の設定（オプション）
-
-```bash
-# 管理画面認証
-ADMIN_PASSWORD=your_admin_password
-
-# ファイルパス
-TWITTER_EMBED_CODE_PATH=data/tweet_embed_code.html
-TWITTER_HEIGHT_PATH=data/tweet_height.txt
-TWITTER_BACKUP_DIR=data/backups
-
-# ログ設定
-TWITTER_EMBED_LOG_LEVEL=INFO
-TWITTER_EMBED_LOG_FILE=logs/twitter_embed.log
-
-# リトライ設定
-TWITTER_API_MAX_RETRIES=3
-TWITTER_API_RETRY_DELAY=1.0
-```
-
-### トラブルシューティング
-
-よくある問題と解決方法については、[Twitter埋め込みコード自動取得システム](docs/archive/specs/twitter-embed-automation/design.md#troubleshooting)を参照してください。
-
-## Excel to TSV変換ツール（管理者向け）
-
-> 【旧フロー】この節は v1 のデータ(`data/*.TSV`・`data.xlsx`)の手順です。画面は v2(`data/v2/`)に切り替え済みで、もう使いません(フェーズ3で消す予定)。今後のデータの追加は [`docs/prompts/update-data.md`](docs/prompts/update-data.md)。
-
-### 概要
-
-Excel to TSV変換ツールは、Excelファイル（data.xlsx）から2つのTSVファイル（M_YT_LIVE.TSVとM_YT_LIVE_TIMESTAMP.TSV）を自動生成し、さらに既存のsong_list_generatorツールを呼び出してV_SONG_LIST.TSVを生成する一連の処理を自動化します。
-
-**主な機能:**
-- ✅ Excelファイルからの自動TSV生成
-- ✅ データ検証機能（フィールド数、データ型、URL形式）
-- ✅ 自動バックアップ機能
-- ✅ 後続処理の自動実行（song_list_generator）
-- ✅ エラーハンドリングとロールバック機能
-- ✅ 詳細なログ記録
-
-### 使用方法
-
-#### 基本的な使用方法
-
-**デフォルト設定で実行:**
-
-```bash
-# Python環境
-python -m src.cli.excel_to_tsv_cli
-
-# Docker環境
-docker compose exec shinouta-time python -m src.cli.excel_to_tsv_cli
-```
-
-デフォルトでは、`data/data.xlsx`を読み込み、`data/`ディレクトリに以下のファイルを生成します：
-- `M_YT_LIVE.TSV`
-- `M_YT_LIVE_TIMESTAMP.TSV`
-- `V_SONG_LIST.TSV`（song_list_generatorによって自動生成）
-
-#### コマンドライン引数
-
-| 引数 | 説明 | デフォルト値 |
-|-----|------|------------|
-| `--input-file` | 入力Excelファイルのパス | `data/data.xlsx` |
-| `--output-dir` | 出力ディレクトリのパス | `data/` |
-| `--dry-run` | ドライランモード（ファイルを書き込まない） | 無効 |
-| `--skip-song-list` | song_list_generatorの実行をスキップ | 無効 |
-| `--verbose`, `-v` | 詳細ログを表示 | 無効 |
-| `--help`, `-h` | ヘルプメッセージを表示 | - |
-
-#### 使用例
-
-**カスタムファイルパスを指定:**
-
-```bash
-python -m src.cli.excel_to_tsv_cli \
-  --input-file /path/to/custom.xlsx \
-  --output-dir /path/to/output/
-```
-
-**ドライランモード（実際のファイル生成を行わない）:**
-
-```bash
-python -m src.cli.excel_to_tsv_cli --dry-run
-```
-
-**song_list_generatorの実行をスキップ:**
-
-```bash
-python -m src.cli.excel_to_tsv_cli --skip-song-list
-```
-
-**詳細ログを表示:**
-
-```bash
-python -m src.cli.excel_to_tsv_cli --verbose
-```
-
-**Docker環境での実行:**
-
-```bash
-# 基本的な実行
-docker compose exec shinouta-time python -m src.cli.excel_to_tsv_cli
-
-# カスタムオプション付き
-docker compose exec shinouta-time python -m src.cli.excel_to_tsv_cli \
-  --input-file data/custom.xlsx \
-  --verbose
-```
-
-### データファイルの要件
-
-#### 入力ファイル（data.xlsx）
-
-Excelファイルには以下の2つのシートが必要です：
-
-**1. M_YT_LIVE シート**
-
-| カラム名 | データ型 | 必須 | 説明 |
-|---------|---------|------|------|
-| ID | 整数 | ✓ | 配信の一意識別子 |
-| 配信日 | 文字列/数値 | ✓ | 配信日（YYYY/MM/DD形式またはUNIXミリ秒） |
-| タイトル | 文字列 | ✓ | 配信タイトル |
-| URL | 文字列 | ✓ | YouTube配信URL |
-
-**2. M_YT_LIVE_TIMESTAMP シート**
-
-| カラム名 | データ型 | 必須 | 説明 |
-|---------|---------|------|------|
-| ID | 整数 | ✓ | 楽曲レコードの一意識別子 |
-| LIVE_ID | 整数 | ✓ | 配信IDへの外部キー |
-| タイムスタンプ | 文字列 | ✓ | 歌唱開始時刻（HH:MM:SSまたはMM:SS形式） |
-| 曲名 | 文字列 | ✓ | 楽曲名 |
-| アーティスト | 文字列 | ✓ | アーティスト名 |
-
-#### 出力ファイル
-
-**生成されるファイル:**
-- `M_YT_LIVE.TSV` - 配信データ（タブ区切り、UTF-8エンコーディング）
-- `M_YT_LIVE_TIMESTAMP.TSV` - 楽曲タイムスタンプデータ（タブ区切り、UTF-8エンコーディング）
-- `V_SONG_LIST.TSV` - 楽曲リストデータ（song_list_generatorによって生成）
-
-**バックアップファイル:**
-- `data/backups/M_YT_LIVE_YYYYMMDD_HHMMSS.TSV`
-- `data/backups/M_YT_LIVE_TIMESTAMP_YYYYMMDD_HHMMSS.TSV`
-
-### データ検証
-
-ツールは以下の検証を自動的に実行します：
-
-**1. フィールド数の検証**
-- M_YT_LIVE.TSV: 各行に4つのフィールドが存在すること
-- M_YT_LIVE_TIMESTAMP.TSV: 各行に5つのフィールドが存在すること
-
-**2. データ型の検証**
-- IDフィールドが数値であること
-- 必須フィールドが空でないこと
-
-**3. URL形式の検証**
-- URLフィールドが有効なURL形式であること
-
-検証エラーが発生した場合、警告メッセージが表示されますが、処理は継続されます。致命的なエラーの場合は処理が中断され、バックアップから復元されます。
-
-### バックアップ機能
-
-既存のTSVファイルが存在する場合、上書きする前に自動的にバックアップが作成されます。
-
-**バックアップファイル名の形式:**
-```
-元のファイル名_YYYYMMDD_HHMMSS.TSV
-```
-
-**例:**
-```
-M_YT_LIVE_20250122_143025.TSV
-M_YT_LIVE_TIMESTAMP_20250122_143025.TSV
-```
-
-バックアップファイルは`data/backups/`ディレクトリに保存されます。ディレクトリが存在しない場合は自動的に作成されます。
-
-### エラーハンドリング
-
-ツールは以下のエラーに対して適切に対処します：
-
-**1. ファイル読み込みエラー**
-- Excelファイルが存在しない
-- Excelファイルが破損している
-- ファイルが他のプロセスで開かれている
-- 読み込み権限がない
-
-**2. データ検証エラー**
-- 必須シートが存在しない
-- フィールド数が不正
-- データ型が不正
-- URL形式が不正
-
-**3. ファイル書き込みエラー**
-- 書き込み権限がない
-- ディスク容量不足
-- ファイルパスが不正
-
-**4. 後続処理エラー**
-- song_list_generatorの実行に失敗
-
-エラー発生時は、詳細なエラーメッセージが表示され、既存のファイルはバックアップから復元されます。
-
-### トラブルシューティング
-
-#### 問題: Excelファイルが見つからない
-
-**エラーメッセージ:**
-```
-Error: Excel file not found: data/data.xlsx
-```
-
-**解決方法:**
-1. ファイルパスが正しいか確認してください
-2. `--input-file`オプションで正しいパスを指定してください
-3. ファイルが存在するか確認してください
-
-#### 問題: シートが見つからない
-
-**エラーメッセージ:**
-```
-Error: Required sheet 'M_YT_LIVE' not found in Excel file
-```
-
-**解決方法:**
-1. Excelファイルに必要なシート（M_YT_LIVE、M_YT_LIVE_TIMESTAMP）が存在するか確認してください
-2. シート名が正確に一致しているか確認してください（大文字小文字は区別されません）
-
-#### 問題: データ検証エラー
-
-**エラーメッセージ:**
-```
-Warning: Row 5 in M_YT_LIVE: Field count mismatch (expected 4, got 3)
-```
-
-**解決方法:**
-1. 該当行のデータを確認してください
-2. 必須フィールドがすべて入力されているか確認してください
-3. データ型が正しいか確認してください
-
-#### 問題: song_list_generatorの実行に失敗
-
-**エラーメッセージ:**
-```
-Error: Failed to run song_list_generator
-```
-
-**解決方法:**
-1. song_list_generatorが正しくインストールされているか確認してください
-2. `--skip-song-list`オプションを使用して、TSVファイルのみを生成してください
-3. 生成されたTSVファイルを確認し、手動でsong_list_generatorを実行してください
-
-#### 問題: 書き込み権限がない
-
-**エラーメッセージ:**
-```
-Error: Permission denied: data/M_YT_LIVE.TSV
-```
-
-**解決方法:**
-1. 出力ディレクトリへの書き込み権限があるか確認してください
-2. ファイルが他のプロセスで開かれていないか確認してください
-3. 管理者権限で実行してください（必要な場合）
-
-### ログ出力
-
-ツールは詳細なログを出力します。ログレベルは環境変数で制御できます。
-
-**ログレベルの設定:**
-
-```bash
-# DEBUGレベル（詳細なデバッグ情報）
-export SHINOUTA_LOG_LEVEL=DEBUG
-python -m src.cli.excel_to_tsv_cli
-
-# INFOレベル（一般的な情報）
-export SHINOUTA_LOG_LEVEL=INFO
-python -m src.cli.excel_to_tsv_cli
-
-# WARNINGレベル（警告のみ）
-export SHINOUTA_LOG_LEVEL=WARNING
-python -m src.cli.excel_to_tsv_cli
-```
-
-**ファイルログの有効化:**
-
-```bash
-export SHINOUTA_ENABLE_FILE_LOGGING=true
-export SHINOUTA_LOG_FILE=logs/excel_to_tsv.log
-python -m src.cli.excel_to_tsv_cli
-```
-
-### 関連ドキュメント
-
-詳細な仕様と設計については、以下のドキュメントを参照してください：
-
-- **要件定義書**: `docs/archive/specs/excel-to-tsv-converter/requirements.md`
-- **設計書**: `docs/archive/specs/excel-to-tsv-converter/design.md`
-- **実装タスクリスト**: `docs/archive/specs/excel-to-tsv-converter/tasks.md`
+- 歌唱の追加は、取り込みの CLI(`ingest`・`data`)で行います。TSV を手で編集しません。手順は [`docs/prompts/update-data.md`](docs/prompts/update-data.md)、コマンドは [`docs/prompts/_commands.md`](docs/prompts/_commands.md)。
+- 曲の無いコンテンツは `data/ingest/skipped.tsv` に記録します。取得したコメントと下書き(`data/ingest/cache/`・`staged/`)は Git に入れません。
+- v1 のデータ(`data/*.TSV`・`data/data.xlsx`)は参照用に残しているだけで、画面はもう読みません(フェーズ3で消す予定)。古い手順は [`docs/archive/`](docs/archive/README.md) にあります。
 
 ## プロジェクト構造
 
 ```
 .
-├── .devcontainer/          # Dev Container設定
-├── .github/                # GitHub設定
-├── .streamlit/             # Streamlit設定
-├── .claude/skills/         # AI エージェント向けのスキルの入口(本体は docs/prompts/)
-├── data/                   # データファイル
-│   ├── v2/                 # v2 のテーブル(正本。画面が読む)
-│   ├── ingest/             # 取り込み(skipped.tsv。cache/・staged/ は Git 管理外)
-│   ├── backups/            # バックアップ(v1)
-│   ├── data.xlsx           # 入力データ(v1)
-│   └── *.TSV               # 生成されたTSVファイル(v1)
-├── docs/                   # ドキュメント(一覧は docs/README.md)
-│   ├── architecture/       # 構成の概要(overview.md)
-│   ├── development/        # 開発関連ドキュメント
-│   ├── guides/             # ガイド
-│   ├── prompts/            # AI エージェント向けの手順(スキルの本体)
-│   ├── specs/              # 仕様書(data-model.md など)
-│   ├── testing/            # テスト関連
-│   └── archive/            # 古い仕様
-├── pages/                  # Streamlitページ(*_Admin.py・*_Preview.py はローカル専用)
-├── scripts/                # 実行スクリプト
-├── src/                    # ソースコード
-│   ├── cli/                # CLIツール(v2 の ingest・data を含む)
-│   ├── clients/            # 外部APIクライアント
-│   ├── config/             # 設定
-│   ├── core/               # コア機能(v2 の集計 views.py を含む)
-│   ├── exceptions/         # 例外定義
+├── Home.py                 # 入口(Home の本体は src/ui/pages/home_page.py)
+├── pages/                  # ほかのページ(Information・About Us・Song List beta)
+├── src/
+│   ├── ui/                 # 画面の部品・ページの準備・style.css・v2 のデータの読み込み(キャッシュ付き)
+│   ├── core/               # v2 の集計(views.py)・検査・文字列・リンク(ほかは v1)
+│   ├── repositories/       # TSV の読み込み(v2 は table_repository.py)
+│   ├── models/             # v2 のテーブルの定義(schema.py)
 │   ├── ingest/             # v2 の取り込み(YouTube API・コメントの解析・下書き・曲なしの記録)
-│   ├── models/             # データモデル(v2 のテーブル定義 schema.py を含む)
-│   ├── repositories/       # データアクセス層
-│   ├── services/           # ビジネスロジック
-│   ├── ui/                 # UI(components/・pages/・styles/)
-│   └── utils/              # ユーティリティ
-├── tests/                  # テスト
-│   ├── e2e/                # ページの起動(Streamlit の AppTest)
-│   ├── fixtures/           # テストフィクスチャ
-│   ├── integration/        # 統合テスト
-│   ├── performance/        # 性能テスト(--runslow のときだけ)
-│   ├── property/           # プロパティベーステスト
-│   └── unit/               # ユニットテスト(v2 は unit/v2)
-├── tools/check-rules.sh    # 絶対制約の確認(読み取り専用)
-├── .gitignore              # Git除外設定
-├── docker-compose.yml      # Docker Compose設定
-├── Dockerfile              # Dockerイメージ定義
-├── Home.py                 # Streamlitメインページ
-├── README.md               # プロジェクト概要
-├── requirements.txt        # Python依存関係(本番。Streamlit Cloud はこれだけを読む)
-├── requirements-tools.txt  # データ生成の CLI 用
-└── requirements-dev.txt    # テスト用(コンテナはこれを入れる)
+│   ├── cli/                # ingest・data(v2)ほかの CLI
+│   ├── config/             # 設定(環境変数 SHINOUTA_*)とログ
+│   └── services/ clients/ exceptions/ utils/
+├── data/
+│   ├── v2/                 # 画面が読むデータ(正本)
+│   ├── ingest/             # skipped.tsv(cache/・staged/ は Git 管理外)
+│   └── *.TSV・data.xlsx    # v1(参照用。フェーズ3で消す)
+├── tests/                  # unit(v2 は unit/v2、画面は unit/ui)・property・integration・e2e・performance
+├── tools/                  # check-rules.sh(絶対制約の確認)・wake_up_streamlit.py(本番のスリープ防止)
+├── docs/                   # 文書(一覧は docs/README.md)
+├── Dockerfile・docker-compose.yml
+└── requirements.txt・requirements-tools.txt・requirements-dev.txt
 ```
 
-### モジュール構造の説明
-
-本アプリケーションは、保守性とテスト可能性を向上させるため、レイヤー化されたアーキテクチャを採用しています。
-
-#### srcディレクトリ
-
-アプリケーションのコアロジックを格納するディレクトリです。各サブディレクトリは明確な責務を持ちます。
-
-##### services/（ビジネスロジック層）
-
-データ処理と検索機能を提供するサービスクラスを格納します。
-
-- **data_service.py**: TSVファイルからのデータ読み込み、データ結合、エラーハンドリングを担当
-  - `DataService`クラス: 配信データ、楽曲データ、楽曲リストデータの読み込みと結合
-  - エラー発生時の適切なエラーメッセージ管理
-  
-- **search_service.py**: 検索機能を提供
-  - `SearchService`クラス: キーワード検索、複数フィールド検索、大文字小文字を区別しない検索
-  - 複数条件によるフィルタリング機能
-
-- **song_list_service.py**: 楽曲リスト(Song List)の生成
-  - `SongListService`クラス: 配信・楽曲データから `V_SONG_LIST.TSV` を作る(v1)
-
-- **excel_to_tsv_service.py**・**twitter_embed_service.py**: Excel から TSV への変換(v1)と、Twitter 埋め込みコードの取得
-
-##### core/（コア機能層）
-
-データ処理パイプラインとユーティリティ関数を格納します。
-
-- **data_pipeline.py**: データ処理の全体フローを管理
-  - `DataPipeline`クラス: データ読み込み→結合→変換→ソートの一連の処理を実行
-  - キャッシング機能による高速化
-  - 各ステップの結果検証
-  
-- **utils.py**: 汎用的なユーティリティ関数
-  - `convert_timestamp_to_seconds()`: タイムスタンプ文字列を秒数に変換
-  - `generate_youtube_url()`: YouTubeタイムスタンプ付きURL生成
-  - `generate_song_numbers()`: 曲目番号の自動生成
-  - `convert_date_string()`: 日付文字列の変換
-
-- **v2 の部品**(仕様は [`docs/specs/data-model.md`](docs/specs/data-model.md))
-  - **views.py**: 歌唱の一覧と曲ごとの集計を、5つのテーブルから計算する
-  - **validation.py**・**dataset_ops.py**: テーブルの検査と、値の修正・曲順の振り直し・まとめ
-  - **text.py**・**links.py**: 照合用の文字列のならし・読みの並べ方と、リンクの組み立て
-
-##### ingest/（v2 の取り込み）
-
-YouTube などの取得結果から歌唱を読み取り、`data/v2/` に追記するための部品です(`python -m src.cli.ingest`)。
-
-- **youtube_api.py**: YouTube Data API からの取得(月ごとの一覧、1本の取得、本人以外のチャンネルの検索)
-- **parser.py**: 職人さんのコメントの選び方、時刻の行の分け方、既存の曲との照合
-- **staging.py**: 下書き(`data/ingest/staged/`)の読み書きと、`data/v2/` への追記
-- **skips.py**: 曲の無いコンテンツの記録(`data/ingest/skipped.tsv`)
-
-##### ui/（UIコンポーネント層）
-
-再利用可能なUIコンポーネントを格納します。
-
-- **components/**: Streamlit UIコンポーネント(`__init__.py`)とフッター(`footer.py`)
-  - `render_search_form()`: 検索フォームの表示
-  - `render_results_table()`: 検索結果テーブルの表示
-  - `render_pagination()`: ページネーション（段階的表示）
-  - `render_twitter_embed()`: Twitter埋め込み表示
-- **pages/home_page.py**: Home の画面(`HomePage`。`Home.py` から呼ぶ)
-- **styles/style.css**: 画面のスタイル
-
-##### config/（設定管理層）
-
-アプリケーション設定とロギング設定を格納します。
-
-- **settings.py**: アプリケーション設定の一元管理
-  - `Config`クラス: ファイルパス、表示設定、ページ設定、パフォーマンス設定
-  - 環境変数からの設定読み込み
-  - 設定値の検証
-  
-- **logging_config.py**: ロギング設定
-  - ログレベル、フォーマット、ファイル出力、ローテーション設定
-  - 環境変数による制御
-
-##### exceptions/（例外処理層）
-
-カスタム例外クラスを格納します。
-
-- **errors.py**: アプリケーション固有の例外クラス
-  - `ShinoutaTimeError`: 基底例外クラス
-  - `DataLoadError`: データ読み込みエラー
-  - `DataProcessingError`: データ処理エラー
-  - `ConfigurationError`: 設定エラー
-  - `log_error()`: エラーログ記録関数
+層とデータの流れ・エラー・キャッシュは [構成の概要](docs/architecture/overview.md) にあります。
 
 ## 技術スタック
 
-- **フレームワーク**: Streamlit
-- **プログラミング言語**: Python 3.14(Docker イメージ `python:3.14.8-slim-trixie`)
-- **データ処理**: Pandas
-- **データ形式**: TSV (Tab-Separated Values)
-- **スタイリング**: CSS
+- **言語・画面**: Python 3.14、[Streamlit](https://streamlit.io/) 1.66、pandas
+- **データ**: TSV(UTF-8・タブ区切り)。データベースは使わない
+- **取り込み**: YouTube Data API v3(取り込みの CLI だけが使う。画面は外部の API を使わない)
+- **動かす場所**: 手元は Docker(`python:3.14.8-slim-trixie`)、公開は Streamlit Community Cloud(`main` → 本番、`develop` → stg)
+- **依存**: `==` で固定し、`requirements.txt`(本番)・`requirements-tools.txt`(データの CLI)・`requirements-dev.txt`(テスト。コンテナはこれを入れる)に分ける
 
 ## ドキュメント
 
-`docs/` ディレクトリに、より詳細なドキュメントがあります。
-
-- **`docs/README.md`**: ドキュメントの一覧
-- **`docs/specs/`**: 仕様書(データモデル v2 は `data-model.md`)
-- **`docs/prompts/`**: AI エージェント向けの手順(データの取り込みは `update-data.md`)
-- **`docs/guides/`**: ユーザーおよび開発者向けのガイド
-- **`docs/architecture/overview.md`**: 構成の概要(層・データの流れ・エラー・キャッシュ)
-- **`docs/development/`**: 開発プロセスや規約に関するドキュメント
-- **`docs/testing/`**: テストに関するドキュメント
+| 文書 | 中身 |
+|---|---|
+| [ユーザーガイド](docs/guides/user-guide.md)・[FAQ](docs/faq.md) | サイトの使い方 |
+| [SETUP.md](SETUP.md)・[TROUBLESHOOTING.md](TROUBLESHOOTING.md) | 手元で動かす・困ったとき |
+| [CONTRIBUTING.md](CONTRIBUTING.md)・[ブランチ戦略](docs/development/BRANCH_STRATEGY.md) | 開発の決まり・ブランチとリリース |
+| [構成の概要](docs/architecture/overview.md)・[データモデル v2](docs/specs/data-model.md) | 構成とデータの形 |
+| [データの取り込み](docs/prompts/update-data.md)・[コマンド集](docs/prompts/_commands.md) | 取り込みの手順とコマンド |
+| [デプロイ](docs/deployment.md)・[テスト](docs/testing/README.md) | 公開の環境とスリープ防止・テストの流し方 |
+| [docs/README.md](docs/README.md) | 文書の一覧 |
 
 ## 注意事項
 
 ### 非公式サイトについて
-本サイトは非公式ファンサイトであり、幽音しのさんご本人および所属事務所とは一切関係ありません。公式情報については、公式チャンネルや公式Twitterをご確認ください。
+本サイトは非公式ファンサイトであり、幽音しのさんご本人および所属事務所とは一切関係ありません。公式情報については、公式チャンネルや公式の X をご確認ください。
 
 ### データの正確性について
-本サイトのデータは、有志による手作業での情報収集に基づいています。そのため、以下の点にご注意ください：
+本サイトのデータは、タイムスタンプ職人さんのコメントや X の投稿などをもとに、有志が確かめて登録しています。そのため、以下の点にご注意ください：
 
-- **誤りの可能性**: データ入力時の誤りや漏れがある可能性があります
-- **最新情報の反映遅延**: 最新の配信情報が即座に反映されない場合があります
-- **β版機能**: 一部機能（楽曲リストのソート順など）は改善中です
+- **誤りの可能性**: 曲名・アーティストの誤りや、歌唱の漏れがある可能性があります
+- **最新情報の反映遅延**: 更新は不定期です。どの配信まで入っているかは、Home の「データは YYYY/MM/DD の配信まで」で確かめられます
 
-データに誤りを発見された場合は、お手数ですが管理者までご連絡ください。
+データに誤りを発見された場合は、各ページのフッターにある連絡先([@kajuen_kajuen](https://x.com/kajuen_kajuen))か、GitHub の Issue でお知らせください。
 
 ### 免責事項
 本サイトの利用により生じたいかなる損害についても、制作者は一切の責任を負いません。データの正確性については保証いたしかねますので、あらかじめご了承ください。
@@ -937,28 +138,3 @@ YouTube などの取得結果から歌唱を読み取り、`data/v2/` に追記�
 **制作**: ファン有志  
 **対象VTuber**: 幽音しの（[@Shino_Kasukane_](https://x.com/Shino_Kasukane_)）  
 **公式YouTubeチャンネル**: [幽音しの / Shino Kasukane](https://www.youtube.com/@Shino_Kasukane)
-
-
-## 🛠️ ツールとスクリプト
-
-### Excel to TSV変換ツール(旧フロー)
-
-`data/data.xlsx` からTSVファイルを自動生成する統合ツールです。v1 のデータ用で、画面が v2 に切り替わったのでもう使いません(フェーズ3で消す予定)。
-
-**使い方:**
-1. `data/data.xlsx` を `data/` フォルダに配置します。
-2. `scripts/excel_to_tsv.bat` を実行します。
-
-**モード:**
-- `excel_to_tsv.bat full` (デフォルト): 全てのTSVファイルを生成します。
-- `excel_to_tsv.bat tsv_only`: `V_SONG_LIST.TSV` を除くTSVファイルを生成します。
-- `excel_to_tsv.bat dryrun`: ファイルを生成せずに処理を検証します。
-
-詳細は [Excel to TSV変換ガイド](docs/guides/excel-to-tsv-guide.md) を参照してください。
-
-### 環境検証スクリプト
-
-開発環境が正しくセットアップされているか確認するスクリプトです。
-
-- `scripts/verify_environment.bat` (Windows)
-- `scripts/verify_environment.sh` (Linux/Mac)

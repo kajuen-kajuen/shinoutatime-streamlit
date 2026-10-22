@@ -1,6 +1,6 @@
 # データ管理ガイド
 
-> 【旧フロー】この文書は v1 のデータ(`data/*.TSV`・`data.xlsx`)の手順です。画面は v2(`data/v2/`)に切り替え済みで、もう使いません(フェーズ3で消す予定)。今後のデータの追加は [`docs/prompts/update-data.md`](prompts/update-data.md)、データの形は [`docs/specs/data-model.md`](specs/data-model.md) を見てください。
+> 【旧フロー・2026-10-22 に docs/archive へ移した】この文書は v1 のデータ(`data/*.TSV`・`data.xlsx`)の手順です。画面は v2(`data/v2/`)に切り替え済みで、もう使いません(フェーズ3で消す予定)。今後のデータの追加は [`docs/prompts/update-data.md`](../prompts/update-data.md)、データの形は [`docs/specs/data-model.md`](../specs/data-model.md) を見てください。
 
 ## 概要
 
@@ -204,12 +204,12 @@ Twitterの埋め込みコードは、以下のCLIツールまたはStreamlit管�
 ```bash
 docker-compose exec shinouta-time python -m src.cli.twitter_embed_cli [ツイートURL...]
 ```
-- 詳細は [Twitter埋め込みコード自動取得システム](archive/specs/twitter-embed-automation/design.md) を参照してください。
+- 詳細は [Twitter埋め込みコード自動取得システム](specs/twitter-embed-automation/design.md) を参照してください。
 
 #### Streamlit管理画面 (UI)
 1. Streamlitアプリケーションを起動し、サイドバーから「Twitter Embed Admin」ページにアクセスします。
 2. 管理者パスワードを入力してログインし、ツイートURLを入力して更新します。
-- 詳細は [Twitter埋め込みコード管理画面 使用ガイド](archive/specs/twitter-embed-automation/design.md) を参照してください。
+- 詳細は [Twitter埋め込みコード管理画面 使用ガイド](specs/twitter-embed-automation/design.md) を参照してください。
 
 ### タイムスタンプ付きURLの作成方法
 

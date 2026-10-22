@@ -43,8 +43,8 @@ sh tools/check-rules.sh                                # 絶対制約の確認(�
 |---|---|---|
 | `main` | 本番(https://shinoutatime.streamlit.app/) | push すると自動で反映される。持ち主だけが統合・push する |
 | `develop` | ステージング(https://stg-shinoutatime.streamlit.app/) | 同上 |
-| `feature/xxx`・`fix/xxx` など | なし | ここで作業する |
-| `update-data` | なし | v1 のデータの更新用 |
+| `feature/xxx`・`fix/xxx` など | なし | ここで作業する。用件ごとに `origin/develop` から作り、develop に出したら消す |
+| `update-data` | なし | データ v2 の更新(取り込み)用。使うたびに `origin/develop` から作り直し、develop → main で出す |
 
 詳しくは [`docs/development/BRANCH_STRATEGY.md`](docs/development/BRANCH_STRATEGY.md)。
 
@@ -79,7 +79,7 @@ sh tools/check-rules.sh                                # 絶対制約の確認(�
   - **TSV を手で編集しません。** 追加は取り込みの CLI(`python -m src.cli.ingest`)、修正は `python -m src.cli.data` を通します(保存の前に検査し、決まった順に並べるため)。
   - 取り込みの手順と判断の決まりは [`docs/prompts/update-data.md`](docs/prompts/update-data.md)、データの形は [`docs/specs/data-model.md`](docs/specs/data-model.md)。
   - 配信のコメント本文や投稿者名は `data/ingest/cache/`(Git 管理外)にだけ置き、コミットしません。
-- **v1(参照用。画面はもう読まない)**: `data/data.xlsx` から生成する `data/*.TSV`。フェーズ3で消す予定です(【旧フロー】。[`docs/data-management.md`](docs/data-management.md))。
+- **v1(参照用。画面はもう読まない)**: `data/data.xlsx` から生成する `data/*.TSV`。フェーズ3で消す予定です(【旧フロー】。[`docs/archive/data-management.md`](docs/archive/data-management.md))。
   - 生成ツールは、まず `--dry-run` で件数を確かめ、持ち主の確認を得てから上書きします。
 
 ## 書き方
@@ -93,7 +93,7 @@ sh tools/check-rules.sh                                # 絶対制約の確認(�
 ## テスト
 
 - `docker compose exec shinouta-time pytest` で全部を流します。v2 のテストは `tests/unit/v2/`、性能のテストは `--runslow` のときだけ動きます。
-- v1 の古いテストの一部は、今も失敗します(既知の課題。[`docs/architecture/overview.md`](docs/architecture/overview.md) の「既知の課題」)。変更の前後で、失敗が増えていないことを確かめます。
+- 今は全部のテストが通ります(失敗なし)。この状態を保ち、変更の前後で失敗が増えていないことを確かめます。
 - 詳しくは [`docs/testing/README.md`](docs/testing/README.md)。
 
 ## ライセンス

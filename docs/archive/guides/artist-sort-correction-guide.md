@@ -1,6 +1,6 @@
 # アーティスト名ソート修正機能 使い方
 
-> 【旧フロー】この文書は v1 のデータ(`data/*.TSV`・`data.xlsx`)の手順です。画面は v2(`data/v2/`)に切り替え済みで、もう使いません(フェーズ3で消す予定)。v2 では、アーティストの読みは `data/v2/artists.tsv` の `sort_name` に持ち、`python -m src.cli.data set artists <artist_id> sort_name <読み>` で直します([`docs/specs/data-model.md`](../specs/data-model.md))。
+> 【旧フロー・2026-10-22 に docs/archive へ移した】この文書は v1 のデータ(`data/*.TSV`・`data.xlsx`)の手順です。画面は v2(`data/v2/`)に切り替え済みで、もう使いません(フェーズ3で消す予定)。v2 では、アーティストの読みは `data/v2/artists.tsv` の `sort_name` に持ち、`python -m src.cli.data set artists <artist_id> sort_name <読み>` で直します([`docs/specs/data-model.md`](../../specs/data-model.md))。
 
 ## 概要
 
@@ -339,5 +339,5 @@ A: 現在、自動バックアップ機能はありません。重要な変更�
 ## 関連ドキュメント
 
 - [Excel to TSV変換ツール 使い方](./excel-to-tsv-guide.md)
-- [構成の概要](../architecture/overview.md)
-- [ユーザーガイド](./user-guide.md)
+- [構成の概要](../../architecture/overview.md)
+- [ユーザーガイド](../../guides/user-guide.md)

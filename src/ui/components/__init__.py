@@ -9,7 +9,8 @@ import html
 import logging
 import streamlit as st
 import pandas as pd
-from typing import Tuple, List, Dict, Collection
+from pathlib import Path
+from typing import Tuple, List, Dict, Collection, Optional
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
@@ -244,3 +245,29 @@ def render_twitter_embed(
             # 埋め込みコードが空だった場合の情報メッセージ
             logger.warning("埋め込みコードが空です")
             st.info("Twitterの埋め込み情報が読み込まれませんでした。")
+
+
+def load_twitter_embed(embed_path: Path, height_path: Path) -> Optional[Tuple[str, int]]:
+    """
+    保存してある X の埋め込みコードと表示の高さを読む
+
+    埋め込みコードは src.cli.twitter_embed_cli が X の oEmbed から取って保存したもの
+    (保存の前に検査している)。画面の中で呼ぶので、ここでは表示をせず、ログだけ残す。
+
+    Args:
+        embed_path: 埋め込みコードのファイル(data/tweet_embed_code.html)
+        height_path: 表示の高さ(ピクセル)のファイル(data/tweet_height.txt)
+
+    Returns:
+        (埋め込みコード, 高さ)。ファイルが無い・読めない・空・高さが正の整数でないときは None
+    """
+    try:
+        embed_code = embed_path.read_text(encoding="utf-8").strip()
+        height = int(height_path.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError) as e:
+        logger.warning(f"X の埋め込みを読めませんでした: {e}")
+        return None
+    if not embed_code or height <= 0:
+        logger.warning(f"X の埋め込みが空か、高さが正しくありません: 高さ={height}")
+        return None
+    return embed_code, height

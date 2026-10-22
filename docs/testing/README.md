@@ -1,6 +1,6 @@
 # テストドキュメント
 
-しのうたタイムのテストの置き場所・流し方・今の状態です。テストの書き方の詳細は [`tests/README.md`](../../tests/README.md)。
+しのうたタイムのテストの流し方・置き場所・書き方の要点・今の状態です。
 
 ## 流し方
 
@@ -26,19 +26,25 @@ docker compose exec shinouta-time pytest --cov=src --cov-report=term-missing
 
 | ディレクトリ | 中身 |
 |---|---|
-| `tests/unit/` | ユニットテスト(v1 のサービス・リポジトリ・CLI など) |
 | `tests/unit/v2/` | データモデル v2 のテスト(文字列とリンク、読み書きと検査、操作と集計、取り込み・YouTube API) |
+| `tests/unit/ui/` | 画面の部品のテスト(ページの準備 `page_setup`、Home の絞り込み・表の組み立て・データの時点) |
+| `tests/unit/` | 設定・ログなどと、v1 の部品(サービス・リポジトリ・CLI)のテスト |
 | `tests/property/` | hypothesis を使ったプロパティベーステスト(v1) |
 | `tests/integration/` | 統合テスト(画面の部品・v2 の読み込みのキャッシュ、v1 の部品) |
 | `tests/e2e/` | ページの起動・検索・さらに表示(Streamlit の `AppTest`)。本物の `data/v2/` を読むので、件数は「1件以上」などで確かめる |
 | `tests/performance/` | 性能テスト。架空の2万件で、読み込みから集計までを約0.5秒で終えることを確かめる(`--runslow`) |
 | `tests/fixtures/` | テスト用のデータ |
 
-## 今の状態(2026-10-21)
+## 書き方の要点
 
-- 全体: **859 passed / 4 skipped**(失敗なし)
-- v2(`tests/unit/v2`): **172 passed**
-- 画面のテスト(`tests/unit/ui`・`tests/e2e`)は、フェーズ2(画面を v2 に切り替えた)で v2 の形に書き直した。
+- 期待値は仕様(`docs/prompts/_common-context.md`・`docs/specs/`)を根拠にします。今の実装の出力をそのまま期待値にしません。
+- v2 のテストのデータは、`tests/unit/v2/conftest.py` の `make_dataset`・`content` でテストの中に小さく作ります(すべて架空のデータ)。e2e 以外は `data/` の本物のデータに頼りません。
+- e2e の検索フォーム(`st.form`)は、入力欄に `set_value` したあと `.run()` を挟まずに「検索」ボタンを `click().run()` します(フォームの中の値は、送信したときにまとめて渡るため)。
+- ネットワークに出るテストは書きません(YouTube API などはモックで)。
+
+## 今の状態(2026-10-22)
+
+- 全体: **863 passed / 4 skipped**(失敗なし。v1 のデータを確かめていた環境の確認テスト14件は消した)
 - v1 の部品のテスト(`tests/unit` の DataPipeline・SongListService など、`tests/property`)は、v1 のコードと一緒にフェーズ3で消す。
 - 変更の前後で、**失敗が増えていない**ことを確かめます。
 
@@ -46,10 +52,10 @@ docker compose exec shinouta-time pytest --cov=src --cov-report=term-missing
 
 2025年11月時点の記録は `docs/archive/` に移しました。v2 のテストを含みません。
 
+- [古いテストガイド](../archive/testing/tests-guide-2025.md)(v1 の部品が中心、2025年11月)
 - [カバレッジレポートのサマリー](../archive/testing/coverage_report_summary.md)(84件、2025年11月)
 - [`docs/archive/TESTING_COMPLETE.md`](../archive/TESTING_COMPLETE.md)(テスト完了報告)
 
 ## 関連ドキュメント
 
-- [テストガイド](../../tests/README.md) - テストの書き方と拡張方法
 - [構成の概要](../architecture/overview.md) - アプリの層とデータの流れ、既知の課題
