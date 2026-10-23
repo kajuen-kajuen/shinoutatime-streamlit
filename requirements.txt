@@ -1,6 +1,6 @@
 # 本番(Streamlit Community Cloud)で使う依存。Cloud はこのファイルだけを読む
 # 版は == で固定する。上げるときはコンテナでテストとページの表示を確かめてから
-streamlit==1.66.0
+streamlit==1.66.1
 pandas==3.0.6
 python-dotenv==1.2.4
 
@@ -11,7 +11,7 @@ python-dotenv==1.2.4
 altair==6.3.0
 anyio==4.15.1
 attrs==26.1.0
-certifi==2026.10.18
+certifi==2026.10.19
 charset-normalizer==3.5.2
 click==8.5.0
 h11==0.16.0
@@ -24,7 +24,7 @@ MarkupSafe==3.0.4
 narwhals==2.27.1
 numpy==2.5.4
 packaging==26.3
-pillow==12.3.0
+pillow==13.0.0
 protobuf==7.36.2
 # pyarrow は 26 を使わない: Streamlit Cloud が 26.0.0 を「落ちる不具合がある」(apache/arrow#50471)として
 # 25 未満に差し替えるため、Cloud が実際に入れる版に合わせる(2026-10-21 の stg のビルドのログで確認)
