@@ -548,6 +548,112 @@ class TestIngestCli:
 
         assert "yt:DDDDDDDDDDD" in set(TableRepository("data/v2").load()["contents"]["content_id"])
 
+    @staticmethod
+    def _edit_draft(content_id="yt:DDDDDDDDDDD", **values):
+        """下書きの1行目の値を書き換えて保存し直す(判断を入れたあとの下書きの代わり)"""
+        content_row, rows = load_staged(content_id)
+        for col, value in values.items():
+            rows.loc[0, col] = value
+        save_staged(content_row, rows)
+
+    @staticmethod
+    def _snapshot() -> dict:
+        """data/v2 の5つの TSV の中身(保存しなかったことを確かめる)"""
+        from pathlib import Path
+        return {p.name: p.read_bytes() for p in sorted(Path("data/v2").glob("*.tsv"))}
+
+    def test_apply_with_validation_error_is_not_saved(self, tmp_path, monkeypatch, capsys, sample_dataset):
+        """検査で落ちる下書きは、--dry-run でもなくても保存しない(終了コードは 1)"""
+        from src.cli import ingest
+        self._prepare(tmp_path, monkeypatch, sample_dataset)
+        self._edit_draft(style="ギター")
+        before = self._snapshot()
+
+        for argv in (["apply", "yt:DDDDDDDDDDD"], ["apply", "yt:DDDDDDDDDDD", "--dry-run"]):
+            assert ingest.main(argv) == 1
+            out = capsys.readouterr().out
+            assert "style は" in out and "保存しませんでした" in out
+        assert self._snapshot() == before
+
+    def test_dry_run_does_not_save(self, tmp_path, monkeypatch, capsys, sample_dataset):
+        from src.cli import ingest
+        self._prepare(tmp_path, monkeypatch, sample_dataset)
+        before = self._snapshot()
+
+        assert ingest.main(["apply", "yt:DDDDDDDDDDD", "--dry-run"]) == 0
+
+        assert "dry-run のため保存していません" in capsys.readouterr().out
+        assert self._snapshot() == before
+
+    def test_registered_content_needs_replace(self, tmp_path, monkeypatch, capsys, sample_dataset):
+        """登録済みのものは --replace のときだけ置き換え、ほかのコンテンツには触らない"""
+        from src.cli import ingest
+        from src.repositories.table_repository import TableRepository
+        self._prepare(tmp_path, monkeypatch, sample_dataset)
+        assert ingest.main(["apply", "yt:DDDDDDDDDDD"]) == 0
+        before = self._snapshot()
+
+        assert ingest.main(["apply", "yt:DDDDDDDDDDD"]) == 1
+        assert "既に登録されています" in capsys.readouterr().err
+        assert self._snapshot() == before
+
+        self._edit_draft(song_id="s0002")
+        assert ingest.main(["apply", "yt:DDDDDDDDDDD", "--replace"]) == 0
+        perf = TableRepository("data/v2").load()["performances"]
+        assert list(perf[perf["content_id"] == "yt:DDDDDDDDDDD"]["song_id"]) == ["s0002"]
+        others = perf[perf["content_id"] != "yt:DDDDDDDDDDD"]
+        assert set(others.itertuples(index=False)) == set(sample_dataset["performances"].itertuples(index=False))
+
+    @pytest.mark.parametrize("values, message", [
+        ({"song_id": "s9999"}, "曲 s9999 がありません"),
+        ({"song_id": "", "title": ""}, "曲名とアーティストを入れてください"),
+    ])
+    def test_bad_draft_is_not_saved(self, tmp_path, monkeypatch, capsys, sample_dataset, values, message):
+        from src.cli import ingest
+        self._prepare(tmp_path, monkeypatch, sample_dataset)
+        self._edit_draft(**values)
+        before = self._snapshot()
+
+        assert ingest.main(["apply", "yt:DDDDDDDDDDD"]) == 1
+
+        assert message in capsys.readouterr().err
+        assert self._snapshot() == before
+
+    def test_missing_draft_is_an_error(self, tmp_path, monkeypatch, capsys, sample_dataset):
+        from src.cli import ingest
+        self._prepare(tmp_path, monkeypatch, sample_dataset)
+        before = self._snapshot()
+
+        assert ingest.main(["apply", "yt:EEEEEEEEEEE"]) == 1
+
+        assert capsys.readouterr().err.startswith("エラー:")
+        assert self._snapshot() == before
+
+    def test_skip_refuses_registered_content(self, tmp_path, monkeypatch, capsys, sample_dataset):
+        """登録済みのものは曲なしにしない(登録済みと曲なしの両方にしない)"""
+        from src.cli import ingest
+        self._prepare(tmp_path, monkeypatch, sample_dataset)
+
+        assert ingest.main(["skip", "yt:AAAAAAAAAAA", "雑談"]) == 1
+
+        assert "登録済みです" in capsys.readouterr().out
+        assert not (tmp_path / "data" / "ingest" / "skipped.tsv").exists()
+
+    def test_skip_and_unskip(self, tmp_path, monkeypatch, capsys, sample_dataset):
+        from src.cli import ingest
+        self._prepare(tmp_path, monkeypatch, sample_dataset)
+
+        assert ingest.main(["skip", "yt:EEEEEEEEEEE", "  "]) == 1
+        assert "理由を書いてください" in capsys.readouterr().err
+        assert ingest.main(["skip", "yt:EEEEEEEEEEE", "ティザー"]) == 0
+        assert load_skips() == {"yt:EEEEEEEEEEE": "ティザー"}
+        skipped = tmp_path / "data" / "ingest" / "skipped.tsv"
+        before = skipped.read_bytes()
+
+        assert ingest.main(["unskip", "yt:FFFFFFFFFFF"]) == 1
+        assert "記録されていません" in capsys.readouterr().out
+        assert skipped.read_bytes() == before
+
     @pytest.mark.parametrize("reason, hint", [("rateLimitExceeded", True), ("quotaExceeded", True), ("forbidden", False)])
     def test_api_error_is_reported_without_traceback(self, monkeypatch, capsys, reason, hint):
         """API の失敗は、トレースバックではなく短いエラーとして出す(上限のときは流し直す時間の案内も)"""
