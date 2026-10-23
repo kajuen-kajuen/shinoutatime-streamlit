@@ -47,7 +47,7 @@ contents ┐                         artists
 | `content_id` | ○ | `<接頭辞>:<そのプラットフォームでの ID>`。接頭辞は youtube=`yt`、x=`x`、zan=`zan`。例: `yt:rPoEadXC5ck`、`zan:10889` |
 | `platform` | ○ | `youtube` / `x` / `zan`(増やすときは `schema.py` と `links.py` に足す) |
 | `type` | ○ | `live` / `video` / `short` / `post` |
-| `url` | ○ | 元のコンテンツの URL。YouTube は `https://www.youtube.com/watch?v=<ID>`(共有用の `si` は付けない)。ショートは `https://www.youtube.com/shorts/<ID>` |
+| `url` | ○ | 元のコンテンツの URL。`https://` で始まる(画面のリンクにそのまま入るので検査する)。YouTube は `https://www.youtube.com/watch?v=<ID>`(共有用の `si` は付けない)。ショートは `https://www.youtube.com/shorts/<ID>` |
 | `channel` | | 本人以外のチャンネルへの出演のときだけ、そのチャンネル名 |
 | `date` | ○ | `YYYY-MM-DD`(日本時間)。ライブは開始日、それ以外は公開日 |
 | `start_time` | | `HH:MM`(日本時間)。同じ日の並び順に使う |

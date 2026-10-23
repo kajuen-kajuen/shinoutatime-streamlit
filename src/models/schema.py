@@ -53,6 +53,8 @@ CONTENT_ID_PATTERN = re.compile(r"^[a-z]+:[A-Za-z0-9_-]+$")
 ARTIST_ID_PATTERN = re.compile(r"^a\d{4,}$")
 SONG_ID_PATTERN = re.compile(r"^s\d{4,}$")
 YEAR_PATTERN = re.compile(r"^\d{4}$")
+# リンク(href)にそのまま入るので、https のほか(javascript: など)を入れない
+URL_PATTERN = re.compile(r"^https://")
 
 PLATFORMS = ("youtube", "x", "zan")
 CONTENT_TYPES = ("live", "video", "short", "post")
@@ -72,6 +74,7 @@ CONTENTS = TableSchema(
     primary_key=("content_id",),
     patterns={
         "content_id": CONTENT_ID_PATTERN,
+        "url": URL_PATTERN,
         "date": DATE_PATTERN,
         "start_time": HHMM_PATTERN,
         "available_until": DATE_PATTERN,

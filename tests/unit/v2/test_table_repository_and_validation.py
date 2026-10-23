@@ -92,6 +92,11 @@ class TestValidation:
         assert any("date" in e for e in errors)
         assert any("default_style" in e for e in errors)
 
+    def test_url_must_be_https(self, sample_dataset):
+        sample_dataset["contents"].loc[0, "url"] = "javascript:alert(1)"
+        sample_dataset["contents"].loc[1, "url"] = "http://www.youtube.com/watch?v=BBBBBBBBBBB"
+        assert "url の形が正しくありません(行 2, 3)" in " ".join(self._errors(sample_dataset))
+
     def test_seq_and_start_order_must_match(self, sample_dataset):
         sample_dataset["performances"].loc[1, "start"] = "0:01:00"  # seq 20 なのに seq 10 より早い
         assert any("曲順" in e for e in self._errors(sample_dataset))
