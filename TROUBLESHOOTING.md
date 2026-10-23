@@ -15,7 +15,7 @@ Docker Desktop が起動していません。起動してから、もう一度�
 ほかの Streamlit や、前に起動したコンテナが 8501 番を使っています。
 
 - `docker compose ps` と `docker ps` で動いているコンテナを確かめ、要らないものを止める(`docker compose down`)
-- それでも空かないときは、`docker-compose.yml` の `ports` を `"8502:8501"` などにして、http://localhost:8502 で開く(この変更はコミットしない)
+- それでも空かないときは、`docker-compose.yml` の `ports` を `"127.0.0.1:8502:8501"` などにして、http://localhost:8502 で開く(この変更はコミットしない)
 
 ### イメージのビルドに失敗する
 

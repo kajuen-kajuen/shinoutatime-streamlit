@@ -2,7 +2,8 @@ services:
   shinouta-time:
     build: .
     ports:
-      - "8501:8501"
+      # 手元の PC からだけ開く(同じ LAN のほかの機器には見せない)
+      - "127.0.0.1:8501:8501"
     volumes:
       - .:/app
     environment:

@@ -1,0 +1,21 @@
+# イメージに入れないもの(compose は .:/app をマウントするので、手元の動きは変わらない)
+# 秘密の値
+.env
+.streamlit/secrets.toml
+.claude/settings.local.json
+# Git の履歴
+.git
+# 取り込みの取得結果・下書き・控え
+data/ingest/cache/
+data/ingest/staged/
+data/backups/
+# ログ・テストとブラウザの確認の生成物
+logs/
+logs-*.txt
+__pycache__/
+.pytest_cache/
+.hypothesis/
+htmlcov/
+.coverage
+browser_screenshots/
+wake_up_screenshots/
