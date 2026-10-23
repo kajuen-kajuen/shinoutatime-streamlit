@@ -98,9 +98,9 @@ X(「Xへ👻」)と Z-aN(「Z-aNへ👻」)のリンクは時刻を指定でき
 
 ### Q15: 何で作られていますか? ソースは公開されていますか?
 
-Python 3.14・[Streamlit](https://streamlit.io/)・pandas で作り、Streamlit Community Cloud で公開しています。データは TSV のファイルです([データモデル](specs/data-model.md))。
+Python 3.14・[Streamlit](https://streamlit.io/)・pandas で作り、Streamlit Community Cloud で公開しています。データは TSV のファイルです(リポジトリの `data/v2/`)。
 
-ソースは [GitHub](https://github.com/kajuen-kajuen/shinoutatime-streamlit) で公開しています(Apache License 2.0)。手元で動かすときは Docker を使います。手順は [SETUP.md](../SETUP.md)、構成は [構成の概要](architecture/overview.md) をご覧ください。
+サイトのソースは [GitHub](https://github.com/kajuen-kajuen/shinoutatime-streamlit) で公開しています(Apache License 2.0)。データの取り込みの道具・テスト・開発用の資料は公開していません。
 
 ---
 

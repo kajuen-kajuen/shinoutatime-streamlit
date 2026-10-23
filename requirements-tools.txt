@@ -1,4 +1,0 @@
-# データの取り込みの CLI(ingest)で使う依存。本番には入れない
--r requirements.txt
-# 似た曲名の照合(src/utils/similarity_checker.py)
-python-Levenshtein==0.27.5

@@ -2,4 +2,3 @@
 *.sh text eol=lf
 # データモデル v2 の TSV は、ツールが LF で書くので、取り出しも LF に固定する(差分が出続けないように)
 data/v2/*.tsv text eol=lf
-data/ingest/skipped.tsv text eol=lf

@@ -1,5 +1,0 @@
-# ブラウザの確認(tests/browser/)で使う依存。本番・アプリのコンテナには入れない
-# docker-compose.yml の browser(profile)のイメージ(Dockerfile.browser)だけが入れる
-# playwright の版は .github/workflows/wake_up_streamlit.yml とそろえる(上げるときは両方)
-pytest==9.1.1
-playwright==1.64.0
