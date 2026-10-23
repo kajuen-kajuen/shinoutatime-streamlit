@@ -62,3 +62,4 @@
 |---|---|
 | [`reviews/2026-10-22-full-review.md`](reviews/2026-10-22-full-review.md) | フェーズ2の直後の全体レビュー(`ec92209` 時点)。高 0・中 3・低 11。ID の再利用、apply と skipped の整合性、v1 の一括 import ほか(2026-10-22 に #12 以外を対応。記録の「6. 追記」) |
 | [`reviews/2026-10-22-full-review-2.md`](reviews/2026-10-22-full-review-2.md) | 2回目の全体レビュー(`63ab27a` 時点)。高 0・中 1・低 6。2026-03-05 の配信の時刻の空(後で入れる)、8.32 の読み、CLI のヘルプの案内先、`src/cli/__init__.py` の import ほか(#2・#4・#6 を対応) |
+| [`reviews/2026-10-23-full-review-3.md`](reviews/2026-10-23-full-review-3.md) | 3回目の全体レビュー(`9c5b25a` 時点)。高 0・中 2・低 6。依存の既知の脆弱性(Streamlit 1.66.1 で Pillow 13 に上げられる)、url の形の検査、CLI のテスト、`.dockerignore` とポートほか |
