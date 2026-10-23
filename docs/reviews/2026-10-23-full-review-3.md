@@ -70,3 +70,26 @@ Claude の確認(2026-10-23、`195511f`): PyPI の JSON(`vulnerabilities`・`req
 ## 6. 追記
 
 (レビュー後の対応や再確認の結果を、日付つきで追記する。本文は書き換えない)
+
+### 2026-10-23 対応(ブランチ `fix/review-3-followup`、`195511f` から)
+
+| # | 状態 | 対応 |
+|---|---|---|
+| 1 | 対応済み | streamlit 1.66.1・pillow 13.0.0・certifi 2026.10.19 に上げた。コンテナの新しい venv に `requirements.txt` を入れて `pip freeze` と比べ、ほかに版の変わった依存は無かった(pyarrow は 24.0.0 のまま)。`pip-audit -r requirements.txt` は「No known vulnerabilities found」。ページのアイコンは絵文字で、Pillow は使っていない |
+| 2 | 未対応 | 持ち主が配信のアーカイブで時刻を調べてから入れる |
+| 3 | 対応済み | `schema.py` に `URL_PATTERN`(`^https://`)を足し、`contents.url` を検査する。`javascript:`・`http://` が error になるテストを足した。`data-model.md` に書いた。今のデータは「問題はありません」のまま |
+| 4 | 対応済み | `data` の `set`(成功と不正値)・`merge-song`・`merge-artist`・`normalize`・`validate`、`ingest` の `apply`(検査落ち・`--dry-run`・`--replace`・下書きの誤り・下書きが無い)・`skip`・`unskip` を `main()` から流すテストを足した(19 件)。保存しなかったときは5つの TSV が変わらないことを確かめる。カバレッジは `data.py` 68→87%、`ingest.py` 50→57%(残りは YouTube API を使う取得・一覧と下書きづくり) |
+| 5 | 対応済み | `.env.example` からキャッシュの2つの設定を消した(`Config` のコードは残した) |
+| 6 | 対応済み | `.dockerignore` を足した(`.env`・`.git`・取り込みの取得結果と下書き・ログ・テストの生成物など)。作り直したイメージに `.env`・`.git` が無いことと、実行中のコンテナではマウントで `.env` が読めることを確かめた。ポートを `127.0.0.1:8501:8501` にした(`TROUBLESHOOTING.md` の例も) |
+| 8 | 対応済み | `.github/CODEOWNERS` を消した |
+
+テストを足すときに分かったこと(直していない。直すかは後で決める):
+- `ingest prepare` は、判断を入れたあとの下書きがあっても、黙って上書きする
+- `data`・`ingest` の `main` は `DataLoadError`・`DataSaveError` を受けず、トレースバックになる。`TableRepository.save` は5つの TSV を順に書くので、途中で失敗すると新旧が混ざりうる
+- `data renumber` に無い content_id を渡しても、0 件として保存し直す(normalize と同じ動き)
+
+確認(コンテナ、streamlit 1.66.1):
+- `pytest -q`: `580 passed, 1 skipped in 70.62s`(`--runslow` 込みで `581 passed`)
+- `python -m src.cli.data validate`: 「問題はありません」
+- ブラウザの確認(手元、`tests/browser --runbrowser`): `12 passed in 20.61s`。アプリのログに例外なし
+- `check-rules.sh`: 「問題なし」
