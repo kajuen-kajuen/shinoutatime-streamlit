@@ -69,11 +69,14 @@ PLATFORM_PREFIX = {"youtube": "yt", "x": "x", "zan": "zan"}
 CONTENTS = TableSchema(
     name="contents",
     columns=("content_id", "platform", "type", "url", "channel", "date", "start_time",
-             "title", "kind", "default_style", "access", "available_until"),
+             "title", "kind", "default_style", "access", "available_until", "follows"),
     required=("content_id", "platform", "type", "url", "date", "title"),
     primary_key=("content_id",),
+    # follows: 同じ公演の続きの部のとき、先の部の content_id(No. を「枝番-曲順」で続ける。views.py)
+    foreign_keys=(ForeignKey("follows", "contents", "content_id"),),
     patterns={
         "content_id": CONTENT_ID_PATTERN,
+        "follows": CONTENT_ID_PATTERN,
         "url": URL_PATTERN,
         "date": DATE_PATTERN,
         "start_time": HHMM_PATTERN,

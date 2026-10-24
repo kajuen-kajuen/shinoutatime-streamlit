@@ -85,6 +85,7 @@ def build_performance_view(dataset: Dataset) -> pd.DataFrame:
 
     並び: 日付の新しい順 → 同じ日の中は時刻の早い順(枝番の順) → コンテンツの中は seq 昇順。
     No. はコンテンツの中での順位(1, 2, 3…)。同じ日に複数のコンテンツがあるときは「枝番-順位」。
+    同じ公演の続きの部(contents.follows)は、先の部と同じ枝番で順位を続け、並びも先の部の直後にする。
     """
     # メンバー限定のコンテンツは、データには持つが画面には出さない(2026-10-20 決定)。
     # 同じ日の枝番も、出すコンテンツだけで数える
@@ -104,21 +105,30 @@ def build_performance_view(dataset: Dataset) -> pd.DataFrame:
     )
     view["artist"] = display_artist(view["artist"], view["feat"])
     view["seq_n"] = pd.to_numeric(view["seq"])
-    view["no_in_content"] = view.groupby("content_id")["seq_n"].rank(method="first").astype(int)
 
     # 同じ日のライブ配信どうしに、時刻の早い順で枝番を振る。
     # ショート・動画は枝番を付けない(同じ日にあっても、ライブ配信の No. を変えないため)
+    # 同じ公演の続きの部(follows)は、先の部と同じ枝番で、曲順を先の部から続ける(例: 2-1, 2-2 → 2-3, 2-4)。
+    # 先の部が無い(メン限で非表示など)・live どうしでないときは、follows を無視して普通のコンテンツにする
+    live_ids = set(contents.loc[contents["type"] == "live", "content_id"])
+    follows = contents["follows"].where(contents["follows"].isin(live_ids) & contents["content_id"].isin(live_ids), "")
     ordered = (
-        contents.assign(_t=contents["start_time"].replace("", "99:99"))
+        contents.assign(_t=contents["start_time"].replace("", "99:99"), head=follows)
         .sort_values(["date", "_t", "content_id"])
     )
-    lives = ordered[ordered["type"] == "live"]
-    branches = lives.assign(
-        branch=lives.groupby("date").cumcount() + 1,
-        per_day=lives.groupby("date")["content_id"].transform("size"),
-    )[["content_id", "branch", "per_day"]]
-    day_order = ordered[["content_id"]].assign(day_pos=ordered.groupby("date").cumcount())
-    view = view.merge(day_order, on="content_id", how="left").merge(branches, on="content_id", how="left")
+    ordered["head"] = ordered["head"].where(ordered["head"] != "", ordered["content_id"])
+    ordered["day_pos"] = ordered.groupby("date").cumcount()
+    heads = ordered[(ordered["type"] == "live") & (ordered["head"] == ordered["content_id"])]
+    branches = heads.assign(
+        branch=heads.groupby("date").cumcount() + 1,
+        per_day=heads.groupby("date")["content_id"].transform("size"),
+    )[["content_id", "branch", "per_day"]].rename(columns={"content_id": "head"})
+    day_order = ordered[["content_id", "head", "day_pos"]].merge(branches, on="head", how="left")
+    day_order["group_pos"] = day_order["head"].map(ordered.set_index("content_id")["day_pos"])
+    view = view.merge(day_order, on="content_id", how="left")
+    # コンテンツの中の曲順。続きの部は、先の部の歌唱数のあとから数える
+    in_order = view.sort_values(["head", "day_pos", "seq_n"], kind="mergesort")
+    view["no_in_content"] = (in_order.groupby("head").cumcount() + 1).reindex(view.index)
     no_in_content = view["no_in_content"].astype(str)
     has_branch = view["per_day"].fillna(1) > 1
     view["no"] = no_in_content.where(~has_branch, view["branch"].fillna(0).astype(int).astype(str) + "-" + no_in_content)
@@ -140,8 +150,8 @@ def build_performance_view(dataset: Dataset) -> pd.DataFrame:
     # 日付は新しい順、同じ日の中は時刻の早い順(2026-10-21 決定。v1 の画面は遅い配信が上だった)、
     # コンテンツの中は曲順
     view = view.sort_values(
-        ["date", "day_pos", "seq_n"],
-        ascending=[False, True, True],
+        ["date", "group_pos", "day_pos", "seq_n"],
+        ascending=[False, True, True, True],
         kind="mergesort",
     ).reset_index(drop=True)
     return view[VIEW_COLUMNS]

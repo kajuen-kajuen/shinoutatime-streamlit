@@ -75,15 +75,42 @@ def validate_dataset(dataset: Dataset) -> List[Issue]:
 
 
 def _check_contents(dataset: Dataset) -> List[Issue]:
-    """content_id の接頭辞(yt: など)が platform と合っていること"""
+    """content_id の接頭辞(yt: など)が platform と合っていること。follows(続きの部)の指し方が正しいこと"""
     df = dataset["contents"]
     if df.empty:
         return []
+    issues: List[Issue] = []
     expected = df["platform"].map(PLATFORM_PREFIX)
     bad = expected.notna() & (df["content_id"].str.split(":", n=1).str[0] != expected)
     if bad.any():
-        return [Issue("error", "contents", f"content_id の接頭辞が platform と合っていません(行 {_rows(df, bad)})")]
-    return []
+        issues.append(Issue("error", "contents", f"content_id の接頭辞が platform と合っていません(行 {_rows(df, bad)})"))
+    issues.extend(_check_follows(df))
+    return issues
+
+
+def _check_follows(df: pd.DataFrame) -> List[Issue]:
+    """follows(同じ公演の続きの部)は、自分以外の、同じ日のライブを指し、先の部がさらに続きになっていないこと。
+    存在しない参照先は外部キーの検査が見る"""
+    following = df["follows"] != ""
+    if not following.any():
+        return []
+    targets = df.drop_duplicates("content_id").set_index("content_id")  # 重複は主キーの検査が見る
+    issues: List[Issue] = []
+    own = following & (df["follows"] == df["content_id"])
+    if own.any():
+        issues.append(Issue("error", "contents", f"follows が自分自身です(行 {_rows(df, own)})"))
+    known = following & df["follows"].isin(targets.index) & ~own
+    target_of = lambda column: df["follows"].map(lambda cid: targets[column].get(cid, ""))  # noqa: E731
+    chained = known & (target_of("follows") != "")
+    if chained.any():
+        issues.append(Issue("error", "contents", f"follows の先がさらに別の部の続きになっています。最初の部を指してください(行 {_rows(df, chained)})"))
+    other_date = known & (target_of("date") != df["date"])
+    if other_date.any():
+        issues.append(Issue("error", "contents", f"follows の先と date が違います(行 {_rows(df, other_date)})"))
+    not_live = known & ((df["type"] != "live") | (target_of("type") != "live"))
+    if not_live.any():
+        issues.append(Issue("error", "contents", f"follows は live どうしだけです(行 {_rows(df, not_live)})"))
+    return issues
 
 
 def _check_performances(dataset: Dataset) -> List[Issue]:
