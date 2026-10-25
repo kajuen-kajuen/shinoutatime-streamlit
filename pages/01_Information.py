@@ -26,7 +26,7 @@ from src.ui.page_setup import setup_page
 WIKI_URL = "https://wikiwiki.jp/774inc/%E5%B9%BD%E9%9F%B3%E3%81%97%E3%81%AE"
 X_URL = "https://x.com/Shino_Kasukane_"
 
-# 今週のスケジュールの埋め込み(src.cli.twitter_embed_cli が保存する)
+# 今週のスケジュールの埋め込み(取り込みのツールが保存する。このリポジトリの外)
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 SCHEDULE_EMBED_PATH = DATA_DIR / "tweet_embed_code.html"
 SCHEDULE_HEIGHT_PATH = DATA_DIR / "tweet_height.txt"

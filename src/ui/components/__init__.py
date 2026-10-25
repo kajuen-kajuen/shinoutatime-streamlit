@@ -285,7 +285,7 @@ def load_twitter_embed(embed_path: Path, height_path: Path) -> Optional[Tuple[st
     """
     保存してある X の埋め込みコードと表示の高さを読む
 
-    埋め込みコードは src.cli.twitter_embed_cli が X の oEmbed から取って保存したもの
+    埋め込みコードは取り込みのツール(このリポジトリの外)が X の oEmbed から取って保存したもの
     (保存の前に検査している)。画面の中で呼ぶので、ここでは表示をせず、ログだけ残す。
 
     Args:
