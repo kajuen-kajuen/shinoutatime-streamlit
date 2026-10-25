@@ -90,7 +90,7 @@ X(「Xへ👻」)と Z-aN(「Z-aNへ👻」)のリンクは時刻を指定でき
 
 ### Q14: 曲名やアーティストの誤りを見つけました
 
-各ページの下(フッター)にある連絡先 [@kajuen_kajuen](https://x.com/kajuen_kajuen) までお知らせください。GitHub の [Issue](https://github.com/kajuen-kajuen/shinoutatime-streamlit/issues) でも受け付けています。
+各ページの下(フッター)にある連絡先 [@kajuen_kajuen](https://x.com/kajuen_kajuen) までお知らせください。
 
 データの正確さは保証できません。正確な情報は、公式チャンネルや配信のアーカイブでご確認ください。
 

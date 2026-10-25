@@ -113,4 +113,4 @@
 
 ## 連絡先
 
-誤りの報告や質問は、各ページのフッターにある [@kajuen_kajuen](https://x.com/kajuen_kajuen) までお願いします。GitHub の [Issue](https://github.com/kajuen-kajuen/shinoutatime-streamlit/issues) でも受け付けています。
+誤りの報告や質問は、各ページのフッターにある [@kajuen_kajuen](https://x.com/kajuen_kajuen) までお願いします。
