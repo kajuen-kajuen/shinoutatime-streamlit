@@ -19,10 +19,10 @@ EXCLUDED_FROM_COUNT_KINDS = ("切り抜き",)
 HIDDEN_ACCESS = ("members",)
 
 # 画面の「種類」の列の表示(contents.type → 日本語)。知らない値はそのまま表示する
-CONTENT_TYPE_LABELS = {"live": "配信", "short": "ショート", "video": "動画", "post": "投稿"}
+CONTENT_TYPE_LABELS = {"live": "配信", "short": "ショート", "video": "動画", "post": "投稿", "audio": "音源"}
 
 # 画面のリンクの文言(contents.platform → 文言)。知らない値は「リンク👻」
-LINK_LABELS = {"youtube": "YouTubeへ👻", "x": "Xへ👻", "zan": "Z-aNへ👻"}
+LINK_LABELS = {"youtube": "YouTubeへ👻", "x": "Xへ👻", "zan": "Z-aNへ👻", "goods": "詳細ページへ👻"}
 
 VIEW_COLUMNS = [
     "content_id", "date", "no", "title", "display_title", "artist", "style", "part", "note",
@@ -180,7 +180,12 @@ def build_song_stats(dataset: Dataset, view: pd.DataFrame = None) -> pd.DataFram
     counted = view.merge(kinds, on="content_id", how="left")
     counted = counted[~counted["content_kind"].isin(EXCLUDED_FROM_COUNT_KINDS)]
 
-    latest = counted.sort_values(["date"], kind="mergesort").groupby("song_id").tail(1)
+    # 最新のリンクは、購入ページ(音源)より動画・配信を優先する(音源しか無い曲は音源)
+    latest = (
+        counted.assign(_not_audio=counted["type"] != "audio")
+        .sort_values(["_not_audio", "date"], kind="mergesort")
+        .groupby("song_id").tail(1)
+    )
     # lambda や Arrow の文字列のまま集計すると曲ごとに遅い処理になるので、
     # NumPy の bool と datetime の列を先に作ってから数える
     flags = pd.DataFrame({

@@ -56,15 +56,15 @@ YEAR_PATTERN = re.compile(r"^\d{4}$")
 # リンク(href)にそのまま入るので、https のほか(javascript: など)を入れない
 URL_PATTERN = re.compile(r"^https://")
 
-PLATFORMS = ("youtube", "x", "zan")
-CONTENT_TYPES = ("live", "video", "short", "post")
+PLATFORMS = ("youtube", "x", "zan", "goods")
+CONTENT_TYPES = ("live", "video", "short", "post", "audio")
 STYLES = ("音源", "弾き語り", "アカペラ")
 ACCESS = ("public", "members", "paid")
 SONG_KINDS = ("カバー", "オリジナル", "即興")
 PARTS = ("1chorus", "1phrase", "short", "1番のみ")
 
 # content_id の接頭辞とプラットフォームの対応
-PLATFORM_PREFIX = {"youtube": "yt", "x": "x", "zan": "zan"}
+PLATFORM_PREFIX = {"youtube": "yt", "x": "x", "zan": "zan", "goods": "goods"}
 
 CONTENTS = TableSchema(
     name="contents",
