@@ -4,6 +4,7 @@
 画面に出す表は、ここで5つのテーブルから計算する(生成物のファイルは持たない)。
 - build_performance_view: 歌唱の一覧(Home 用)
 - build_song_stats: 曲ごとの集計(Song List 用。GROUP BY song_id)
+- filter_song_stats: 曲ごとの集計の絞り込み(Song List の検索)
 """
 
 import pandas as pd
@@ -220,3 +221,19 @@ def build_song_stats(dataset: Dataset, view: pd.DataFrame = None) -> pd.DataFram
     result = result.assign(_order=order).sort_values("_order", kind="mergesort").drop(columns="_order")
     result["search"] = search_text(result["title"], result["sort_title"], result["artist"], result["sort_name"])
     return result[columns + ["search"]].reset_index(drop=True)
+
+
+def filter_song_stats(stats: pd.DataFrame, query: str = "", kind: str = None, min_count: int = 1) -> pd.DataFrame:
+    """
+    曲ごとの集計(build_song_stats)を絞る
+
+    キーワードは Home の検索と同じく normalize_for_match してから search 列(曲名・アーティストと読み)に部分一致。
+    空(空白だけを含む)のキーワードと kind=None は絞らない。歌唱回数は min_count 以上。並びは変えない。
+    """
+    mask = stats["count"] >= min_count
+    needle = normalize_for_match(query)
+    if needle:
+        mask &= stats["search"].str.contains(needle, regex=False)
+    if kind is not None:
+        mask &= stats["kind"] == kind
+    return stats[mask]
