@@ -66,6 +66,14 @@ PARTS = ("1chorus", "1phrase", "short", "1番のみ")
 # content_id の接頭辞とプラットフォームの対応
 PLATFORM_PREFIX = {"youtube": "yt", "x": "x", "zan": "zan", "goods": "goods"}
 
+# プラットフォームごとに取りうる type(X の動画も投稿として post)
+PLATFORM_TYPES = {
+    "youtube": ("live", "video", "short"),
+    "x": ("post",),
+    "zan": ("live",),
+    "goods": ("audio",),
+}
+
 CONTENTS = TableSchema(
     name="contents",
     columns=("content_id", "platform", "type", "url", "channel", "date", "start_time",

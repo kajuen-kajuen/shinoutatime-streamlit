@@ -11,7 +11,7 @@ from typing import List
 import pandas as pd
 
 from src.core.links import start_to_seconds
-from src.models.schema import ALL_SCHEMAS, PLATFORM_PREFIX
+from src.models.schema import ALL_SCHEMAS, CONTENT_TYPES, PLATFORM_PREFIX, PLATFORM_TYPES
 from src.repositories.table_repository import Dataset, sort_table
 
 
@@ -75,7 +75,7 @@ def validate_dataset(dataset: Dataset) -> List[Issue]:
 
 
 def _check_contents(dataset: Dataset) -> List[Issue]:
-    """content_id の接頭辞(yt: など)が platform と合っていること。follows(続きの部)の指し方が正しいこと"""
+    """content_id の接頭辞(yt: など)と type が platform と合っていること。follows(続きの部)の指し方が正しいこと"""
     df = dataset["contents"]
     if df.empty:
         return []
@@ -84,6 +84,12 @@ def _check_contents(dataset: Dataset) -> List[Issue]:
     bad = expected.notna() & (df["content_id"].str.split(":", n=1).str[0] != expected)
     if bad.any():
         issues.append(Issue("error", "contents", f"content_id の接頭辞が platform と合っていません(行 {_rows(df, bad)})"))
+    # platform・type が選択肢に無い行は choices の検査が見る
+    pairs = {f"{p}/{t}" for p, types in PLATFORM_TYPES.items() for t in types}
+    bad_type = (df["platform"].isin(PLATFORM_TYPES.keys()) & df["type"].isin(CONTENT_TYPES)
+                & ~(df["platform"] + "/" + df["type"]).isin(pairs))
+    if bad_type.any():
+        issues.append(Issue("error", "contents", f"type が platform と合っていません(goods は audio、zan は live など)(行 {_rows(df, bad_type)})"))
     issues.extend(_check_follows(df))
     return issues
 
