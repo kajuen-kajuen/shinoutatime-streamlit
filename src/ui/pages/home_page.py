@@ -59,11 +59,13 @@ def data_as_of(view: pd.DataFrame) -> str:
     """
     データの時点の表示(「データは YYYY/MM/DD の配信まで(歌唱 N 件)」)
 
-    日付は一覧の配信日の最大値、件数は一覧(画面に出す歌唱)の件数。一覧が空なら空文字。
+    日付は配信・動画(type=audio の音源を除く)の日付の最大値。音源の販売日が新しくても「配信まで」の日付は変えない。
+    配信・動画が1件も無いときは一覧全体の最大値。件数は一覧(画面に出す歌唱)全体の件数。一覧が空なら空文字。
     """
     if view.empty:
         return ""
-    latest = view["date"].max().replace("-", "/")
+    streamed = view[view["type"] != "audio"]
+    latest = (streamed if not streamed.empty else view)["date"].max().replace("-", "/")
     return f"データは {latest} の配信まで(歌唱 {len(view):,} 件)"
 
 
