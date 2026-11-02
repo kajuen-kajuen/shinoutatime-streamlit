@@ -61,7 +61,7 @@ st.subheader("今週のスケジュール", anchor="weekly_schedule")
 st.caption(f"毎週更新しています。最新の予定は[幽音しのさんの X]({X_URL})をご覧ください。")
 schedule_embed = load_twitter_embed(SCHEDULE_EMBED_PATH, SCHEDULE_HEIGHT_PATH)
 if schedule_embed:
-    render_twitter_embed(*schedule_embed)
+    render_twitter_embed(schedule_embed[0])
 else:
     st.info(f"今週のスケジュールを表示できませんでした。[幽音しのさんの X]({X_URL})をご覧ください。")
 st.markdown("---")
