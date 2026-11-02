@@ -243,27 +243,25 @@ def render_twitter_embed(embed_code: str) -> None:
             st.info("Twitterの埋め込み情報が読み込まれませんでした。")
 
 
-def load_twitter_embed(embed_path: Path, height_path: Path) -> Optional[Tuple[str, int]]:
+def load_twitter_embed(embed_path: Path) -> Optional[str]:
     """
-    保存してある X の埋め込みコードと表示の高さを読む
+    保存してある X の埋め込みコードを読む
 
     埋め込みコードは取り込みのツール(このリポジトリの外)が X の oEmbed から取って保存したもの
     (保存の前に検査している)。画面の中で呼ぶので、ここでは表示をせず、ログだけ残す。
 
     Args:
         embed_path: 埋め込みコードのファイル(data/tweet_embed_code.html)
-        height_path: 表示の高さ(ピクセル)のファイル(data/tweet_height.txt)
 
     Returns:
-        (埋め込みコード, 高さ)。ファイルが無い・読めない・空・高さが正の整数でないときは None
+        埋め込みコード。ファイルが無い・読めない・空のときは None
     """
     try:
         embed_code = embed_path.read_text(encoding="utf-8").strip()
-        height = int(height_path.read_text(encoding="utf-8").strip())
     except (OSError, ValueError) as e:
         logger.warning(f"X の埋め込みを読めませんでした: {e}")
         return None
-    if not embed_code or height <= 0:
-        logger.warning(f"X の埋め込みが空か、高さが正しくありません: 高さ={height}")
+    if not embed_code:
+        logger.warning("X の埋め込みが空です")
         return None
-    return embed_code, height
+    return embed_code

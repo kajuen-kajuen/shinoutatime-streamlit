@@ -22,7 +22,6 @@ class Config:
     
     # ファイルパス
     tweet_embed_code_path: str = "data/tweet_embed_code.html"
-    tweet_height_path: str = "data/tweet_height.txt"
     css_file_path: str = "src/ui/styles/style.css"
     # データモデル v2 の TSV のディレクトリ(画面はここを読む)
     v2_data_dir: str = "data/v2"
@@ -60,10 +59,6 @@ class Config:
             tweet_embed_code_path=os.getenv(
                 "SHINOUTA_TWEET_EMBED_CODE_PATH",
                 "data/tweet_embed_code.html"
-            ),
-            tweet_height_path=os.getenv(
-                "SHINOUTA_TWEET_HEIGHT_PATH",
-                "data/tweet_height.txt"
             ),
             css_file_path=os.getenv(
                 "SHINOUTA_CSS_FILE_PATH",

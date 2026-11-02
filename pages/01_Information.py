@@ -29,7 +29,6 @@ X_URL = "https://x.com/Shino_Kasukane_"
 # 今週のスケジュールの埋め込み(取り込みのツールが保存する。このリポジトリの外)
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 SCHEDULE_EMBED_PATH = DATA_DIR / "tweet_embed_code.html"
-SCHEDULE_HEIGHT_PATH = DATA_DIR / "tweet_height.txt"
 
 # --- ページの準備(ページ設定・共通の CSS・見出し。全ページで共通) ---
 setup_page("Information", "📢")
@@ -59,9 +58,9 @@ st.markdown("---")
 # 本人の X の「今週のスケジュール」の投稿を埋め込む。読めないときは X へ案内して続ける
 st.subheader("今週のスケジュール", anchor="weekly_schedule")
 st.caption(f"毎週更新しています。最新の予定は[幽音しのさんの X]({X_URL})をご覧ください。")
-schedule_embed = load_twitter_embed(SCHEDULE_EMBED_PATH, SCHEDULE_HEIGHT_PATH)
+schedule_embed = load_twitter_embed(SCHEDULE_EMBED_PATH)
 if schedule_embed:
-    render_twitter_embed(schedule_embed[0])
+    render_twitter_embed(schedule_embed)
 else:
     st.info(f"今週のスケジュールを表示できませんでした。[幽音しのさんの X]({X_URL})をご覧ください。")
 st.markdown("---")
