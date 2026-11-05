@@ -1,17 +1,18 @@
 """
 データモデル v2 の整合性の検査
 
-主キー・外部キー・値の形・曲順と時刻の関係・並び順を確かめます。
+主キー・外部キー・値の形・実在する日付・曲順と時刻の関係・並び順を確かめます。
 error があればデータとして不正、warning は直したほうがよいもの。
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import List
 
 import pandas as pd
 
 from src.core.links import start_to_seconds
-from src.models.schema import ALL_SCHEMAS, CONTENT_TYPES, PLATFORM_PREFIX, PLATFORM_TYPES
+from src.models.schema import ALL_SCHEMAS, CONTENT_TYPES, DATE_PATTERN, PLATFORM_PREFIX, PLATFORM_TYPES
 from src.repositories.table_repository import Dataset, sort_table
 
 
@@ -68,9 +69,37 @@ def validate_dataset(dataset: Dataset) -> List[Issue]:
         if not df.equals(sort_table(name, df, dataset)):
             issues.append(Issue("warning", name, "並び順が決まった順になっていません(保存し直すと直ります)"))
 
+    issues.extend(_check_calendar_dates(dataset))
     issues.extend(_check_contents(dataset))
     issues.extend(_check_performances(dataset))
     issues.extend(_check_unused(dataset))
+    return issues
+
+
+def _is_real_date(value: str) -> bool:
+    """YYYY-MM-DD が暦にある日か。うるう年でない年の2月29日は False"""
+    try:
+        datetime.strptime(value, "%Y-%m-%d")
+    except ValueError:
+        return False
+    return True
+
+
+def _check_calendar_dates(dataset: Dataset) -> List[Issue]:
+    """date と available_until は、形が合っていても実在する日だけを許す。
+
+    2026-02-31 のような日は形の検査を通り、集計の pd.to_datetime で落ちる。
+    保存すると Home と Song List が読めなくなる。形が違う値は、ここではなく形の検査が見る。
+    """
+    df = dataset["contents"]
+    if df.empty:
+        return []
+    issues: List[Issue] = []
+    for col in ("date", "available_until"):
+        shaped = df[col].str.match(DATE_PATTERN)
+        bad = shaped & ~df[col].map(_is_real_date)
+        if bad.any():
+            issues.append(Issue("error", "contents", f"{col} が実在しない日付です(行 {_rows(df, bad)})"))
     return issues
 
 
