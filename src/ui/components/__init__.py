@@ -204,6 +204,44 @@ def render_pagination(
 EMBED_WRAPPER_ID = "shinouta-embed"
 
 
+def _embed_fit_script() -> str:
+    """枠の高さを、包み要素の高さに送り直すスクリプト
+
+    st.iframe の height="content" は documentElement.scrollHeight を使う。
+    この値は枠自身の高さより小さくならないので、X のカードが一度高く描かれてから
+    縮んでも、下の空きが残る。包みの高さだけを、Streamlit の計測のあと(setTimeout)に送る。
+    """
+    return f"""<script>
+(function () {{
+  var id = "{EMBED_WRAPPER_ID}";
+  function fit() {{
+    var el = document.getElementById(id);
+    if (!el) return;
+    var rect = el.getBoundingClientRect();
+    var h = Math.ceil(rect.height);
+    if (h <= 0) return;
+    window.parent.postMessage({{
+      type: "streamlit:iframe:setSize",
+      width: Math.ceil(rect.width),
+      height: h
+    }}, "*");
+  }}
+  function schedule() {{
+    setTimeout(fit, 0);
+  }}
+  if (document.readyState === "complete") schedule();
+  else window.addEventListener("load", schedule);
+  var el = document.getElementById(id);
+  if (el && typeof MutationObserver !== "undefined") {{
+    new MutationObserver(schedule).observe(el, {{
+      childList: true, subtree: true, attributes: true
+    }});
+  }}
+  window.addEventListener("resize", schedule);
+}})();
+</script>"""
+
+
 def render_twitter_embed(embed_code: str) -> None:
     """
     Twitter埋め込みを表示する
@@ -219,8 +257,8 @@ def render_twitter_embed(embed_code: str) -> None:
     Notes:
         - 埋め込みコードが空の場合は情報メッセージを表示します
         - 画面レイアウトは3カラム [1, 2, 1] で中央に表示されます
-        - 枠の高さは st.iframe の height="content" に任せます。X のカードがあとから描かれても、
-          Streamlit が中身の高さを測って合わせます(2026-11-02 に PC・スマホ幅で確かめた)
+        - 枠の高さは st.iframe の height="content" と、包みの高さを送り直すスクリプトで合わせます。
+          X のカードが一度高く描かれてから縮んでも、下の空きが残らないようにします。
     """
     logger.debug("Twitter埋め込みを表示中")
 
@@ -232,7 +270,8 @@ def render_twitter_embed(embed_code: str) -> None:
             # 渡すのは取り込みのツールが X の oEmbed から取り、検査して保存した HTML だけ(利用者の入力ではない)
             st.iframe(
                 f'<div id="{EMBED_WRAPPER_ID}" style="display: flow-root;">{embed_code}</div>'
-                "<style>body { margin: 0; }</style>",
+                "<style>body { margin: 0; }</style>"
+                f"{_embed_fit_script()}",
                 height="content",
                 alt="今週のスケジュール(X の投稿)",
             )
