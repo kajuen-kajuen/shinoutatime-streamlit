@@ -72,6 +72,25 @@ def render_search_form(
 
 
 
+# 表の曲名のリンクに付けるクラス(style.css で、短い曲名でも指で押せる大きさにする)
+TITLE_LINK_CLASS = "title-link"
+
+
+def link_html(url, text, css_class: str = "") -> str:
+    """
+    新しいタブで開くリンクの HTML を組み立てる(表のセル用)
+
+    URL も文字もデータ由来なので、ここでエスケープする。URL が空・欠損のときは、リンクにせず文字だけを返す
+    (文字も欠損なら空)。Home と Song List の表の、曲名とリンクの列で使う。
+    css_class は、コードに書いた決まった名前だけを渡す(曲名のリンクは TITLE_LINK_CLASS)。
+    """
+    label = "" if pd.isna(text) else html.escape(str(text))
+    if pd.isna(url) or not str(url):
+        return label
+    class_attr = f'class="{html.escape(css_class, quote=True)}" ' if css_class else ""
+    return f'<a {class_attr}href="{html.escape(str(url), quote=True)}" target="_blank" rel="noopener">{label}</a>'
+
+
 def build_results_table_html(
     df: pd.DataFrame,
     columns: List[str],

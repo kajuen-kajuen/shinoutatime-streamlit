@@ -23,6 +23,7 @@ import streamlit as st
 import pandas as pd
 from src.core.views import filter_song_stats
 from src.models.schema import SONG_KINDS
+from src.ui.components import TITLE_LINK_CLASS, link_html
 from src.ui.components.footer import display_footer
 from src.ui.page_setup import setup_page
 from src.ui.pages.home_page import LOAD_ERROR_HINT, escape_markdown
@@ -84,6 +85,8 @@ def build_table_html(stats: pd.DataFrame) -> str:
 
     データ由来の文字列はすべてエスケープする(曲名の < や & で表が壊れないように)。
     リンクは最新の歌唱(views.build_song_stats の latest_link)。最終歌唱日は Home の配信日と同じ YYYY/MM/DD。
+    曲名も、リンクの列と同じ所へ飛ぶリンクにする(スマホの幅ではリンクの列が画面の外にあり、
+    横に送らないと押せないため)。URL が無い行は、曲名は文字だけ、リンクの列は空。
     クラス名と見出しの左寄せは、以前の DataFrame.to_html(justify="left", classes="dataframe") と同じ。
     表は Home(src/ui/components の render_results_table)と同じ横スクロールの div で包む
     (列が改行しないので、スマホの幅では表が画面からはみ出すため)。
@@ -93,12 +96,9 @@ def build_table_html(stats: pd.DataFrame) -> str:
         stats["artist"], stats["title"], stats["count"], stats["last_date"],
         stats["latest_link"], stats["latest_link_label"],
     ):
-        link = (
-            f'<a href="{html.escape(str(url), quote=True)}" target="_blank" rel="noopener">{_cell(label)}</a>'
-            if pd.notna(url) and url else ""
-        )
+        link = link_html(url, label) if pd.notna(url) and url else ""
         rows.append(
-            f'<tr><td><div class="artist-cell">{_cell(artist)}</div></td><td>{_cell(title)}</td>'
+            f'<tr><td><div class="artist-cell">{_cell(artist)}</div></td><td>{link_html(url, title, TITLE_LINK_CLASS)}</td>'
             f'<td>{_cell(count)}</td><td>{_cell(last_date).replace("-", "/")}</td><td>{link}</td></tr>'
         )
     header = (

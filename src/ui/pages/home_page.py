@@ -16,6 +16,8 @@ from src.config.settings import Config
 from src.core.text import normalize_for_match
 from src.ui.components.footer import display_footer
 from src.ui.components import (
+    TITLE_LINK_CLASS,
+    link_html,
     render_search_form,
     render_results_table,
     render_pagination,
@@ -27,6 +29,9 @@ logger = logging.getLogger(__name__)
 
 # 表の列(表示の見出し)
 TABLE_COLUMNS = ["配信日", "No.", "曲名", "アーティスト", "種類", "リンク"]
+
+# Home の上の案内から移るページ(楽曲リスト)。入口の Home.py から見た位置
+SONG_LIST_PAGE = "pages/99_Song_List_beta.py"
 
 # 読み込みに失敗したときの案内(Song List と同じ)
 LOAD_ERROR_HINT = "時間をおいて、ページを開き直してください。"
@@ -73,20 +78,18 @@ def build_table(view: pd.DataFrame) -> pd.DataFrame:
     """
     表に出す形にする(列は TABLE_COLUMNS)
 
-    アーティストとリンクは HTML に組み立てる(データ由来の文字列はエスケープする)。
+    曲名・アーティスト・リンクは HTML に組み立てる(データ由来の文字列はエスケープする)。
     ほかの列は render_results_table がエスケープする。
+    曲名は、リンクの列と同じ所へ飛ぶリンクにする(スマホの幅ではリンクの列が画面の外にあり、
+    横に送らないと押せないため)。URL が無い行は、曲名は文字だけ、リンクの列は空。
     """
     return pd.DataFrame({
         "配信日": view["date"].str.replace("-", "/"),
         "No.": view["no"],
-        "曲名": view["display_title"],
+        "曲名": [link_html(u, title, TITLE_LINK_CLASS) for u, title in zip(view["link"], view["display_title"])],
         "アーティスト": view["artist"].map(lambda a: f'<div class="artist-cell">{html.escape(a)}</div>'),
         "種類": view["type_label"],
-        "リンク": [
-            f'<a href="{html.escape(u, quote=True)}" target="_blank" rel="noopener">{html.escape(label)}</a>'
-            if u else ""
-            for u, label in zip(view["link"], view["link_label"])
-        ],
+        "リンク": [link_html(u, label) if u else "" for u, label in zip(view["link"], view["link_label"])],
     })
 
 
@@ -127,8 +130,9 @@ class HomePage:
         display_footer()
 
     def _render_header(self):
-        """ヘッダー領域の描画(サイト名の見出しの下のお知らせと説明)"""
-        st.info("左のサイドバーから「Song List beta」を選択して、楽曲リストをご覧ください。")
+        """ヘッダー領域の描画(サイト名の見出しの下の、楽曲リストへのリンクと説明)"""
+        # サイドバーはスマホでは畳まれているので、押すと移れるリンクにする
+        st.page_link(SONG_LIST_PAGE, label="楽曲リスト(Song List beta)を見る", icon="🎵")
         st.markdown(
             """
             こちらはVTuber「[幽音しの](https://www.774.ai/talent/shino-kasukane)」さんの配信で歌われた楽曲をまとめた非公式データベースです。
@@ -188,7 +192,7 @@ class HomePage:
             build_table(shown),
             TABLE_COLUMNS,
             {c: c for c in TABLE_COLUMNS},
-            html_columns={"アーティスト", "リンク"},
+            html_columns={"曲名", "アーティスト", "リンク"},
         )
 
         # ページネーションの表示(ボタンの on_click で display_limit を増やす。st.rerun は要らない)
