@@ -10,9 +10,7 @@
 
 お知らせ・グッズ・活動の記録は、非公式Wiki の幽音しののページ(告知・略歴・グッズ・オリジナル曲など)が
 新しく詳しいので、このサイトでは X の投稿を埋め込んで並べず、Wiki へ案内する(2026-10-21 決定)。
-今週のスケジュールだけは、2026-10-22 に埋め込みを戻した(更新の手順は docs/prompts/update-data.md)。
-
-要件: 9.1
+今週のスケジュールだけは、2026-10-22 に埋め込みを戻した(毎週、新しい投稿の埋め込みに差し替える)。
 """
 
 from pathlib import Path
@@ -48,7 +46,6 @@ st.markdown("---")
 # --- YouTubeセクション ---
 # 本人の予定表置き場(フリーチャットの枠)を埋め込み表示します
 # st.video()を使用することで、Streamlitが自動的にYouTube動画プレーヤーを埋め込みます
-# 要件: 9.1
 st.subheader("ふりちゃという名の予定表置き場", anchor="youtube_schedule")
 st.video("https://www.youtube.com/watch?v=LRowhAcHngc")
 st.markdown("---")

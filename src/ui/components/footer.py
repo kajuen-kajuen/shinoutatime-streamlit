@@ -10,12 +10,10 @@ footer.py - フッター表示モジュール
 - 連絡先情報の表示
 
 使用方法:
-    from footer import display_footer
-    
+    from src.ui.components.footer import display_footer
+
     # ページの最後でフッターを表示
     display_footer()
-
-要件: 12.1, 12.2, 12.3
 """
 
 import streamlit as st
@@ -64,8 +62,6 @@ def display_footer():
         - この関数はStreamlit環境でのみ動作します
         - ページの最後で呼び出すことを推奨します
         - 複数回呼び出すと、フッターが複数回表示されます
-    
-    要件: 12.1, 12.2, 12.3
     """
     st.markdown("---")
     st.caption("Made with Streamlit")

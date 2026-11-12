@@ -15,17 +15,10 @@ VTuber「幽音しの」さんの配信で歌唱された楽曲を検索・閲�
   表示は src/ui/pages/home_page.py(読み込みは src/ui/v2_data.py)
 """
 
-import streamlit as st
-from src.config import setup_logging
 from src.ui.page_setup import setup_page
 from src.ui.pages.home_page import HomePage
 
-# ロギングの初期化（アプリケーション起動時に一度だけ実行）
-if "logging_initialized" not in st.session_state:
-    setup_logging()
-    st.session_state.logging_initialized = True
-
-# ページの準備(ページ設定・共通の CSS・サイト名の見出し。全ページで共通)
+# ページの準備(ログの初期化・ページ設定・共通の CSS・サイト名の見出し。全ページで共通)
 config = setup_page()
 
 if __name__ == "__main__":
