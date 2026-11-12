@@ -37,12 +37,15 @@ def normalize_for_match(text: str) -> str:
     表記の揺れを照合するための正規化
 
     NFKC(全角英数 → 半角など)、見えない文字の除去、小文字化、空白の除去、カタカナ → ひらがな。
+    最後にもう一度まとめ直す(NFC)。NFKC は単独の濁点・アクセント記号を「空白 + 結合文字」に分けるので、
+    空白や見えない文字を消したあとは、結合文字が前の文字の隣に来る。まとめ直さないと「か゛」が「が」と
+    同じにならず、2回かけると結果が変わる。
     """
     if not text:
         return ""
     text = remove_invisible(unicodedata.normalize("NFKC", text)).lower()
     text = _SPACES.sub("", text)
-    return to_hiragana(text)
+    return unicodedata.normalize("NFC", to_hiragana(text))
 
 
 def _char_group(ch: str) -> int:

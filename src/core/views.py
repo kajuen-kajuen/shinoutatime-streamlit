@@ -126,9 +126,12 @@ def build_performance_view(dataset: Dataset) -> pd.DataFrame:
     )[["content_id", "branch", "per_day"]].rename(columns={"content_id": "head"})
     day_order = ordered[["content_id", "head", "day_pos"]].merge(branches, on="head", how="left")
     day_order["group_pos"] = day_order["head"].map(ordered.set_index("content_id")["day_pos"])
+    # 続きの部は、同じ日の並び(開始時刻 → content_id)で先の部より前にあっても、先の部のあとに置く
+    # (どちらも開始時刻が無い、続きの部の開始時刻のほうが早い、など)
+    day_order["is_part"] = day_order["head"] != day_order["content_id"]
     view = view.merge(day_order, on="content_id", how="left")
     # コンテンツの中の曲順。続きの部は、先の部の歌唱数のあとから数える
-    in_order = view.sort_values(["head", "day_pos", "seq_n"], kind="mergesort")
+    in_order = view.sort_values(["head", "is_part", "day_pos", "seq_n"], kind="mergesort")
     view["no_in_content"] = (in_order.groupby("head").cumcount() + 1).reindex(view.index)
     no_in_content = view["no_in_content"].astype(str)
     has_branch = view["per_day"].fillna(1) > 1
@@ -149,10 +152,10 @@ def build_performance_view(dataset: Dataset) -> pd.DataFrame:
     view["search"] = view["search_song"] + "\n" + search_text(view["content_title"])
 
     # 日付は新しい順、同じ日の中は時刻の早い順(2026-10-21 決定。v1 の画面は遅い配信が上だった)、
-    # コンテンツの中は曲順
+    # コンテンツの中は曲順。続きの部は先の部の直後
     view = view.sort_values(
-        ["date", "group_pos", "day_pos", "seq_n"],
-        ascending=[False, True, True, True],
+        ["date", "group_pos", "is_part", "day_pos", "seq_n"],
+        ascending=[False, True, True, True, True],
         kind="mergesort",
     ).reset_index(drop=True)
     return view[VIEW_COLUMNS]
@@ -180,6 +183,9 @@ def build_song_stats(dataset: Dataset, view: pd.DataFrame = None) -> pd.DataFram
     kinds = dataset["contents"][["content_id", "kind"]].rename(columns={"kind": "content_kind"})
     counted = view.merge(kinds, on="content_id", how="left")
     counted = counted[~counted["content_kind"].isin(EXCLUDED_FROM_COUNT_KINDS)]
+    if counted.empty:
+        # 歌唱はあるが、どれも数えないもの(切り抜き)だけのとき。0 行のまま先へ進むと、検索用の列を作る所で落ちる
+        return pd.DataFrame(columns=columns + ["search"])
 
     # 最新のリンクは、購入ページ(音源)より動画・配信を優先する(音源しか無い曲は音源)
     latest = (
