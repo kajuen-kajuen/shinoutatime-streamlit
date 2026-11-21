@@ -355,3 +355,43 @@ table.dataframe thead th {
     background-color: #f2f2f2;
     font-weight: bold;
 }
+
+/**
+ * 今週のスケジュール: 画像の上に透明なボタンを重ね、タップでダイアログを開く
+ *
+ * 入れ物は key="schedule_image"（クラス st-key-schedule_image）。
+ * ボタンは key="schedule_zoom"。文字は読み上げ用で、見た目は画像だけにする。
+ * 内部クラス名(st-emotion-cache-*)は使わない。
+ */
+.st-key-schedule_image {
+    position: relative;
+}
+
+/* Streamlit が幅を中身に合わせるので、left/right で伸ばすには width を auto に戻す */
+.st-key-schedule_zoom {
+    position: absolute;
+    inset: 0;
+    width: auto !important;
+    max-width: none;
+    height: auto;
+    margin: 0;
+}
+
+.st-key-schedule_zoom div[data-testid="stButton"],
+.st-key-schedule_zoom button {
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    cursor: zoom-in;
+    background: transparent;
+}
+
+/* ダイアログの背景。既定は薄い色なので、画像のうしろを薄暗くする */
+div[data-testid="stDialog"] {
+    background-color: rgba(0, 0, 0, 0.6);
+}
