@@ -34,8 +34,15 @@ SCHEDULE_EMBED_PATH = DATA_DIR / "tweet_embed_code.html"
 
 @st.dialog("今週のスケジュール", width="large")
 def show_schedule_image(image_path: str) -> None:
-    """背景を薄暗くし、画像を画面の上に出す。うす暗いところか閉じるで戻る"""
-    st.image(image_path, width="stretch")
+    """背景を薄暗くし、画像を画面の上に出す。うす暗いところか閉じるで戻る
+
+    スマホの縦持ちでは、画面の幅に収めると文字が読めないので、画面の高さの6割ほどの大きさで出し、
+    横に送って見る(style.css の schedule_dialog_image)。外側の入れ物(schedule_dialog_frame)は、
+    余白を詰めることと、右端の「続きがある」印のため。
+    """
+    with st.container(key="schedule_dialog_frame"):
+        with st.container(key="schedule_dialog_image"):
+            st.image(image_path, width="stretch")
 
 # --- ページの準備(ページ設定・共通の CSS・見出し。全ページで共通) ---
 setup_page("Information", "📢")
@@ -68,12 +75,15 @@ schedule_embed = load_twitter_embed(SCHEDULE_EMBED_PATH)
 status_url = status_url_from_embed(schedule_embed or "")
 schedule_image = find_schedule_image(DATA_DIR, status_url)
 if schedule_image is not None and status_url is not None:
-    # ボタンは画像の上に重ねる(style.css の schedule_image)。見た目は画像だけ
+    # ボタンは画像の上に重ねる(style.css の schedule_image)。見た目は画像と、右上の「🔍 拡大」の印
     with st.container(key="schedule_image"):
         st.image(str(schedule_image), width="stretch")
         if st.button("スケジュールを拡大", key="schedule_zoom"):
             show_schedule_image(str(schedule_image))
-    st.caption("画像をタップすると大きく表示します。うす暗いところをタップすると閉じます。")
+    st.caption(
+        "画像をタップすると大きく表示します(スマホでは、開いた画像を横に送って見られます)。"
+        "うす暗いところをタップすると閉じます。"
+    )
     st.markdown(f"[この投稿を X で見る]({status_url})")
 else:
     st.info(f"今週のスケジュールを表示できませんでした。[幽音しのさんの X]({X_URL})をご覧ください。")

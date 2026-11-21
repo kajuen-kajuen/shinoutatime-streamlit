@@ -360,7 +360,8 @@ table.dataframe thead th {
  * 今週のスケジュール: 画像の上に透明なボタンを重ね、タップでダイアログを開く
  *
  * 入れ物は key="schedule_image"（クラス st-key-schedule_image）。
- * ボタンは key="schedule_zoom"。文字は読み上げ用で、見た目は画像だけにする。
+ * ボタンは key="schedule_zoom"。画像の全体が押せる。ボタンの文字は読み上げ用に残して見えなくし、
+ * 押せることは右上の「🔍 拡大」の印で見せる。
  * 内部クラス名(st-emotion-cache-*)は使わない。
  */
 .st-key-schedule_image {
@@ -386,12 +387,118 @@ table.dataframe thead th {
     margin: 0;
     padding: 0;
     border: 0;
-    opacity: 0;
     cursor: zoom-in;
     background: transparent;
+}
+
+.st-key-schedule_zoom button:hover,
+.st-key-schedule_zoom button:active,
+.st-key-schedule_zoom button:focus {
+    border: 0;
+    background: transparent;
+}
+
+/* キーボードで選んだときは、画像の内側に枠を出す(画像の色に埋もれないよう、白と黒の二重) */
+.st-key-schedule_zoom button:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: -3px;
+    box-shadow: inset 0 0 0 6px #111;
+}
+
+/* ボタンの文字(スケジュールを拡大)は、読み上げには残して、見えなくする */
+.st-key-schedule_zoom button div[data-testid="stMarkdownContainer"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* 右上の印。画像の右上は飾りで、予定の文字に重ならない。2行目は、読み上げで二重に読まないための指定 */
+.st-key-schedule_zoom button::after {
+    content: "🔍 拡大";
+    content: "🔍 拡大" / "";
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    font-size: 0.8rem;
+    line-height: 1.6;
 }
 
 /* ダイアログの背景。既定は薄い色なので、画像のうしろを薄暗くする */
 div[data-testid="stDialog"] {
     background-color: rgba(0, 0, 0, 0.6);
+}
+
+/**
+ * ダイアログの中の画像(スマホの縦持ち)
+ *
+ * 入れ物は、外側が key="schedule_dialog_frame"、内側が key="schedule_dialog_image"。
+ * 画面の幅に収めると文字が読めないので、画像の幅を画面の高さの 105% にし(16:9 の画像なら、高さは
+ * 画面の約6割)、はみ出した分を内側の入れ物で横に送る(幅 390px・高さ 844px なら、画像の幅は約 886px)。
+ * 外側は、ダイアログの左右の余白(24px)を 8px まで詰めて、一度に見える幅を広げる。
+ * PC・タブレット・スマホの横持ちでは、今までどおりダイアログの幅に収める。
+ */
+.st-key-schedule_dialog_frame {
+    position: relative;
+}
+
+@media (orientation: portrait) and (max-width: 640px) {
+    .st-key-schedule_dialog_frame {
+        width: calc(100% + 32px) !important;
+        max-width: none !important;
+        margin-left: -16px;
+        margin-right: -16px;
+    }
+
+    .st-key-schedule_dialog_image {
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+    }
+
+    .st-key-schedule_dialog_image img {
+        width: max(100%, 105vh) !important;
+        max-width: none !important;
+        height: auto !important;
+    }
+
+    /* 右端の影: 続きがある(横に送れる)印 */
+    .st-key-schedule_dialog_frame::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 28px;
+        background: linear-gradient(to left, rgba(0, 0, 0, 0.35), transparent);
+        pointer-events: none;
+    }
+
+    /* 右端まで送ったら、影を消す(対応しているブラウザだけ。ほかは影が出たまま) */
+    @supports (animation-timeline: scroll()) {
+        .st-key-schedule_dialog_frame {
+            timeline-scope: --schedule-scroll;
+        }
+
+        .st-key-schedule_dialog_image {
+            scroll-timeline: --schedule-scroll x;
+        }
+
+        .st-key-schedule_dialog_frame::after {
+            animation: schedule-edge-fade linear both;
+            animation-timeline: --schedule-scroll;
+            animation-range: 90% 100%;
+        }
+    }
+}
+
+@keyframes schedule-edge-fade {
+    to {
+        opacity: 0;
+    }
 }
